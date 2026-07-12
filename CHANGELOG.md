@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0
+
+- Add a stable `releases/latest/download` package URL for build-free consumer installs.
+- Add a deterministic release packager that emits versioned and stable asset names.
+- Replace bundled webfonts with native system sans and monospace stacks.
+- Omit library sourcemaps from the consumer artifact while retaining public source on GitHub.
+- Reduce both first-load assets and the install tarball without changing the integration API.
+- Add an artifact regression gate that rejects bundled fonts, library maps, and extra app entry assets.
+
 ## 0.12.0
 
 - Render MCP `form` and `openai/form` primitive object schemas in the complete chat.

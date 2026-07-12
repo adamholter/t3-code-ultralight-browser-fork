@@ -17,10 +17,12 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 ## Fastest path
 
 ```bash
-npm install github:adamholter/t3-code-ultralight-browser-fork
+npm install https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz
 npx t3-code-ultralight doctor
 npx t3-code-ultralight serve
 ```
+
+The stable release URL installs the prebuilt package directly: no repository clone, Git checkout, or local compilation. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 

@@ -1,5 +1,6 @@
 node_modules
 dist
 dist-lib
+release
 .DS_Store
 *.log

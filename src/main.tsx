@@ -1,5 +1,3 @@
-import "@fontsource-variable/dm-sans";
-import "@fontsource/jetbrains-mono/400.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";

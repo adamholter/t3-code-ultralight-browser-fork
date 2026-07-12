@@ -3,7 +3,7 @@
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. Install the package and run `npx t3-code-ultralight doctor --json` before modifying the host.
+2. Install the prebuilt package from `https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz` and run `npx t3-code-ultralight doctor --json` before modifying the host.
 3. Resolve every failed doctor check or report its exact recommendation.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
@@ -23,6 +23,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 ```text
 Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
+Use the stable prebuilt release asset linked in the README so installation does not compile the package.
 Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 ```

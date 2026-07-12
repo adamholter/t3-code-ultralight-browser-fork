@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -11,9 +11,30 @@
   },
   "homepage": "https://github.com/adamholter/t3-code-ultralight-browser-fork#readme",
   "bugs": "https://github.com/adamholter/t3-code-ultralight-browser-fork/issues",
-  "keywords": ["codex", "openai", "local", "chat", "react", "web-component", "websocket", "agent-ui"],
-  "sideEffects": ["./dist-lib/element-auto.js"],
-  "files": ["bin", "dist", "dist-lib", "docs", "examples", "CHANGELOG.md", "LICENSE", "NOTICE", "README.md"],
+  "keywords": [
+    "codex",
+    "openai",
+    "local",
+    "chat",
+    "react",
+    "web-component",
+    "websocket",
+    "agent-ui"
+  ],
+  "sideEffects": [
+    "./dist-lib/element-auto.js"
+  ],
+  "files": [
+    "bin",
+    "dist",
+    "dist-lib",
+    "docs",
+    "examples",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
   "bin": {
     "t3-code-ultralight": "./bin/cli.mjs"
   },
@@ -67,15 +88,15 @@
     "typecheck": "tsc --noEmit",
     "start": "NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",
-    "check": "npm run test && npm run build",
+    "check": "npm run test && npm run build && npm run check:artifact",
+    "check:artifact": "node scripts/check-artifact.mjs",
+    "package:release": "node scripts/package-release.mjs",
     "prepare": "npm run build"
   },
   "dependencies": {
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@fontsource-variable/dm-sans": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -100,7 +121,9 @@
     "react": ">=18"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true }
+    "react": {
+      "optional": true
+    }
   },
   "overrides": {
     "esbuild": "0.28.1"

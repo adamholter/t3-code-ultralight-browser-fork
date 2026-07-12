@@ -1,5 +1,7 @@
 :root {
-  font-family: "DM Sans Variable", system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-sans);
   color: #252622;
   background: #f3f3f0;
   font-synthesis: none;
@@ -70,7 +72,7 @@ button { color: inherit; }
 .topbar { display: flex; height: 52px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 0 17px; background: color-mix(in srgb, var(--bg) 92%, transparent); }
 .thread-heading { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .thread-heading strong { overflow: hidden; max-width: min(50vw, 560px); font-size: 13px; font-weight: 610; text-overflow: ellipsis; white-space: nowrap; }
-.thread-heading span { display: flex; align-items: center; gap: 5px; overflow: hidden; color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.thread-heading span { display: flex; align-items: center; gap: 5px; overflow: hidden; color: var(--muted); font-family: var(--font-mono); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
 .model-readout { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .mobile-menu, .mobile-only { display: none; }
 .conversation { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
@@ -88,7 +90,7 @@ button { color: inherit; }
 .markdown ul, .markdown ol { padding-left: 1.35rem; }
 .markdown li + li { margin-top: 0.3em; }
 .markdown a { color: var(--accent); text-underline-offset: 2px; }
-.markdown code { border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; background: var(--panel-soft); font-family: "JetBrains Mono", monospace; font-size: 0.86em; }
+.markdown code { border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; background: var(--panel-soft); font-family: var(--font-mono); font-size: 0.86em; }
 .code-block { position: relative; margin: 14px 0; }
 .code-block pre { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #11120f; color: #dedfd8; line-height: 1.55; }
 .code-block code { border: 0; padding: 0; background: transparent; color: inherit; }
@@ -97,11 +99,11 @@ button { color: inherit; }
 .tool-header { display: flex; width: 100%; min-height: 34px; align-items: center; gap: 8px; border: 0; padding: 5px 8px 5px 11px; background: transparent; color: var(--muted); cursor: pointer; text-align: left; }
 .tool-header:hover { color: var(--text); }
 .tool-icon { display: grid; place-items: center; }
-.tool-label { min-width: 0; flex: 1; overflow: hidden; font-family: "JetBrains Mono", monospace; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tool-label { min-width: 0; flex: 1; overflow: hidden; font-family: var(--font-mono); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
 .tool-state { display: grid; place-items: center; color: var(--success); }
 .tool-failed .tool-state { color: var(--danger); }
 .tool-header .rotate { transform: rotate(90deg); }
-.tool-detail { max-height: 320px; margin: 3px 10px 8px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: var(--panel-soft); color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
+.tool-detail { max-height: 320px; margin: 3px 10px 8px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: var(--panel-soft); color: var(--muted); font-family: var(--font-mono); font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
 .spinner { width: 12px; height: 12px; border: 1.5px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .reasoning { margin: 0 0 14px 34px; color: var(--muted); font-size: 12px; }
@@ -126,7 +128,7 @@ button { color: inherit; }
 .select-control { position: relative; display: flex; align-items: center; color: var(--muted); }
 .select-control select { max-width: 130px; appearance: none; border: 0; outline: 0; padding: 5px 19px 5px 5px; background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; }
 .select-control svg { position: absolute; right: 3px; pointer-events: none; }
-.cwd-input { width: min(32vw, 230px); border: 0; border-left: 1px solid var(--line); outline: 0; margin-left: 3px; padding: 4px 8px; background: transparent; color: var(--faint); font-family: "JetBrains Mono", monospace; font-size: 9.5px; }
+.cwd-input { width: min(32vw, 230px); border: 0; border-left: 1px solid var(--line); outline: 0; margin-left: 3px; padding: 4px 8px; background: transparent; color: var(--faint); font-family: var(--font-mono); font-size: 9.5px; }
 .send-button { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 8px; background: var(--text); color: var(--bg); cursor: pointer; }
 .send-button:disabled { opacity: 0.3; cursor: default; }
 .stop-button { background: var(--danger); color: white; }
@@ -134,7 +136,7 @@ button { color: inherit; }
 .approval-bar { display: flex; width: min(calc(100% - 40px), 820px); align-items: center; gap: 10px; margin: 0 auto 10px; border: 1px solid color-mix(in srgb, #d29a3e 40%, var(--line)); border-radius: 9px; padding: 9px 10px; background: color-mix(in srgb, #d29a3e 10%, var(--panel)); color: var(--muted); }
 .approval-bar > div { display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .approval-bar strong { color: var(--text); font-size: 12px; }
-.approval-bar span { overflow: hidden; font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.approval-bar span { overflow: hidden; font-family: var(--font-mono); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
 .approval-bar button { border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; background: var(--panel); font-size: 11px; cursor: pointer; }
 .approval-bar .approval-primary { border-color: var(--text); background: var(--text); color: var(--bg); }
 .user-input-panel { width: min(calc(100% - 40px), 820px); max-height: min(52dvh, 520px); margin: 0 auto 10px; overflow-y: auto; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 11px; padding: 14px; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / 8%); }
@@ -159,8 +161,8 @@ button { color: inherit; }
 .request-actions .request-primary { border-color: var(--text); background: var(--text); color: var(--bg); }
 .request-actions button:disabled { opacity: .35; cursor: default; }
 .permission-panel { width: min(calc(100% - 40px), 820px); max-height: min(52dvh, 520px); margin: 0 auto 10px; overflow-y: auto; border: 1px solid color-mix(in srgb, #d29a3e 45%, var(--line)); border-radius: 11px; padding: 14px; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / 8%); }
-.permission-cwd { overflow: hidden; margin: -3px 0 10px; color: var(--faint); font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
-.permission-list { display: grid; gap: 5px; margin: 0; padding: 10px 10px 10px 27px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft); color: var(--text); font-family: "JetBrains Mono", monospace; font-size: 10.5px; line-height: 1.45; }
+.permission-cwd { overflow: hidden; margin: -3px 0 10px; color: var(--faint); font-family: var(--font-mono); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.permission-list { display: grid; gap: 5px; margin: 0; padding: 10px 10px 10px 27px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft); color: var(--text); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.45; }
 .permission-review { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 8px; margin-top: 11px; color: var(--muted); cursor: pointer; }
 .permission-review input { margin: 2px 0 0; accent-color: var(--accent); }
 .permission-review > span { display: flex; flex-direction: column; gap: 1px; }

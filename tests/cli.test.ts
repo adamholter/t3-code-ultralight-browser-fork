@@ -10,6 +10,12 @@ describe("CLI argument validation", () => {
     expect(result.code).not.toBe(0);
     expect(result.stderr).toContain("--allow-origin requires a value");
   });
+
+  it("points agents at the stable prebuilt release", async () => {
+    const result = await runCli(["agent-prompt"]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("stable prebuilt release asset");
+  });
 });
 
 function runCli(args: string[]) {

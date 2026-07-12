@@ -45,6 +45,7 @@ if (command === "serve") {
 } else if (command === "agent-prompt") {
   console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
+Use the stable prebuilt release asset linked in the README so installation does not compile the package.
 Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
 Preserve approvals and verify one live turn through the final UI.`);

@@ -15,7 +15,8 @@ export default defineConfig({
   },
   format: ["esm"],
   dts: true,
-  sourcemap: true,
+  // Published source is available in the repository; omit maps from the tiny consumer artifact.
+  sourcemap: false,
   clean: true,
   splitting: false,
   outDir: "dist-lib",
