@@ -50,3 +50,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Embedded hosts receive ready and turn lifecycle events only from the expected iframe origin.
 - Malformed, oversized, over-concurrent, unowned, and duplicate-response transport paths fail closed.
 - A passive second browser cannot observe another browser's thread-scoped notifications.
+- The negotiated browser protocol major is compatible and required capabilities are advertised before RPCs begin.

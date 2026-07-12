@@ -142,6 +142,19 @@ The generic `request(method, params)` method exposes the complete app-server RPC
 
 Connection state is emitted through `client.on("connection", status => ...)`. Failed automatic retries are contained and emitted through `client.on("reconnectError", error => ...)`; they do not create unhandled promise rejections in the host page.
 
+`await client.connect()` resolves only after the browser protocol handshake. Inspect `client.bridgeInfo` for the bridge version, protocol, capabilities, and active transport limits. Custom hosts that depend on a safety property can fail before their first RPC:
+
+```ts
+const client = createCodexClient({
+  url: "ws://127.0.0.1:4174/ws",
+  requiredCapabilities: ["requestOwnership", "threadIsolation"],
+});
+await client.connect();
+console.log(client.bridgeInfo);
+```
+
+Protocol-major mismatches and missing required capabilities reject `connect()` with an actionable error. A legacy bridge that begins with the pre-handshake status envelope remains usable and reports `bridgeInfo.legacy === true`; requiring a modern capability intentionally rejects that fallback.
+
 ## Interactive questions
 
 The complete chat renders `request_user_input` as an accessible options/free-text form. Add `mode=plan` to its bridge URL when the chat should use Codex Plan mode:
@@ -230,7 +243,7 @@ Call `await controller.stop()` during graceful shutdown.
 
 Every thread-scoped notification and app-server request is delivered only to the browser that owns its thread. This includes streamed assistant text, reasoning, tool activity, turn lifecycle, and approvals. Legacy approvals are correlated through `conversationId`; modern requests use `threadId`. Unowned thread notifications are dropped, requests with no identifiable live owner are rejected back to Codex, and a response is accepted exactly once from its recorded owner. Only genuinely unscoped bridge lifecycle notifications are broadcast.
 
-Browser messages must use the documented `rpc`, `respond`, or `respondError` envelope. The defaults allow messages up to 16 MiB and 32 simultaneous RPCs per browser, which accommodates normal multimodal input while bounding accidental or hostile clients. Existing-server integrations can adjust both limits explicitly as shown above. The standalone `/api/status` response reports its active defaults.
+The server begins each WebSocket with a versioned `hello`, followed by the existing status envelope. Browser messages must use the documented `rpc`, `respond`, or `respondError` envelope. The defaults allow messages up to 16 MiB and 32 simultaneous RPCs per browser, which accommodates normal multimodal input while bounding accidental or hostile clients. Existing-server integrations can adjust both limits explicitly as shown above. The standalone `/api/status` response reports its protocol, capabilities, and active limits.
 
 ## Canvas recipe
 

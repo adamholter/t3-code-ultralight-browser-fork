@@ -32,7 +32,14 @@ describe("attachCodexBridge routing", () => {
     const port = (server.address() as AddressInfo).port;
     const owner = new WebSocket(`ws://127.0.0.1:${port}/codex`);
     const other = new WebSocket(`ws://127.0.0.1:${port}/codex`);
+    const ownerHello = nextMessage(owner, (message) => message.type === "hello");
+    const otherHello = nextMessage(other, (message) => message.type === "hello");
     await Promise.all([opened(owner), opened(other)]);
+    await expect(ownerHello).resolves.toMatchObject({
+      protocol: { major: 1, minor: 0 },
+      capabilities: expect.arrayContaining(["rpc", "requestOwnership", "threadIsolation"]),
+    });
+    await expect(otherHello).resolves.toMatchObject({ type: "hello" });
 
     owner.send(JSON.stringify({ type: "rpc", id: "start", method: "thread/start", params: {} }));
     await nextMessage(owner, (message) => message.type === "rpcResult" && message.id === "start");

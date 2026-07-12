@@ -1,3 +1,10 @@
+import {
+  CODEX_BROWSER_PROTOCOL,
+  legacyCodexBridgeInfo,
+  parseCodexBridgeHello,
+  type CodexBridgeInfo,
+} from "../browser-contract.js";
+
 type Handler = (payload: any) => void;
 
 interface PendingRequest {
@@ -69,6 +76,8 @@ export interface CodexClientOptions {
   connectionTimeoutMs?: number;
   /** Maximum time for an individual bridge RPC response. */
   requestTimeoutMs?: number;
+  /** Optional bridge capabilities that must be advertised before connecting. */
+  requiredCapabilities?: readonly string[];
 }
 
 export interface CodexSessionOptions extends CodexClientOptions {
@@ -89,6 +98,7 @@ export interface SessionSendOptions extends RunTurnOptions {
 }
 
 export class CodexClient {
+  bridgeInfo: CodexBridgeInfo | null = null;
   private socket: WebSocket | null = null;
   private pending = new Map<string, PendingRequest>();
   private handlers = new Map<string, Set<Handler>>();
@@ -117,8 +127,38 @@ export class CodexClient {
       this.rejectConnection = reject;
     });
     const connection = this.connectionPromise;
+    this.bridgeInfo = null;
+    let handshakeComplete = false;
+    const finishHandshake = (info: CodexBridgeInfo) => {
+      if (handshakeComplete) return true;
+      const incompatibleProtocol = !info.legacy && info.protocol.major !== CODEX_BROWSER_PROTOCOL.major;
+      const missingCapabilities = (this.options.requiredCapabilities ?? [])
+        .filter((capability) => !info.capabilities.includes(capability));
+      if (incompatibleProtocol || missingCapabilities.length) {
+        handshakeComplete = true;
+        clearTimeout(connectionTimer);
+        const error = incompatibleProtocol
+          ? new Error(`Incompatible Codex browser protocol: client ${CODEX_BROWSER_PROTOCOL.major}.x, bridge ${info.protocol.major}.${info.protocol.minor}`)
+          : new Error(`Codex bridge is missing required capabilities: ${missingCapabilities.join(", ")}`);
+        this.manuallyClosed = true;
+        this.rejectConnection?.(error);
+        this.resolveConnection = null;
+        this.rejectConnection = null;
+        this.socket?.close(1002, error.message.slice(0, 123));
+        return false;
+      }
+      handshakeComplete = true;
+      clearTimeout(connectionTimer);
+      this.bridgeInfo = info;
+      this.resolveConnection?.();
+      this.resolveConnection = null;
+      this.rejectConnection = null;
+      this.emit("hello", info);
+      this.emit("connection", "ready");
+      return true;
+    };
     const connectionTimer = globalThis.setTimeout(() => {
-      const error = new Error(`Codex bridge connection timed out: ${url}`);
+      const error = new Error(`Codex bridge handshake timed out: ${url}`);
       this.rejectConnection?.(error);
       this.socket?.close();
     }, this.options.connectionTimeoutMs ?? 10_000);
@@ -135,17 +175,39 @@ export class CodexClient {
       return connection;
     }
     this.socket.addEventListener("open", () => {
-      clearTimeout(connectionTimer);
-      this.resolveConnection?.();
-      this.resolveConnection = null;
-      this.rejectConnection = null;
-      this.emit("connection", "ready");
+      this.emit("socket", "open");
     });
     this.socket.addEventListener("message", (event) => {
       try {
-        this.onMessage(JSON.parse(String(event.data)));
+        const message = JSON.parse(String(event.data));
+        if (!handshakeComplete) {
+          const hello = parseCodexBridgeHello(message);
+          if (hello) {
+            finishHandshake(hello);
+            return;
+          }
+          if (message?.type === "hello") {
+            throw new Error("Codex bridge sent an invalid hello message");
+          }
+          if (message?.type === "status") {
+            if (!finishHandshake(legacyCodexBridgeInfo())) return;
+          } else {
+            throw new Error("Codex bridge did not begin with hello or status");
+          }
+        }
+        this.onMessage(message);
       } catch (error) {
-        this.emit("protocolError", error instanceof Error ? error : new Error(String(error)));
+        const protocolError = error instanceof Error ? error : new Error(String(error));
+        if (!handshakeComplete) {
+          handshakeComplete = true;
+          clearTimeout(connectionTimer);
+          this.manuallyClosed = true;
+          this.rejectConnection?.(protocolError);
+          this.resolveConnection = null;
+          this.rejectConnection = null;
+          this.socket?.close(1002, protocolError.message.slice(0, 123));
+        }
+        this.emit("protocolError", protocolError);
       }
     });
     this.socket.addEventListener("error", () => {
@@ -556,6 +618,9 @@ export function createCodexClient(options: CodexClientOptions = {}) {
 export function createCodexSession(options: CodexSessionOptions = {}) {
   return new CodexSession(options);
 }
+
+export { CODEX_BROWSER_CAPABILITIES, CODEX_BROWSER_PROTOCOL } from "../browser-contract.js";
+export type { CodexBridgeInfo, CodexBrowserCapability } from "../browser-contract.js";
 
 function abortError() {
   const error = new Error("Codex turn was cancelled");

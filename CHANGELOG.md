@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.0
+
+- Add a `1.0` browser protocol hello before the existing bridge status envelope.
+- Advertise bridge version, active transport limits, and RPC, server-request, ownership, isolation, and limit capabilities.
+- Delay client readiness until protocol negotiation succeeds instead of treating a bare socket open as ready.
+- Reject incompatible protocol majors, malformed hello payloads, and missing caller-required capabilities immediately.
+- Preserve compatibility with older bridges that begin with the legacy status envelope.
+- Export protocol constants, capability names, and negotiated `bridgeInfo` for custom hosts.
+- Include protocol and capabilities in standalone JSON status output and verify negotiation against live and packed bridges.
+
 ## 0.16.0
 
 - Make `serve` idempotent when an identical standalone bridge is already running.

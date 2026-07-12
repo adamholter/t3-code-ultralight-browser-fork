@@ -11,9 +11,10 @@ const marker = `SESSION_SMOKE_${Date.now()}`;
 const deltas = [];
 const events = [];
 const observedNotifications = [];
-const observer = createCodexClient({ url, reconnectMs: false });
+const requiredCapabilities = ["requestOwnership", "threadIsolation"];
+const observer = createCodexClient({ url, reconnectMs: false, requiredCapabilities });
 observer.on("notification", (message) => observedNotifications.push(message));
-const session = createCodexSession({ url, cwd: "/tmp", reconnectMs: false });
+const session = createCodexSession({ url, cwd: "/tmp", reconnectMs: false, requiredCapabilities });
 
 try {
   await observer.connect();
@@ -25,6 +26,9 @@ try {
   assert.equal(session.threadId, result.threadId);
   assert.ok(deltas.join("").includes(marker), "expected scoped streaming deltas");
   assert.ok(events.includes("turn/completed"), "expected scoped turn events");
+  assert.equal(session.client.bridgeInfo?.protocol.major, 1);
+  assert.equal(session.client.bridgeInfo?.legacy, false);
+  assert.ok(requiredCapabilities.every((capability) => session.client.bridgeInfo?.capabilities.includes(capability)));
   await new Promise((resolve) => setTimeout(resolve, 100));
   assert.equal(
     observedNotifications.some((message) => message.params?.threadId === result.threadId),
@@ -49,6 +53,7 @@ try {
     threadId: session.threadId,
     streamed: true,
     isolated: true,
+    protocol: `${session.client.bridgeInfo?.protocol.major}.${session.client.bridgeInfo?.protocol.minor}`,
     eventCount: events.length,
     cancellation: "interrupted",
   }, null, 2));

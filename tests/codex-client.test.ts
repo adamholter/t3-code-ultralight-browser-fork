@@ -7,6 +7,13 @@ class FakeWebSocket {
   static readonly OPEN = 1;
   static script: Script = () => undefined;
   static shouldOpen = () => true;
+  static handshake: (() => unknown) | null = () => ({
+    type: "hello",
+    protocol: { major: 1, minor: 0 },
+    bridgeVersion: "test",
+    capabilities: ["rpc", "threadIsolation"],
+    limits: { maxPayloadBytes: 1024, maxPendingRequestsPerClient: 4 },
+  });
   readyState = 0;
   private listeners = new Map<string, Set<(event: any) => void>>();
 
@@ -16,6 +23,8 @@ class FakeWebSocket {
       queueMicrotask(() => {
         this.readyState = FakeWebSocket.OPEN;
         this.emit("open", {});
+        const handshake = SocketClass.handshake?.();
+        if (handshake) this.message(handshake);
       });
     }
   }
@@ -65,6 +74,79 @@ class ReconnectWebSocket extends FakeWebSocket {
 }
 
 describe("CodexClient", () => {
+  it("negotiates protocol metadata and required capabilities before connecting", async () => {
+    const client = createCodexClient({
+      url: "ws://localhost/codex",
+      WebSocketImpl,
+      reconnectMs: false,
+      requiredCapabilities: ["threadIsolation"],
+    });
+    await client.connect();
+    expect(client.bridgeInfo).toMatchObject({
+      protocol: { major: 1, minor: 0 },
+      bridgeVersion: "test",
+      capabilities: ["rpc", "threadIsolation"],
+      legacy: false,
+    });
+    client.close();
+  });
+
+  it("accepts legacy bridges that begin with a status message", async () => {
+    const previous = FakeWebSocket.handshake;
+    FakeWebSocket.handshake = () => ({ type: "status", status: "ready" });
+    try {
+      const client = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
+      await client.connect();
+      expect(client.bridgeInfo).toMatchObject({ protocol: { major: 0, minor: 0 }, legacy: true });
+      client.close();
+
+      const strictClient = createCodexClient({
+        url: "ws://localhost/codex",
+        WebSocketImpl,
+        reconnectMs: false,
+        requiredCapabilities: ["threadIsolation"],
+      });
+      await expect(strictClient.connect()).rejects.toThrow("missing required capabilities: threadIsolation");
+      strictClient.close();
+    } finally {
+      FakeWebSocket.handshake = previous;
+    }
+  });
+
+  it("rejects incompatible protocol majors and missing capabilities", async () => {
+    const previous = FakeWebSocket.handshake;
+    try {
+      FakeWebSocket.handshake = () => ({
+        type: "hello",
+        protocol: { major: 2, minor: 0 },
+        bridgeVersion: "future",
+        capabilities: ["rpc"],
+        limits: { maxPayloadBytes: 1024, maxPendingRequestsPerClient: 4 },
+      });
+      const incompatible = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
+      await expect(incompatible.connect()).rejects.toThrow("client 1.x, bridge 2.0");
+      incompatible.close();
+
+      FakeWebSocket.handshake = () => ({
+        type: "hello",
+        protocol: { major: 1, minor: 0 },
+        bridgeVersion: "limited",
+        capabilities: ["rpc"],
+        limits: { maxPayloadBytes: 1024, maxPendingRequestsPerClient: 4 },
+      });
+      const limited = createCodexClient({
+        url: "ws://localhost/codex",
+        WebSocketImpl,
+        reconnectMs: false,
+        requiredCapabilities: ["threadIsolation"],
+      });
+      await expect(limited.connect()).rejects.toThrow("missing required capabilities: threadIsolation");
+      limited.close();
+    } finally {
+      FakeWebSocket.handshake = previous;
+    }
+  });
+
   it("times out unanswered RPC requests", async () => {
     FakeWebSocket.script = () => undefined;
     const client = createCodexClient({

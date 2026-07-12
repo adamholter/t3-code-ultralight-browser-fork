@@ -3,6 +3,8 @@ import { WebSocket, WebSocketServer } from "ws";
 import { CodexBridge, type CodexBridgeOptions } from "./codex-bridge.js";
 import { parseBrowserBridgeMessage } from "./browser-protocol.js";
 import { isAllowedOrigin, normalizeAllowedOrigins } from "./origins.js";
+import { createCodexBridgeHello, CODEX_BROWSER_CAPABILITIES, CODEX_BROWSER_PROTOCOL } from "../src/browser-contract.js";
+import { PACKAGE_VERSION } from "./version.js";
 
 export const DEFAULT_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
 export const DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT = 32;
@@ -89,6 +91,11 @@ export function attachCodexBridge(
   webSocketServer.on("connection", (socket) => {
     let pendingRpcCount = 0;
     sockets.add(socket);
+    send(socket, createCodexBridgeHello({
+      bridgeVersion: PACKAGE_VERSION,
+      maxPayloadBytes,
+      maxPendingRequestsPerClient,
+    }));
     send(socket, { type: "status", status: bridge.ready ? "ready" : "starting" });
 
     socket.on("message", async (raw) => {
@@ -205,3 +212,4 @@ export { CodexBridge } from "./codex-bridge.js";
 export type { CodexBridgeOptions } from "./codex-bridge.js";
 export { parseBrowserBridgeMessage } from "./browser-protocol.js";
 export { isAllowedOrigin, normalizeAllowedOrigins, readAllowedOrigins } from "./origins.js";
+export { CODEX_BROWSER_CAPABILITIES, CODEX_BROWSER_PROTOCOL } from "../src/browser-contract.js";

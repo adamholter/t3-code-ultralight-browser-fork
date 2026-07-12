@@ -161,10 +161,12 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Thread-scoped deltas, tool activity, and lifecycle notifications routed only to their owning browser
 - Unowned server requests and duplicate cross-client responses rejected instead of broadcast
 - Strict browser envelopes, 16 MiB payload bounds, and 32 in-flight RPCs per client by default
+- Versioned browser handshake with early protocol and required-capability validation
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - Origin-verified embed lifecycle events for host coordination without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
+- Exported negotiated bridge version, capabilities, and active transport limits
 - Automatic whole-second current-time replies and stale request cleanup in the complete chat
 
 ## Deliberately excluded

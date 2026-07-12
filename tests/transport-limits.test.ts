@@ -55,7 +55,7 @@ async function openBridge(options: { maxPayloadBytes?: number; maxPendingRequest
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = (server.address() as AddressInfo).port;
   const socket = new WebSocket(`ws://127.0.0.1:${port}/codex`);
-  const initialStatus = nextMessage(socket);
+  const initialStatus = nextMessage(socket, (message) => message.type === "status");
   await new Promise<void>((resolve, reject) => {
     socket.once("open", resolve);
     socket.once("error", reject);
@@ -73,12 +73,16 @@ async function openBridge(options: { maxPayloadBytes?: number; maxPendingRequest
   };
 }
 
-function nextMessage(socket: WebSocket) {
+function nextMessage(socket: WebSocket, predicate: (message: any) => boolean = () => true) {
   return new Promise<any>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("WebSocket message timed out")), 1_000);
-    socket.once("message", (raw) => {
+    const listener = (raw: WebSocket.RawData) => {
+      const message = JSON.parse(raw.toString());
+      if (!predicate(message)) return;
       clearTimeout(timer);
-      resolve(JSON.parse(raw.toString()));
-    });
+      socket.off("message", listener);
+      resolve(message);
+    };
+    socket.on("message", listener);
   });
 }
