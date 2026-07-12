@@ -84,7 +84,6 @@ try {
         const prompt = ${JSON.stringify(`Reply with exactly: ${customMarker}`)};
         ${customReport.integration.code}
         window.__recipeResult = { text: answer.text.trim(), streamedText, threadId: answer.threadId };
-        detachRequests();
         await codex.close();
       `);
       return;

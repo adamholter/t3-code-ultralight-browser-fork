@@ -178,21 +178,25 @@ The isolated chat iframe connects from its own loopback origin, so a view-only p
 
 Use this for canvas, voice, spatial, game, terminal, or product-specific interfaces.
 
-No-bundler hosts can import the same self-contained API from the running bridge:
+No-bundler hosts can import the same self-contained one-object API from the running bridge:
 
 ```ts
-import { createCodexSession } from "http://127.0.0.1:4174/codex-client.js";
+import { createCodexAssistant } from "http://127.0.0.1:4174/codex-assistant.js";
 ```
 
-Request adapters are available at `http://127.0.0.1:4174/codex-requests.js`. Both module endpoints follow the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
+The assistant, lower-level client, and request modules all follow the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
 
 ```ts
-import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
+import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
 
-const codex = createCodexSession({
+const codex = createCodexAssistant({
   cwd: projectPath,
   model: selectedModel,
   effort: "low",
+  requestHandlers: {
+    approval: (request) => ui.confirm(request) ? "accept" : "decline",
+    userInput: (questions) => ui.ask(questions),
+  },
 });
 
 const result = await codex.send(prompt, {
@@ -200,7 +204,7 @@ const result = await codex.send(prompt, {
 });
 ```
 
-For the standard standalone bridge, `createCodexSession()` with no options inherits the workspace selected when the bridge started. Supply `cwd` only when this particular surface intentionally targets a different directory.
+For the standard standalone bridge, `createCodexAssistant()` with no options inherits the workspace selected when the bridge started. Supply `cwd` only when this particular surface intentionally targets a different directory. Its owned adapter follows the current thread, answers time requests, and safely declines or skips any interactive request without a handler.
 
 `send()` creates a thread automatically and remembers it for follow-ups. Follow-ups skip the redundant `thread/resume` RPC while the session stays connected; a bridge or Codex app-server reconnect invalidates that fast path and triggers one recovery resume. `stop()` interrupts the active Codex turn while keeping the session reusable, `reset()` starts a new conversation, and `await close()` performs final disposal. Disposal is idempotent, rejects future sends/resets, and waits for an active interrupt acknowledgment before closing an owned connection; a supplied shared client remains open. In synchronous framework cleanup hooks, call `void codex.close()`. For images or other rich inputs, pass an array:
 
@@ -216,15 +220,12 @@ Use `createCodexClient()` when several sessions share one socket or the host man
 For several independent surfaces, construct sessions with one supplied client. Each session retains its own thread and turn callbacks while the client owns the single socket:
 
 ```ts
-import { createCodexClient, createCodexSession } from "t3-code-ultralight-browser-fork/client";
-import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
 
 const client = createCodexClient();
-const canvas = createCodexSession({ client, cwd: projectPath });
-const voice = createCodexSession({ client, cwd: projectPath });
-
-const offCanvasRequests = attachCodexSessionRequestHandlers(canvas, canvasHandlers);
-const offVoiceRequests = attachCodexSessionRequestHandlers(voice, voiceHandlers);
+const canvas = createCodexAssistant({ client, cwd: projectPath, requestHandlers: canvasHandlers });
+const voice = createCodexAssistant({ client, cwd: projectPath, requestHandlers: voiceHandlers });
 
 await Promise.all([canvas.send(canvasPrompt), voice.send(voicePrompt)]);
 await canvas.close(); // voice and client remain usable
@@ -232,7 +233,7 @@ await voice.close();
 client.close();
 ```
 
-The session-scoped adapter follows `session.threadId` dynamically, including after reset, and ignores sibling requests. Use one global `attachCodexRequestHandlers(client, handlers)` instead only when the host intentionally centralizes every prompt in one UI.
+Each assistant's adapter follows `threadId` dynamically, including after reset, and ignores sibling requests. The lower-level `createCodexSession()` plus `attachCodexSessionRequestHandlers()` remain available when a host intentionally owns adapter lifecycle; use one global `attachCodexRequestHandlers(client, handlers)` only when it centralizes every prompt in one UI.
 
 The headless client defaults to the standard standalone bridge at `http://127.0.0.1:4174`. Set `bridgeUrl` to another standalone HTTP(S) origin and the client derives its `/ws` endpoint safely. Set the lower-level `url` only for an attached server or another custom WebSocket path:
 
@@ -282,7 +283,7 @@ The complete chat renders `request_user_input` as an accessible options/free-tex
 <codex-chat bridge-url="http://127.0.0.1:4174/?mode=plan"></codex-chat>
 ```
 
-For a single custom UI—or one intentionally centralized prompt surface—the recommended path is one typed adapter subscription:
+`createCodexAssistant({ requestHandlers })` is the recommended path for a single custom UI. For a deliberately centralized prompt surface using lower-level sessions or clients, subscribe one typed adapter manually:
 
 ```ts
 import { attachCodexRequestHandlers } from "t3-code-ultralight-browser-fork/requests";

@@ -11,6 +11,7 @@ const suites = [
   ["standalone performance", [resolve(root, "tests/performance-qa.mjs")]],
   ["deterministic multi-project auto ports", [resolve(root, "tests/auto-port-qa.mjs")]],
   ["zero-install modules", [resolve(root, "tests/no-bundler-qa.mjs")]],
+  ["generated hosted assistant recipe", [resolve(root, "tests/hosted-recipe-qa.mjs")]],
   ["packed React 18 and 19 hosts", [resolve(root, "tests/react-host-qa.mjs")]],
   ["packed Next.js 16 App Router host", [resolve(root, "tests/next-host-qa.mjs")]],
   ["packed Vue 3 and Svelte 5 hosts", [resolve(root, "tests/framework-host-qa.mjs")]],

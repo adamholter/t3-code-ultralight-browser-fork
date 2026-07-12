@@ -25,7 +25,7 @@ The package boundary is exercised in clean React 18/19, Next.js 16 App Router, V
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode iframe --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode iframe --port auto --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project or service owns it. The receipt returns the resolved numeric port for later status and stop commands. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -33,7 +33,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode custom --delivery hosted --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode custom --delivery hosted --port auto --json
 ```
 
 ## One-command chat
@@ -41,7 +41,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
@@ -49,7 +49,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -95,7 +95,7 @@ Plain HTML needs no bundler or package import. The running bridge serves a stabl
 <codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
 ```
 
-For a no-bundler canvas, voice, or other custom UI, `setup --mode custom --delivery hosted --json` returns exact imports for the standalone client and request adapters served by the running bridge. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
+For a no-bundler canvas, voice, or other custom UI, `setup --mode custom --delivery hosted --json` returns one exact `createCodexAssistant` import served by the running bridge. It combines a stateful session with scoped, fail-closed browser request handling and one cleanup call. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
 
 Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
 
@@ -187,12 +187,17 @@ The child accepts commands only from its exact parent window and an origin allow
 
 ## Custom canvas or voice UI
 
-Use the headless client when the host owns the interface:
+Use the one-object headless assistant when the host owns the interface:
 
 ```ts
-import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
+import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
 
-const codex = createCodexSession();
+const codex = createCodexAssistant({
+  requestHandlers: {
+    approval: async (request) => yourUI.approve(request) ? "accept" : "decline",
+    userInput: (questions) => yourUI.ask(questions),
+  },
+});
 
 const answer = await codex.send("Explain the selected canvas nodes", {
   onDelta: (_delta, text) => renderStreamingText(text),
@@ -203,38 +208,32 @@ console.log(answer.text);
 
 No connection URL or working directory is required for the standard standalone bridge: the session inherits the bridge workspace selected by `setup` or `start`. Pass `cwd` only for a per-session override, `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel while keeping the session reusable, `codex.reset()` for a new conversation, and `await codex.close()` for final disposal. Closing is idempotent, prevents reuse, and waits for any active `turn/interrupt` acknowledgment before releasing an owned socket. Pass an input array instead of a string for images, local images, skills, or mentions.
 
-Custom interfaces can cover every interactive request with one fail-closed adapter:
+`createCodexAssistant()` owns one adapter scoped to its current thread. Missing handlers decline or skip safely, `currentTime/read` is answered automatically, and `await codex.close()` waits for cancellation before detaching everything. This makes it the default for one canvas, voice, game, or bespoke surface.
+
+Add any other interactive handlers to the same object:
 
 ```ts
-import { attachCodexRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
-
-const detachRequests = attachCodexRequestHandlers(codex.client, {
-  approval: async (request) => yourUI.approve(request) ? "accept" : "decline",
-  userInput: (questions) => yourUI.ask(questions),
+const codex = createCodexAssistant({ requestHandlers: {
   permission: (request) => yourUI.reviewPermission(request),
   mcpForm: (request, defaults) => yourUI.fill(request, defaults),
   mcpUrl: (request) => yourUI.openAuthorization(request),
-});
+} });
 ```
-
-Missing handlers decline or skip safely, and `currentTime/read` is answered automatically.
 
 When several UI surfaces share one socket, give each surface its own session-scoped adapter so prompts cannot race across canvas, voice, or other panels:
 
 ```ts
-import { createCodexClient, createCodexSession } from "t3-code-ultralight-browser-fork/client";
-import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
 
 const client = createCodexClient();
-const canvas = createCodexSession({ client, cwd: projectPath });
-const voice = createCodexSession({ client, cwd: projectPath });
-const detachCanvasRequests = attachCodexSessionRequestHandlers(canvas, canvasHandlers);
-const detachVoiceRequests = attachCodexSessionRequestHandlers(voice, voiceHandlers);
+const canvas = createCodexAssistant({ client, cwd: projectPath, requestHandlers: canvasHandlers });
+const voice = createCodexAssistant({ client, cwd: projectPath, requestHandlers: voiceHandlers });
 ```
 
 Both sessions stream independently over one WebSocket. Closing either session preserves the shared client and its sibling; close the client after every shared session is disposed.
 
-For shared clients or lower-level control, use `createCodexClient()` and subscribe directly:
+For lower-level control without an owned request adapter, use `createCodexSession()` or `createCodexClient()` and subscribe directly:
 
 ```ts
 import { createCodexClient } from "t3-code-ultralight-browser-fork/client";

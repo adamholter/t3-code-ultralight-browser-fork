@@ -12,6 +12,7 @@ const hostedModules = [
   resolve("dist-lib/element-auto.js"),
   resolve("dist-lib/embed-events.js"),
   resolve("dist-lib/client.js"),
+  resolve("dist-lib/assistant.js"),
   resolve("dist-lib/requests.js"),
 ];
 const reactModule = resolve("dist-lib/react.js");

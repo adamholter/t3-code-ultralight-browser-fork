@@ -66,7 +66,8 @@ try {
         && integrationContract.bridge?.websocketUrl === baseOrigin.replace(/^http/, "ws") + "/ws"
         && integrationContract.modes?.completeChat?.iframeUrl === `${baseOrigin}/?embed=1`
         && integrationContract.modes?.completeChat?.controllerModule === `${baseOrigin}/codex-embed.js`
-        && integrationContract.modes?.customUi?.browserModule === `${baseOrigin}/codex-client.js`,
+        && integrationContract.modes?.customUi?.browserModule === `${baseOrigin}/codex-client.js`
+        && integrationContract.modes?.customUi?.assistantModule === `${baseOrigin}/codex-assistant.js`,
       workspacePortable: integrationContract.runtime?.workspace?.default === "bridge"
         && integrationContract.runtime?.workspace?.pathDisclosed === false,
       pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,

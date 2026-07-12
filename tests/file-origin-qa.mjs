@@ -90,7 +90,6 @@ try {
       await codex.client.request("thread/delete", { threadId: embedAccepted.threadId });
       embedController.dispose();
       window.__fileOriginResult = fileOriginResult;
-      detachRequests();
       await codex.close();
     </script>`);
 
@@ -104,7 +103,7 @@ try {
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("response", (response) => {
     if (response.url() === `${bridgeOrigin}/?embed=1`) iframeResponse = response;
-    if ([recipe.hostedModules.client, recipe.hostedModules.requests, `${bridgeOrigin}/codex-embed.js`].includes(response.url())) {
+    if ([recipe.hostedModules.assistant, recipe.hostedModules.client, recipe.hostedModules.requests, `${bridgeOrigin}/codex-embed.js`].includes(response.url())) {
       moduleResponses.set(response.url(), response);
     }
   });
@@ -126,7 +125,8 @@ try {
     && response.headers()["access-control-allow-origin"] === "null"
     && response.headers().vary === "Origin"
   );
-  assert.equal(moduleResponses.size, 3);
+  assert.equal(moduleResponses.size, 2);
+  assert.equal(moduleResponses.has(recipe.hostedModules.assistant), true);
   assert.equal(nullCors, true);
   assert.equal(result.text, marker);
   assert.equal(result.streamed, true);

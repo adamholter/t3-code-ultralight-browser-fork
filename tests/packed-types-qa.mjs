@@ -8,7 +8,7 @@ const packageJson = JSON.parse(await readFile(new URL("../package.json", import.
 const { version } = packageJson;
 const packagePath = resolve(process.argv[2] ?? `release/t3-code-ultralight-browser-fork-${version}.tgz`);
 const fixture = await mkdtemp(resolve(tmpdir(), "t3-ultralight-types-"));
-const expectedExports = [".", "./client", "./react", "./element", "./element/auto", "./embed-events", "./server", "./doctor", "./integration", "./requests", "./types"];
+const expectedExports = [".", "./client", "./assistant", "./react", "./element", "./element/auto", "./embed-events", "./server", "./doctor", "./integration", "./requests", "./types"];
 
 try {
   if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(expectedExports)) {
@@ -34,6 +34,7 @@ import {
   type CodexClientEventMap,
 } from "t3-code-ultralight-browser-fork/client";
 import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+import { createCodexAssistant, type CodexAssistantOptions } from "t3-code-ultralight-browser-fork/assistant";
 import { createIntegrationRecipe } from "t3-code-ultralight-browser-fork/integration";
 import { createCodexEmbedController } from "t3-code-ultralight-browser-fork/embed-events";
 import {
@@ -51,6 +52,9 @@ void [attachedController, defaultSocketCloseTimeout];
 
 const client = createCodexClient();
 const canvas = createCodexSession({ client, cwd: "/workspace" });
+const assistantOptions: CodexAssistantOptions = { client, requestHandlers: { approval: () => "decline" } };
+const assistant = createCodexAssistant(assistantOptions);
+void assistant.close();
 declare const iframe: HTMLIFrameElement;
 const embed = createCodexEmbedController(iframe);
 void embed.send("Explain the selection", { cwd: "/workspace", newThread: true });
@@ -77,7 +81,8 @@ declare const contract: Record<string, any>;
 const recipe = createIntegrationRecipe(contract, { mode: "custom", port: 4174, cwd: "/workspace" });
 const installCommand: string = recipe.installCommand;
 const clientModule: string = recipe.hostedModules.client;
-void [installCommand, clientModule];
+const assistantModule: string = recipe.hostedModules.assistant;
+void [installCommand, clientModule, assistantModule];
 
 const iframeRecipe = createIntegrationRecipe(contract, { mode: "iframe", port: 4174, cwd: "/workspace" });
 const controllerModule: string = iframeRecipe.controllerModule;
@@ -88,11 +93,12 @@ void [controllerModule, controllerCode, controllerDispose];
 const hostedRecipe = createIntegrationRecipe(contract, { mode: "custom", delivery: "hosted", port: 4174 });
 const hostedInstall: false = hostedRecipe.requiresPackageInstall;
 const hostedClient: string = hostedRecipe.hostedModules.client;
+const hostedAssistant: string = hostedRecipe.hostedModules.assistant;
 const workspaceDefault: "bridge" = hostedRecipe.workspace.default;
 const workspaceOverrideEmbedded: boolean = hostedRecipe.workspace.overrideEmbedded;
 const originFlag: "--allow-origin <exact browser origin>" = hostedRecipe.originPolicy.nonLoopbackRequiresExactFlag;
 const opaqueOriginAllowed: boolean = hostedRecipe.originPolicy.opaqueOriginAllowed;
-void [hostedInstall, hostedClient, workspaceDefault, workspaceOverrideEmbedded, originFlag, opaqueOriginAllowed];
+void [hostedInstall, hostedClient, hostedAssistant, workspaceDefault, workspaceOverrideEmbedded, originFlag, opaqueOriginAllowed];
 
 // @ts-expect-error Hosted recipes intentionally have no package install command.
 void hostedRecipe.installCommand;
@@ -136,6 +142,7 @@ for (const subpath of expected) {
 const required = {
   ".": "createCodexSession",
   "./client": "createCodexClient",
+  "./assistant": "createCodexAssistant",
   "./react": "CodexChatEmbed",
   "./element": "defineCodexChatElement",
   "./element/auto": "defineCodexChatElement",

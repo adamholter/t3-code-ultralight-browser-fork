@@ -14,6 +14,7 @@ const bridgeOrigin = new URL(process.env.QA_BASE_URL ?? "http://127.0.0.1:4174")
 const bridgePort = Number(new URL(bridgeOrigin).port || 80);
 const bridgeSocketOrigin = bridgeOrigin.replace(/^http/, "ws");
 const marker = `HOSTED_RECIPE_${Date.now()}`;
+const followupMarker = `FOLLOWUP_${Date.now()}`;
 const recipe = createIntegrationRecipe(contract, {
   mode: "custom",
   delivery: "hosted",
@@ -41,12 +42,24 @@ const host = createServer((request, response) => {
       };
       const prompt = ${JSON.stringify(`Reply with exactly: ${marker}`)};
       ${recipe.code}
+      const followup = await codex.send(${JSON.stringify(`Reply with exactly: ${followupMarker}`)});
+      let cancelled = false;
+      try {
+        await codex.send("Count slowly from one to one thousand.", {
+          onTurnStarted: () => codex.stop(),
+        });
+      } catch (error) {
+        cancelled = error?.name === "AbortError";
+      }
+      await codex.client.request("thread/delete", { threadId: answer.threadId });
       window.__hostedRecipeResult = {
         text: answer.text.trim(),
         streamed: streamedText.includes(${JSON.stringify(marker)}),
         threadId: answer.threadId,
+        followupText: followup.text.trim(),
+        followupThreadId: followup.threadId,
+        cancelled,
       };
-      detachRequests();
       await codex.close();
     `);
     return;
@@ -75,15 +88,19 @@ try {
   assert.equal(result.text, marker);
   assert.equal(result.streamed, true);
   assert.equal(typeof result.threadId, "string");
+  assert.equal(result.followupText, followupMarker);
+  assert.equal(result.followupThreadId, result.threadId);
+  assert.equal(result.cancelled, true);
   assert.deepEqual(consoleErrors, []);
   assert.deepEqual(pageErrors, []);
   console.log(JSON.stringify({
     delivery: recipe.delivery,
     packageInstall: recipe.requiresPackageInstall,
-    clientModule: recipe.hostedModules.client,
-    requestModule: recipe.hostedModules.requests,
+    assistantModule: recipe.hostedModules.assistant,
     response: result.text,
     streamed: result.streamed,
+    statefulFollowup: result.followupText,
+    cancelled: result.cancelled,
     disposed: true,
     consoleErrors,
     pageErrors,

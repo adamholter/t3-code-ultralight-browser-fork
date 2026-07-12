@@ -38,6 +38,13 @@ describe("package version", () => {
     });
     expect(packageJson.files).toEqual(expect.arrayContaining(["integration.json", "llms.txt"]));
     expect(packageJson.exports).toHaveProperty("./integration");
+    expect(packageJson.exports).toHaveProperty("./assistant");
+    expect(integration.modes.customUi).toMatchObject({
+      primaryApi: "createCodexAssistant",
+      requestAdapterOwnedByAssistant: true,
+      missingRequestHandlersFailClosed: true,
+      dispose: "await assistant.close()",
+    });
     expect(integration.release.verification).toMatchObject({
       workflow: ".github/workflows/release.yml",
       cleanCheckout: true,

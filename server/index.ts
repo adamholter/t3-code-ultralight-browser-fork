@@ -23,6 +23,7 @@ const browserModules = {
   "/codex-chat.js": resolve(libraryDist, "element-auto.js"),
   "/codex-embed.js": resolve(libraryDist, "embed-events.js"),
   "/codex-client.js": resolve(libraryDist, "client.js"),
+  "/codex-assistant.js": resolve(libraryDist, "assistant.js"),
   "/codex-requests.js": resolve(libraryDist, "requests.js"),
 } as const;
 const integrationContract = resolve(root, "integration.json");

@@ -60,6 +60,7 @@ describe("live integration contract", () => {
       },
     });
     expect(runtime.modes.customUi).toMatchObject({
+      assistantModule: "http://127.0.0.1:49123/codex-assistant.js",
       browserModule: "http://127.0.0.1:49123/codex-client.js",
       requestModule: "http://127.0.0.1:49123/codex-requests.js",
     });
@@ -118,22 +119,25 @@ describe("live integration contract", () => {
     expect(hostedElement.csp).toEqual({ "script-src": ["http://127.0.0.1:49123"], "frame-src": ["http://127.0.0.1:49123"] });
 
     const custom = createIntegrationRecipe(integration, { mode: "custom", port: 49123, cwd: "/repo" });
-    expect(custom).toMatchObject({ mode: "custom", dispose: "detachRequests(); await codex.close();" });
+    expect(custom).toMatchObject({ mode: "custom", dispose: "await codex.close();" });
+    expect(custom.code).toContain('createCodexAssistant({');
+    expect(custom.code).toContain("requestHandlers:");
     expect(custom.code).toContain('bridgeUrl: "http://127.0.0.1:49123"');
     expect(custom.code).toContain('cwd: "/repo"');
     expect(custom.workspace).toEqual({ default: "bridge", overrideEmbedded: true });
     expect(custom.hostedModules.client).toBe("http://127.0.0.1:49123/codex-client.js");
 
     const portableCustom = createIntegrationRecipe(integration, { mode: "custom", port: 49123 });
-    expect(portableCustom.code).toContain('createCodexSession({ bridgeUrl: "http://127.0.0.1:49123" })');
+    expect(portableCustom.code).toContain('createCodexAssistant({');
     expect(portableCustom.code).not.toContain("/absolute/project/path");
     expect(portableCustom.code).not.toContain("undefined");
     expect(portableCustom.workspace).toEqual({ default: "bridge", overrideEmbedded: false });
 
     const hostedCustom = createIntegrationRecipe(integration, { mode: "custom", delivery: "hosted", port: 49123, cwd: "/repo" });
     expect(hostedCustom).toMatchObject({ delivery: "hosted", requiresPackageInstall: false, codeLanguage: "js" });
-    expect(hostedCustom.code).toContain('from "http://127.0.0.1:49123/codex-client.js"');
-    expect(hostedCustom.code).toContain('from "http://127.0.0.1:49123/codex-requests.js"');
+    expect(hostedCustom.code).toContain('from "http://127.0.0.1:49123/codex-assistant.js"');
+    expect(hostedCustom.code).not.toContain('from "http://127.0.0.1:49123/codex-client.js"');
+    expect(hostedCustom.code).not.toContain("detachRequests");
     expect(hostedCustom.csp).toEqual({ "script-src": ["http://127.0.0.1:49123"], "connect-src": ["ws://127.0.0.1:49123"] });
 
     const external = createIntegrationRecipe(integration, {

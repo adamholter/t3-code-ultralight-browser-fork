@@ -78,7 +78,7 @@ export type ElementIntegrationRecipe = ElementPackageIntegrationRecipe | Element
 
 interface CustomIntegrationRecipeBase extends IntegrationRecipeBase {
   mode: "custom";
-  hostedModules: { client: string; requests: string };
+  hostedModules: { assistant: string; client: string; requests: string };
   dispose: string;
 }
 
@@ -128,6 +128,7 @@ export function materializeRuntimeIntegrationContract(
   value.modes.completeChat.webComponentModule = `${origin}/codex-chat.js`;
   value.modes.completeChat.controllerModule = `${origin}/codex-embed.js`;
   value.modes.customUi.browserModule = `${origin}/codex-client.js`;
+  value.modes.customUi.assistantModule = `${origin}/codex-assistant.js`;
   value.modes.customUi.requestModule = `${origin}/codex-requests.js`;
   value.runtime = {
     live: true,
@@ -236,13 +237,14 @@ export function createIntegrationRecipe(
   }
   const delivery = requestedDelivery ?? "package";
   const hostedModules = {
+    assistant: runtime.modes.customUi.assistantModule as string,
     client: runtime.modes.customUi.browserModule as string,
     requests: runtime.modes.customUi.requestModule as string,
   };
   const imports = delivery === "hosted"
-    ? `import { createCodexSession } from "${hostedModules.client}";\nimport { attachCodexSessionRequestHandlers } from "${hostedModules.requests}";`
-    : `import { createCodexSession } from "t3-code-ultralight-browser-fork/client";\nimport { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";`;
-  const customCode = `${imports}\n\nconst codex = createCodexSession({ bridgeUrl: "${bridgeUrl}"${workingDirectory ? `, cwd: ${JSON.stringify(workingDirectory)}` : ""} });\nconst detachRequests = attachCodexSessionRequestHandlers(codex, {\n  approval: async (request) => await yourUI.reviewApproval(request) ? "accept" : "decline",\n  userInput: (questions) => yourUI.ask(questions),\n});\n\nconst answer = await codex.send(prompt, {\n  onDelta: (_delta, text) => yourUI.renderStreamingText(text),\n});\n\n// Final disposal:\n// detachRequests();\n// await codex.close();`;
+    ? `import { createCodexAssistant } from "${hostedModules.assistant}";`
+    : `import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";`;
+  const customCode = `${imports}\n\nconst codex = createCodexAssistant({\n  bridgeUrl: "${bridgeUrl}",${workingDirectory ? `\n  cwd: ${JSON.stringify(workingDirectory)},` : ""}\n  requestHandlers: {\n    approval: async (request) => await yourUI.reviewApproval(request) ? "accept" : "decline",\n    userInput: (questions) => yourUI.ask(questions),\n  },\n});\n\nconst answer = await codex.send(prompt, {\n  onDelta: (_delta, text) => yourUI.renderStreamingText(text),\n});\n\n// Final disposal:\n// await codex.close();`;
   if (delivery === "hosted") {
     return {
       ...shared,
@@ -253,7 +255,7 @@ export function createIntegrationRecipe(
       code: customCode,
       codeLanguage: "js",
       csp: { "script-src": [bridgeUrl], "connect-src": [socketOrigin] },
-      dispose: "detachRequests(); await codex.close();",
+      dispose: "await codex.close();",
     };
   }
   return {
@@ -267,7 +269,7 @@ export function createIntegrationRecipe(
     code: customCode,
     codeLanguage: "ts",
     csp: { "connect-src": [socketOrigin] },
-    dispose: "detachRequests(); await codex.close();",
+    dispose: "await codex.close();",
   };
 }
 

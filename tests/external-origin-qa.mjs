@@ -61,7 +61,6 @@ const hostHandler = (request, response) => {
       window.__externalOriginResult = externalOriginResult;
       await codex.client.request("thread/delete", { threadId: embedAccepted.threadId });
       embedController.dispose();
-      detachRequests();
       await codex.close();
     `);
     return;
@@ -164,7 +163,7 @@ try {
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("response", (response) => {
-    if ([recipe.hostedModules.client, recipe.hostedModules.requests, `${bridgeOrigin}/codex-embed.js`].includes(response.url())) {
+    if ([recipe.hostedModules.assistant, recipe.hostedModules.client, recipe.hostedModules.requests, `${bridgeOrigin}/codex-embed.js`].includes(response.url())) {
       moduleResponses.set(response.url(), response);
     }
   });
@@ -176,7 +175,8 @@ try {
     && response.headers()["access-control-allow-origin"] === allowedOrigin
     && response.headers().vary === "Origin"
   );
-  assert.equal(moduleResponses.size, 3);
+  assert.equal(moduleResponses.size, 2);
+  assert.equal(moduleResponses.has(recipe.hostedModules.assistant), true);
   assert.equal(corsExact, true);
   assert.equal(allowed.text, marker);
   assert.equal(allowed.streamed, true);

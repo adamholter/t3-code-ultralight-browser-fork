@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.46.1",
+  "version": "0.47.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -9,16 +9,16 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' start --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode iframe --port auto --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode react --port auto --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode element --port auto --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode element --delivery hosted --port auto --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode custom --port auto --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode custom --delivery hosted --port auto --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode iframe --port auto --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode react --port auto --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode element --port auto --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode element --delivery hosted --port auto --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode custom --port auto --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode custom --delivery hosted --port auto --json"
     },
     "verification": {
       "workflow": ".github/workflows/release.yml",
@@ -102,18 +102,22 @@
     },
     "customUi": {
       "useWhen": "The host already owns a canvas, voice, spatial, game, or bespoke interface.",
+      "assistantModule": "http://127.0.0.1:4174/codex-assistant.js",
       "browserModule": "http://127.0.0.1:4174/codex-client.js",
       "requestModule": "http://127.0.0.1:4174/codex-requests.js",
       "deliveries": ["package", "hosted"],
-      "packageExports": ["t3-code-ultralight-browser-fork/client", "t3-code-ultralight-browser-fork/requests"],
-      "primaryApi": "createCodexSession",
+      "packageExports": ["t3-code-ultralight-browser-fork/assistant", "t3-code-ultralight-browser-fork/client", "t3-code-ultralight-browser-fork/requests"],
+      "primaryApi": "createCodexAssistant",
+      "sessionApi": "createCodexSession",
       "requestApi": "attachCodexRequestHandlers",
       "sessionRequestApi": "attachCodexSessionRequestHandlers",
       "sharedClientSupported": true,
       "typedClientEvents": true,
       "unknownEventEscapeHatch": true,
       "defaultBridgeConfigurationRequired": false,
-      "dispose": "await session.close()"
+      "requestAdapterOwnedByAssistant": true,
+      "missingRequestHandlersFailClosed": true,
+      "dispose": "await assistant.close()"
     },
     "attachedServer": {
       "useWhen": "An existing Node HTTP server should own the bridge lifecycle.",
@@ -181,6 +185,7 @@
     "the exact packed attached-server export streams on its custom path without touching the host's HTTP or WebSocket routes",
     "attached shutdown rejects pending owned requests before process exit and terminates non-cooperative browser sockets within its configured bound",
     "automatic setup coexists with another project's default bridge, repeats on the same deterministic port, and returns exact runtime URLs",
+    "the exact generated hosted assistant recipe uses one import, streams a stateful follow-up, cancels an active turn, and disposes its scoped fail-closed request adapter",
     "published release archives are rebuilt from the tag, checked, audited, npm-dry-run verified, provenance-attested, and replaced by GitHub Actions",
     "the standalone browser app remains within 110000 decoded JavaScript and CSS bytes"
   ],

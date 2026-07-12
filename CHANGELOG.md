@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.47.0
+
+- Add `createCodexAssistant()` as the smallest safe custom-interface API: one import combines stateful threads, streaming, cancellation, and a thread-scoped request adapter.
+- Accept approval, user-input, permission, and MCP callbacks directly under `requestHandlers`, with documented fail-closed behavior for every omitted interaction.
+- Make `await assistant.close()` interrupt an active turn, wait for its completion, detach the owned adapter, and preserve a supplied shared client.
+- Publish the assistant as both `t3-code-ultralight-browser-fork/assistant` and the zero-install `/codex-assistant.js` bridge module.
+- Generate custom canvas and voice recipes around the single assistant API instead of requiring two imports and manual adapter disposal.
+- Verify the exact hosted generated recipe in Chromium with real streamed output, a same-thread follow-up, active-turn cancellation, thread cleanup, and one-call disposal.
+- Update canvas, voice, human, agent, and machine-readable integration guidance to make the assistant the default while preserving lower-level client and request exports.
+
 ## 0.46.1
 
 - Require the explicit repository variable `NPM_PUBLISH_ENABLED=true` in addition to `NPM_TOKEN` before the release workflow may publish to npm.

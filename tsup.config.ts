@@ -3,6 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: {
     client: "src/lib/codex-client.ts",
+    assistant: "src/lib/codex-assistant.ts",
     react: "src/embed/index.ts",
     element: "src/element.ts",
     "embed-events": "src/embed-events.ts",

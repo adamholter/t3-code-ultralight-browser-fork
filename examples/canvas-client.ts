@@ -1,6 +1,6 @@
-import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
+import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
 
-const codex = createCodexSession();
+const codex = createCodexAssistant();
 
 export async function askAboutSelection(selection: unknown[]) {
   return codex.send(

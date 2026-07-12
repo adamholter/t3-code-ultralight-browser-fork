@@ -7,6 +7,7 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 - Run setup from the host project root; its normalized directory becomes the bridge default, with `--cwd` as an override
 - Bridge reuse requires the exact version, origin policy, and workspace fingerprint; browser status never exposes the path
 - Zero-install browser delivery: add `--delivery hosted` for element or custom modes
+- Custom UI primary API: import `createCodexAssistant` from `/codex-assistant.js` or `t3-code-ultralight-browser-fork/assistant`; it owns stateful threads, cancellation, scoped fail-closed requests, and cleanup
 - Complete-chat host control: `codex-chat.sendPrompt()`, React imperative ref, or `/codex-embed.js` for raw iframes
 - Packed framework verification: React 18/19, Next.js 16 App Router, Vue 3, and Svelte 5; the React entry declares its client boundary, while custom-element mount attributes initialize one frame and pre-ready controls wait safely
 - Host commands: send, stop, and newThread; exact parent window and bridge-allowed Origin required; acknowledgements never contain prompt or response text
