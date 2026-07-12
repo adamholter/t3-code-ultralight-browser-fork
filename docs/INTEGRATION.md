@@ -66,7 +66,7 @@ import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 <CodexChatEmbed bridgeUrl="http://127.0.0.1:4174" />
 ```
 
-Start the bridge with `npx t3-code-ultralight serve`.
+Start the bridge with `npx t3-code-ultralight start`. It waits until the Codex app-server is ready, then exits while the loopback bridge continues in the background. Use `--json` for a stable receipt containing the URL, version, PID, allowed origins, and log path. Use `serve` when the host intentionally manages a foreground child process.
 
 React hosts receive the same verified events as typed callbacks:
 
@@ -97,7 +97,7 @@ const unsubscribe = subscribeCodexEmbedEvents(iframe, (event) => {
 The bridge accepts browser connections from `localhost`, `127.0.0.1`, and `[::1]` by default. This covers normal local development regardless of port. A custom UI running on a non-loopback browser origin needs an explicit exact-origin allowlist entry:
 
 ```bash
-npx t3-code-ultralight serve \
+npx t3-code-ultralight start \
   --allow-origin https://canvas.example.com \
   --allow-origin http://192.168.1.20:3000
 ```

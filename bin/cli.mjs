@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
+import { closeSync, mkdtempSync, openSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const DEFAULT_PORT = 4174;
@@ -19,13 +24,7 @@ async function main() {
     const allowedOrigins = valuesAfter("--allow-origin").map(normalizeOrigin);
     const existing = await readBridgeStatus(port);
     if (existing) {
-      if (existing.version !== packageVersion) {
-        throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
-      }
-      const missingOrigins = allowedOrigins.filter((origin) => !existing.allowedOrigins.includes(origin));
-      if (missingOrigins.length) {
-        throw new Error(`The existing Codex bridge does not allow: ${missingOrigins.join(", ")}. Run ${stopCommand(port)}, then restart with the requested --allow-origin values.`);
-      }
+      assertCompatibleBridge(existing, port, allowedOrigins);
       console.log(`Codex bridge v${existing.version} is already ${existing.status} at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}.`);
       return;
     }
@@ -33,6 +32,45 @@ async function main() {
     if (allowedOrigins.length) process.env.CODEX_ALLOWED_ORIGINS = JSON.stringify(allowedOrigins);
     process.env.NODE_ENV = "production";
     await import("../dist-lib/standalone.js");
+    return;
+  }
+
+  if (command === "start") {
+    const port = parsePort(valueAfter("--port"));
+    const allowedOrigins = valuesAfter("--allow-origin").map(normalizeOrigin);
+    const existing = await readBridgeStatus(port);
+    if (existing) {
+      assertCompatibleBridge(existing, port, allowedOrigins);
+      printStartReport(existing, port, true, null);
+      return;
+    }
+
+    const logDirectory = mkdtempSync(join(tmpdir(), "t3-code-ultralight-"));
+    const logPath = join(logDirectory, `bridge-${port}.log`);
+    const log = openSync(logPath, "wx", 0o600);
+    let child;
+    try {
+      child = spawn(process.execPath, [
+        fileURLToPath(import.meta.url),
+        "serve",
+        "--port",
+        String(port),
+        ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
+      ], {
+        detached: true,
+        env: process.env,
+        stdio: ["ignore", log, log],
+      });
+    } finally {
+      closeSync(log);
+    }
+    child.unref();
+    const status = await waitForBridgeReady(port, child, allowedOrigins);
+    if (!status) {
+      const detail = await readLogTail(logPath);
+      throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
+    }
+    printStartReport(status, port, status.pid !== child.pid, logPath);
     return;
   }
 
@@ -106,7 +144,7 @@ async function main() {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
+Run the package doctor first, then use the background start command with JSON output. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
@@ -117,6 +155,7 @@ Preserve approvals and verify one live turn through the final UI.`);
 t3-code-ultralight
 
 Usage:
+  t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--json]
   t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]...
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
@@ -124,7 +163,8 @@ Usage:
   t3-code-ultralight agent-prompt
 
 Commands:
-  serve         Start the loopback bridge, or reuse an identical running bridge.
+  start         Start in the background, wait for ready, or reuse a compatible bridge.
+  serve         Run the loopback bridge in the foreground.
   status        Inspect a running standalone bridge without starting Codex.
   stop          Stop a verified standalone bridge; safe to run repeatedly.
   doctor        Verify the CLI, app-server, login, models, and thread store.
@@ -172,6 +212,16 @@ function normalizeOrigin(value) {
   return url.origin;
 }
 
+function assertCompatibleBridge(existing, port, allowedOrigins) {
+  if (existing.version !== packageVersion) {
+    throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
+  }
+  const missingOrigins = allowedOrigins.filter((origin) => !existing.allowedOrigins.includes(origin));
+  if (missingOrigins.length) {
+    throw new Error(`The existing Codex bridge does not allow: ${missingOrigins.join(", ")}. Run ${stopCommand(port)}, then restart with the requested --allow-origin values.`);
+  }
+}
+
 async function readBridgeStatus(port) {
   try {
     const response = await fetch(`${bridgeUrl(port)}/api/status`, {
@@ -213,6 +263,53 @@ async function waitForBridgeStop(port, pid) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   return false;
+}
+
+async function waitForBridgeReady(port, child, allowedOrigins) {
+  const deadline = Date.now() + 10_000;
+  let spawnError = null;
+  child.once("error", (error) => { spawnError = error; });
+  while (Date.now() < deadline) {
+    if (spawnError) throw spawnError;
+    const status = await readBridgeStatus(port);
+    if (status) {
+      assertCompatibleBridge(status, port, allowedOrigins);
+      if (status.status === "ready") return status;
+    }
+    if (child.exitCode !== null) return null;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  const status = await readBridgeStatus(port);
+  if (status?.pid === child.pid) {
+    try { process.kill(child.pid, "SIGTERM"); } catch (cause) { if (cause?.code !== "ESRCH") throw cause; }
+  }
+  return null;
+}
+
+async function readLogTail(logPath) {
+  try {
+    const value = await readFile(logPath, "utf8");
+    return value.trim().slice(-4_000);
+  } catch {
+    return "";
+  }
+}
+
+function printStartReport(status, port, reused, logPath) {
+  const report = {
+    started: !reused,
+    reused,
+    running: true,
+    url: bridgeUrl(port),
+    version: status.version,
+    status: status.status,
+    pid: status.pid,
+    allowedOrigins: status.allowedOrigins,
+    logPath: reused ? null : logPath,
+  };
+  if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
+  else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
+  else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nLogs: ${logPath}`);
 }
 
 function stopCommand(port) {

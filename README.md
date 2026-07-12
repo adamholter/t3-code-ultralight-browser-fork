@@ -19,24 +19,24 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.21.1'
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.22.0' start
 ```
 
-Then embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. The command is safe to repeat: it reuses an identical running bridge.
+The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
 
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.21.1'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.22.0'
 npx t3-code-ultralight doctor
-npx t3-code-ultralight serve
+npx t3-code-ultralight start
 ```
 
 The version query is an intentional npm cache key: the URL still resolves through GitHub's latest release, while each README revision forces npm to fetch the matching prebuilt package instead of reusing an older mutable-URL cache entry. No repository clone, Git checkout, or local compilation is involved. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 
-`serve` is safe to run repeatedly. It reuses an identical bridge already running on the requested port, but fails before startup when its version or allowed-origin configuration is incompatible. Inspect it without starting Codex using:
+`start` launches in the background, waits for verified readiness, and returns a PID plus a private temporary log path. It reuses a compatible bridge already running on the requested port, but fails before startup when its version or allowed-origin configuration is incompatible. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
 
 ```bash
 npx t3-code-ultralight status --json
@@ -72,7 +72,7 @@ For a no-bundler canvas, voice, or other custom UI, import the standalone client
 Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
 
 ```bash
-npx t3-code-ultralight serve --allow-origin https://canvas.example.com
+npx t3-code-ultralight start --allow-origin https://canvas.example.com
 ```
 
 Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.

@@ -42,6 +42,17 @@ describe("CLI argument validation", () => {
       expect(reused.code).toBe(0);
       expect(reused.stdout).toContain("is already ready");
 
+      const backgroundReuse = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--json"]);
+      expect(backgroundReuse.code).toBe(0);
+      expect(JSON.parse(backgroundReuse.stdout)).toMatchObject({
+        started: false,
+        reused: true,
+        running: true,
+        version: packageJson.version,
+        pid: process.pid,
+        logPath: null,
+      });
+
       const incompatible = await runCli(["serve", "--port", port, "--allow-origin", "https://voice.example.com"]);
       expect(incompatible.code).not.toBe(0);
       expect(incompatible.stderr).toContain("does not allow: https://voice.example.com");
@@ -103,6 +114,10 @@ describe("CLI argument validation", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = String((server.address() as AddressInfo).port);
     try {
+      const start = await runCli(["start", "--port", port, "--json"]);
+      expect(start.code).not.toBe(0);
+      expect(start.stderr).toContain(`Port ${port} is already in use by a different service`);
+
       const result = await runCli(["stop", "--port", port, "--json"]);
       expect(result.code).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({ stopped: false, running: false });

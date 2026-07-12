@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.22.0
+
+- Add `start` for background bridge startup with deterministic Codex readiness.
+- Return stable human or JSON receipts with URL, version, PID, origins, reuse state, and a private temporary log path.
+- Reuse compatible bridges without spawning another process.
+- Capture detached startup diagnostics and surface exact port or boot failures instead of ambiguous timeouts.
+- Keep `serve` as the explicit foreground mode and integrate background processes with the existing safe `status` and `stop` lifecycle.
+- Make background startup the default human and agent integration recipe.
+
 ## 0.21.1
 
 - Cache-key the mutable latest-release URL with the package version so npm and npx cannot silently reuse an older bridge release.
