@@ -14,11 +14,13 @@ class FakeWebSocket {
     capabilities: ["rpc", "threadIsolation"],
     limits: { maxPayloadBytes: 1024, maxPendingRequestsPerClient: 4 },
   });
+  static latest: FakeWebSocket | null = null;
   readyState = 0;
   private listeners = new Map<string, Set<(event: any) => void>>();
 
   constructor(_url: string | URL) {
     const SocketClass = this.constructor as typeof FakeWebSocket;
+    FakeWebSocket.latest = this;
     if (SocketClass.shouldOpen()) {
       queueMicrotask(() => {
         this.readyState = FakeWebSocket.OPEN;
@@ -369,8 +371,46 @@ describe("CodexClient", () => {
     expect(session.threadId).toBe("thread-session");
     expect((await session.send("second")).text).toBe("ANSWER_2");
     expect(sent.filter((message) => message.method === "thread/start")).toHaveLength(1);
-    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(1);
+    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(0);
     expect(sent[0]).toMatchObject({ method: "thread/start", params: { cwd: "/project" } });
+    expect(sent.find((message) => message.method === "turn/start")?.params).not.toHaveProperty("resumeThread");
+
+    FakeWebSocket.latest?.message({ type: "status", status: "reconnecting" });
+    expect((await session.send("after reconnect")).text).toBe("ANSWER_3");
+    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(1);
+    expect((await session.send("ready again")).text).toBe("ANSWER_4");
+    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(1);
+    session.close();
+  });
+
+  it("resumes a supplied session thread once and again after reset", async () => {
+    const sent: any[] = [];
+    let turnNumber = 0;
+    FakeWebSocket.script = (socket, message) => {
+      sent.push(message);
+      if (message.method === "thread/resume") {
+        queueMicrotask(() => socket.message({ type: "rpcResult", id: message.id, result: { thread: { id: "thread-existing", turns: [] } } }));
+      } else if (message.method === "turn/start") {
+        const turnId = `turn-existing-${++turnNumber}`;
+        queueMicrotask(() => {
+          socket.message({ type: "rpcResult", id: message.id, result: { turn: { id: turnId } } });
+          socket.message({ type: "notification", method: "item/completed", params: { threadId: "thread-existing", turnId, item: { type: "agentMessage", id: `message-existing-${turnNumber}`, text: `EXISTING_${turnNumber}` } } });
+          socket.message({ type: "notification", method: "turn/completed", params: { threadId: "thread-existing", turn: { id: turnId, status: "completed" } } });
+        });
+      }
+    };
+    const session = createCodexSession({
+      url: "ws://localhost/codex",
+      WebSocketImpl,
+      reconnectMs: false,
+      threadId: "thread-existing",
+    });
+    expect((await session.send("first")).text).toBe("EXISTING_1");
+    expect((await session.send("second")).text).toBe("EXISTING_2");
+    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(1);
+    session.reset("thread-existing");
+    expect((await session.send("after reset")).text).toBe("EXISTING_3");
+    expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(2);
     session.close();
   });
 });

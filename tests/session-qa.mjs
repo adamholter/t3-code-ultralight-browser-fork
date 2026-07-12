@@ -15,6 +15,12 @@ const requiredCapabilities = ["requestOwnership", "threadIsolation"];
 const observer = createCodexClient({ url, reconnectMs: false, requiredCapabilities });
 observer.on("notification", (message) => observedNotifications.push(message));
 const session = createCodexSession({ url, cwd: "/tmp", reconnectMs: false, requiredCapabilities });
+let resumeRpcCount = 0;
+const request = session.client.request.bind(session.client);
+session.client.request = (method, params) => {
+  if (method === "thread/resume") resumeRpcCount += 1;
+  return request(method, params);
+};
 
 try {
   await observer.connect();
@@ -48,6 +54,7 @@ try {
   );
   assert.equal(cancellationStarted, true);
   assert.equal(session.running, false);
+  assert.equal(resumeRpcCount, 0, "healthy session follow-ups should not resume an already-loaded thread");
 
   console.log(JSON.stringify({
     threadId: session.threadId,
@@ -56,6 +63,7 @@ try {
     protocol: `${session.client.bridgeInfo?.protocol.major}.${session.client.bridgeInfo?.protocol.minor}`,
     eventCount: events.length,
     cancellation: "interrupted",
+    redundantResumes: resumeRpcCount,
   }, null, 2));
 } finally {
   if (session.threadId) {

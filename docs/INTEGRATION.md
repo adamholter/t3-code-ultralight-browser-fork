@@ -133,7 +133,7 @@ const result = await codex.send(prompt, {
 });
 ```
 
-`send()` creates a thread automatically and remembers it for follow-ups. `stop()` interrupts the active Codex turn, `reset()` starts a new conversation, and `close()` releases the owned connection. For images or other rich inputs, pass an array:
+`send()` creates a thread automatically and remembers it for follow-ups. Follow-ups skip the redundant `thread/resume` RPC while the session stays connected; a bridge or Codex app-server reconnect invalidates that fast path and triggers one recovery resume. `stop()` interrupts the active Codex turn, `reset()` starts a new conversation, and `close()` releases the owned connection. For images or other rich inputs, pass an array:
 
 ```ts
 await codex.send([

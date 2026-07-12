@@ -116,7 +116,7 @@ const answer = await codex.send("Explain the selected canvas nodes", {
 console.log(answer.text);
 ```
 
-The session remembers its thread automatically. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
+The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
 
 Custom interfaces can cover every interactive request with one fail-closed adapter:
 

@@ -10,6 +10,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
    For plain HTML without a bundler, load `/codex-chat.js` directly from the running bridge; do not copy generated files into the host.
 5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
+   Let the session manage thread readiness so healthy follow-ups avoid redundant resume RPCs and reconnect recovery remains automatic.
    Attach `attachCodexRequestHandlers()` once instead of recreating approval, question, permission, MCP, time, and unsupported-request switching in every host.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.

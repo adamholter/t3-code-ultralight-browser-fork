@@ -59,6 +59,8 @@ export interface RunTurnResult {
 export interface ChatOptions extends RunTurnOptions {
   /** Resume this thread before sending. Omit to create a new thread. */
   threadId?: string;
+  /** Resume an existing thread before sending. Defaults to true; set false when it is already loaded. */
+  resumeThread?: boolean;
   /** Options used only when a new thread is created. */
   thread?: StartThreadOptions;
   /** Receive the thread ID before the turn starts. */
@@ -317,11 +319,17 @@ export class CodexClient {
    */
   async chat(input: string | CodexInput[], options: ChatOptions = {}) {
     if (options.signal?.aborted) throw abortError();
-    const { threadId: existingThreadId, thread: threadOptions = {}, onThreadReady, ...turnOptions } = options;
+    const {
+      threadId: existingThreadId,
+      resumeThread = true,
+      thread: threadOptions = {},
+      onThreadReady,
+      ...turnOptions
+    } = options;
     let threadId = existingThreadId;
-    if (threadId) {
+    if (threadId && resumeThread) {
       await this.resumeThread(threadId);
-    } else {
+    } else if (!threadId) {
       const opened = await this.startThread({
         ...threadOptions,
         ...(threadOptions.cwd ? {} : turnOptions.cwd ? { cwd: turnOptions.cwd } : {}),
@@ -531,7 +539,9 @@ export class CodexSession {
   currentTurnId: string | null = null;
   private readonly ownsClient: boolean;
   private readonly defaults: SessionSendOptions;
+  private readonly detachReadinessListeners: Array<() => void>;
   private activeController: AbortController | null = null;
+  private threadReady = false;
 
   constructor(options: CodexSessionOptions = {}) {
     const {
@@ -553,6 +563,14 @@ export class CodexSession {
       ...(effort ? { effort } : {}),
       thread: { ...thread, ...(permissions ? { permissions } : {}) },
     };
+    this.detachReadinessListeners = [
+      this.client.on("connection", (status) => {
+        if (status !== "ready") this.threadReady = false;
+      }),
+      this.client.on("status", (message) => {
+        if (message?.status === "reconnecting") this.threadReady = false;
+      }),
+    ];
   }
 
   get running() {
@@ -574,9 +592,11 @@ export class CodexSession {
         ...options,
         thread: { ...this.defaults.thread, ...options.thread },
         threadId: this.threadId,
+        resumeThread: !this.threadReady,
         signal: controller.signal,
         onThreadReady: (thread) => {
           this.threadId = thread.threadId;
+          this.threadReady = true;
           onThreadReady?.(thread);
         },
         onTurnStarted: (turn) => {
@@ -600,11 +620,13 @@ export class CodexSession {
   reset(threadId?: string) {
     this.stop();
     this.threadId = threadId;
+    this.threadReady = false;
     this.currentTurnId = null;
   }
 
   close() {
     this.stop();
+    this.detachReadinessListeners.splice(0).forEach((detach) => detach());
     if (this.ownsClient) this.client.close();
   }
 }

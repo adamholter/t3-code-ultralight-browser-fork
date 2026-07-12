@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.0
+
+- Remove the redundant `thread/resume` RPC from healthy `CodexSession` follow-up turns.
+- Resume an existing thread once on first use, after an explicit reset, or after bridge/app-server reconnection.
+- Keep the one-shot `CodexClient.chat()` behavior unchanged while exposing an opt-out for callers that already loaded a thread.
+- Strip the local-only resume option before sending turn parameters to Codex.
+- Add deterministic RPC-count tests and live session QA that proves zero redundant resumes.
+
 ## 0.19.0
 
 - Add `attachCodexRequestHandlers()` as one typed subscription for custom interfaces.
