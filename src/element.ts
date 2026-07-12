@@ -32,13 +32,14 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
     static observedAttributes = ["bridge-url", "title", "min-height", "loading"];
     private unsubscribeEvents: (() => void) | null = null;
     private controller: CodexEmbedController | null = null;
+    private pendingRender: Promise<void> | null = null;
 
     connectedCallback() {
-      this.render();
+      this.scheduleRender();
     }
 
-    attributeChangedCallback() {
-      if (this.isConnected) this.render();
+    attributeChangedCallback(_name: string, previous: string | null, next: string | null) {
+      if (this.isConnected && previous !== next) this.scheduleRender();
     }
 
     disconnectedCallback() {
@@ -48,19 +49,36 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
       this.controller = null;
     }
 
-    sendPrompt(text: string, sendOptions?: CodexEmbedSendOptions) {
-      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
-      return this.controller.send(text, sendOptions);
+    async sendPrompt(text: string, sendOptions?: CodexEmbedSendOptions) {
+      const controller = await this.readyController();
+      return controller.send(text, sendOptions);
     }
 
-    newThread() {
-      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
-      return this.controller.newThread();
+    async newThread() {
+      const controller = await this.readyController();
+      return controller.newThread();
     }
 
-    stop() {
-      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
-      return this.controller.stop();
+    async stop() {
+      const controller = await this.readyController();
+      return controller.stop();
+    }
+
+    private scheduleRender() {
+      if (this.pendingRender) return;
+      this.pendingRender = new Promise((resolveRender) => {
+        queueMicrotask(() => {
+          this.pendingRender = null;
+          if (this.isConnected) this.render();
+          resolveRender();
+        });
+      });
+    }
+
+    private async readyController() {
+      await this.pendingRender;
+      if (!this.controller) throw new Error("Embedded Codex chat is not connected");
+      return this.controller;
     }
 
     private render() {

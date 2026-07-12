@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.44.0
+
+- Install the exact packed Web Component into clean Vue 3.5.39 and Svelte 5.56.4 Vite hosts and stream a real local Codex turn through each.
+- Exercise `sendPrompt()` during framework mount before the component is ready, plus `newThread()`, `stop()`, lifecycle events, unmount/remount, and thread cleanup.
+- Coalesce framework-driven mount-time attribute updates so `<codex-chat>` creates one iframe and controller instead of repeatedly reloading during initial render.
+- Preserve immediate controller calls by awaiting the scheduled component render before forwarding commands to the verified iframe receiver.
+- Inspect desktop and mobile hosts and embedded frames for overflow while keeping browser consoles and page errors empty.
+- Publish Vue/Svelte compatibility and lifecycle guarantees in the machine-readable integration contract and agent documentation.
+- Add the packed framework matrix to one-command live QA and allow exact release tarballs through `QA_PACKAGE`.
+
 ## 0.43.0
 
 - Add `--port auto` to `setup`, `start`, and `serve`, preferring port 4174 when safe and otherwise selecting a deterministic workspace-derived loopback fallback.

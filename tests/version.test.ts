@@ -25,6 +25,11 @@ describe("package version", () => {
     expect(integration.bridge).toMatchObject({ bind: "127.0.0.1", port: 4174, integrationPath: "/api/integration" });
     expect(integration.security).toMatchObject({ loopbackOnly: true, browserCredentials: false, wildcardOrigins: false });
     expect(integration.acceptance).toContain("one real local Codex turn streams through the final user-facing UI");
+    expect(integration.modes.completeChat.webComponentCompatibility).toMatchObject({
+      browserVerified: { vue: ["3.5.39"], svelte: ["5.56.4"] },
+      singleMountInitializationVerified: true,
+      preReadyControllerVerified: true,
+    });
     expect(packageJson.files).toEqual(expect.arrayContaining(["integration.json", "llms.txt"]));
     expect(packageJson.exports).toHaveProperty("./integration");
   });

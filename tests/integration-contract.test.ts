@@ -47,6 +47,13 @@ describe("live integration contract", () => {
         controllerRefVerified: true,
         remountVerified: true,
       },
+      webComponentCompatibility: {
+        browserVerified: { vue: ["3.5.39"], svelte: ["5.56.4"] },
+        packageInstallVerified: true,
+        singleMountInitializationVerified: true,
+        preReadyControllerVerified: true,
+        remountVerified: true,
+      },
     });
     expect(runtime.modes.customUi).toMatchObject({
       browserModule: "http://127.0.0.1:49123/codex-client.js",

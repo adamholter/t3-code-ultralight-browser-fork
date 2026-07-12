@@ -73,6 +73,7 @@ try {
       deterministicAutoPortSelection: integrationContract.security?.deterministicAutoPortSelection === true,
       automaticPort: integrationContract.bridge?.automaticPort,
       reactCompatibility: integrationContract.modes?.completeChat?.reactCompatibility,
+      webComponentCompatibility: integrationContract.modes?.completeChat?.webComponentCompatibility,
       attachedServerCompatibility: integrationContract.modes?.attachedServer,
     },
     httpSurface,
@@ -108,6 +109,12 @@ try {
     || result.integrationContract.reactCompatibility?.hydrationVerified !== true
     || result.integrationContract.reactCompatibility?.controllerRefVerified !== true
     || result.integrationContract.reactCompatibility?.remountVerified !== true
+    || result.integrationContract.webComponentCompatibility?.browserVerified?.vue?.join(",") !== "3.5.39"
+    || result.integrationContract.webComponentCompatibility?.browserVerified?.svelte?.join(",") !== "5.56.4"
+    || result.integrationContract.webComponentCompatibility?.packageInstallVerified !== true
+    || result.integrationContract.webComponentCompatibility?.singleMountInitializationVerified !== true
+    || result.integrationContract.webComponentCompatibility?.preReadyControllerVerified !== true
+    || result.integrationContract.webComponentCompatibility?.remountVerified !== true
     || result.integrationContract.attachedServerCompatibility?.exactPathIsolation !== true
     || result.integrationContract.attachedServerCompatibility?.hostWebSocketCoexistenceVerified !== true
     || result.integrationContract.attachedServerCompatibility?.idempotentStop !== true

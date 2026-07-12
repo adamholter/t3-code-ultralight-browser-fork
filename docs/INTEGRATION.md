@@ -32,6 +32,8 @@ CLI parsing is strict and occurs before side effects. Unknown commands/options, 
 
 Use this for Vue, Svelte, Angular, Lit, Astro, vanilla TypeScript, or any host that supports custom elements:
 
+The exact packed component is browser-verified in clean Vue 3.5.39 and Svelte 5.56.4 hosts, including real Codex streaming, public lifecycle events, `sendPrompt()`, `newThread()`, `stop()`, unmount/remount, and desktop/mobile containment. Mount-time attribute changes are coalesced into one iframe/controller initialization. A controller call made immediately during framework mount waits for that initialization and the verified receiver instead of failing or starting a duplicate frame.
+
 Without a bundler, load the self-registering module directly from the running bridge:
 
 ```html
