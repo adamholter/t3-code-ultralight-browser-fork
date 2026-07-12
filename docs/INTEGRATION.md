@@ -12,6 +12,27 @@ npx t3-code-ultralight doctor
 
 For automation or agent parsing, use `doctor --json`. The command is read-only and does not create a thread.
 
+## Mode 0: framework-neutral Web Component
+
+Use this for Vue, Svelte, Angular, Lit, Astro, vanilla TypeScript, or any host that supports custom elements:
+
+```ts
+import "t3-code-ultralight-browser-fork/element/auto";
+```
+
+```html
+<codex-chat bridge-url="/local-codex" min-height="560px"></codex-chat>
+```
+
+Supported attributes are `bridge-url`, `title`, `min-height`, and `loading`. Style the isolated frame through `codex-chat::part(frame)`. Listen for `codex-chat-ready` when it loads.
+
+For explicit registration or a custom tag:
+
+```ts
+import { defineCodexChatElement } from "t3-code-ultralight-browser-fork/element";
+defineCodexChatElement({ tagName: "my-codex", defaultBridgeUrl: "/local-codex" });
+```
+
 ## Mode 1: isolated chat embed
 
 Use this when the product needs a complete chat surface quickly. It has no CSS or state collisions with the host.

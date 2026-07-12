@@ -34,6 +34,22 @@ The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 ></iframe>
 ```
 
+Any framework with an ESM bundler can use the Web Component:
+
+```ts
+import "t3-code-ultralight-browser-fork/element/auto";
+```
+
+```html
+<codex-chat
+  bridge-url="http://127.0.0.1:4174"
+  title="Project assistant"
+  min-height="560px"
+></codex-chat>
+```
+
+It is safe to import during SSR and upgrades automatically once a browser DOM exists. Use `defineCodexChatElement()` when the host needs a custom tag name or explicit registration timing.
+
 React projects can use the wrapper:
 
 ```tsx
@@ -104,6 +120,7 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - Framework-free WebSocket client plus typed React and server exports
 - One-call `chat()` plus lower-level text and multimodal turn APIs
 - Approval requests routed only to the browser client that owns the active turn
+- Dependency-free Web Component with Shadow DOM and SSR-safe registration
 
 ## Deliberately excluded
 

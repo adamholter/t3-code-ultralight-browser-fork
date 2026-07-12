@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -11,8 +11,8 @@
   },
   "homepage": "https://github.com/adamholter/t3-code-ultralight-browser-fork#readme",
   "bugs": "https://github.com/adamholter/t3-code-ultralight-browser-fork/issues",
-  "keywords": ["codex", "openai", "local", "chat", "react", "websocket", "agent-ui"],
-  "sideEffects": false,
+  "keywords": ["codex", "openai", "local", "chat", "react", "web-component", "websocket", "agent-ui"],
+  "sideEffects": ["./dist-lib/element-auto.js"],
   "files": ["bin", "dist", "dist-lib", "docs", "examples", "CHANGELOG.md", "LICENSE", "NOTICE", "README.md"],
   "bin": {
     "t3-code-ultralight": "./bin/cli.mjs"
@@ -29,6 +29,14 @@
     "./react": {
       "types": "./dist-lib/react.d.ts",
       "import": "./dist-lib/react.js"
+    },
+    "./element": {
+      "types": "./dist-lib/element.d.ts",
+      "import": "./dist-lib/element.js"
+    },
+    "./element/auto": {
+      "types": "./dist-lib/element-auto.d.ts",
+      "import": "./dist-lib/element-auto.js"
     },
     "./server": {
       "types": "./dist-lib/server.d.ts",

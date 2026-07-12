@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Add dependency-free `<codex-chat>` Web Component and auto-registration export.
+- Keep custom-element imports safe during SSR and allow custom tag names.
+- Add Shadow DOM styling isolation, `part="frame"`, and `codex-chat-ready`.
+- Support absolute, relative, query-bearing, and hash-bearing embed URLs without browser globals.
+- Add real-browser custom-element upgrade and rendering QA.
+
 ## 0.4.0
 
 - Add one-call `chat()` for automatic thread creation or continuation.

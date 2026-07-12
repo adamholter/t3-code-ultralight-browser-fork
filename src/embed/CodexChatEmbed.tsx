@@ -1,4 +1,5 @@
 import type { CSSProperties, IframeHTMLAttributes } from "react";
+import { buildEmbedUrl } from "../embed-url";
 
 export interface CodexChatEmbedProps extends Omit<IframeHTMLAttributes<HTMLIFrameElement>, "src"> {
   /** URL of the running ultralight bridge UI. */
@@ -24,12 +25,10 @@ export function CodexChatEmbed({
   title = "Local Codex chat",
   ...props
 }: CodexChatEmbedProps) {
-  const src = new URL(bridgeUrl);
-  src.searchParams.set("embed", "1");
   return (
     <iframe
       {...props}
-      src={src.toString()}
+      src={buildEmbedUrl(bridgeUrl)}
       title={title}
       style={{ ...defaultStyle, ...style }}
       allow="clipboard-read; clipboard-write"
