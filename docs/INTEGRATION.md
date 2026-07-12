@@ -143,6 +143,27 @@ await codex.send([
 
 Use `createCodexClient()` when several sessions share one socket or the host manages thread IDs itself. Its `chat()`, `runTurn()`, and `runInput()` methods accept the same `signal`, `onDelta`, `onEvent`, and `onTurnStarted` options.
 
+For several independent surfaces, construct sessions with one supplied client. Each session retains its own thread and turn callbacks while the client owns the single socket:
+
+```ts
+import { createCodexClient, createCodexSession } from "t3-code-ultralight-browser-fork/client";
+import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+
+const client = createCodexClient();
+const canvas = createCodexSession({ client, cwd: projectPath });
+const voice = createCodexSession({ client, cwd: projectPath });
+
+const offCanvasRequests = attachCodexSessionRequestHandlers(canvas, canvasHandlers);
+const offVoiceRequests = attachCodexSessionRequestHandlers(voice, voiceHandlers);
+
+await Promise.all([canvas.send(canvasPrompt), voice.send(voicePrompt)]);
+await canvas.close(); // voice and client remain usable
+await voice.close();
+client.close();
+```
+
+The session-scoped adapter follows `session.threadId` dynamically, including after reset, and ignores sibling requests. Use one global `attachCodexRequestHandlers(client, handlers)` instead only when the host intentionally centralizes every prompt in one UI.
+
 The headless client defaults to the standard standalone bridge at `http://127.0.0.1:4174`. Set `bridgeUrl` to another standalone HTTP(S) origin and the client derives its `/ws` endpoint safely. Set the lower-level `url` only for an attached server or another custom WebSocket path:
 
 ```ts
@@ -187,7 +208,7 @@ The complete chat renders `request_user_input` as an accessible options/free-tex
 <codex-chat bridge-url="http://127.0.0.1:4174/?mode=plan"></codex-chat>
 ```
 
-For a custom UI, the recommended path is one typed adapter subscription:
+For a single custom UI—or one intentionally centralized prompt surface—the recommended path is one typed adapter subscription:
 
 ```ts
 import { attachCodexRequestHandlers } from "t3-code-ultralight-browser-fork/requests";

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.0
+
+- Add `attachCodexSessionRequestHandlers()` for independent prompt surfaces sharing one client socket.
+- Scope approvals, questions, permissions, MCP elicitations, time, and fallback handling to each session's dynamic current thread.
+- Add an optional request predicate to the global adapter for other ownership models.
+- Preserve the existing one-global-adapter API for hosts that intentionally centralize prompts.
+- Verify two simultaneous sessions stream isolated responses over one WebSocket, survive sibling disposal, and leave their shared client usable.
+- Add deterministic dynamic-thread and legacy-conversation routing tests plus live session-scoped question verification.
+
 ## 0.25.0
 
 - Add a versioned `integration.json` machine contract for one-link agent handoffs.

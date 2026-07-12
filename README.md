@@ -21,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.25.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.26.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
@@ -29,7 +29,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.25.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.26.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -154,6 +154,21 @@ const detachRequests = attachCodexRequestHandlers(codex.client, {
 ```
 
 Missing handlers decline or skip safely, and `currentTime/read` is answered automatically.
+
+When several UI surfaces share one socket, give each surface its own session-scoped adapter so prompts cannot race across canvas, voice, or other panels:
+
+```ts
+import { createCodexClient, createCodexSession } from "t3-code-ultralight-browser-fork/client";
+import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+
+const client = createCodexClient();
+const canvas = createCodexSession({ client, cwd: projectPath });
+const voice = createCodexSession({ client, cwd: projectPath });
+const detachCanvasRequests = attachCodexSessionRequestHandlers(canvas, canvasHandlers);
+const detachVoiceRequests = attachCodexSessionRequestHandlers(voice, voiceHandlers);
+```
+
+Both sessions stream independently over one WebSocket. Closing either session preserves the shared client and its sibling; close the client after every shared session is disposed.
 
 For shared clients or lower-level control, use `createCodexClient()` and subscribe directly:
 

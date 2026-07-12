@@ -79,17 +79,42 @@ export interface CodexRequestHandlers {
   onError?: (error: Error, request: PendingServerRequest) => void;
 }
 
+export interface CodexRequestSubscriptionOptions {
+  /** Process only requests owned by this UI surface. Unmatched requests are left for another adapter. */
+  shouldHandle?: (request: PendingServerRequest) => boolean;
+}
+
+export interface CodexRequestSession {
+  readonly client: CodexRequestResponder;
+  readonly threadId: string | undefined;
+}
+
 /**
  * Subscribe a custom UI to every browser-interactive Codex request. Missing
  * handlers decline or skip safely instead of leaving the active turn stalled.
  */
-export function attachCodexRequestHandlers(client: CodexRequestResponder, handlers: CodexRequestHandlers = {}) {
+export function attachCodexRequestHandlers(
+  client: CodexRequestResponder,
+  handlers: CodexRequestHandlers = {},
+  options: CodexRequestSubscriptionOptions = {},
+) {
   return client.on("serverRequest", (request) => {
+    if (options.shouldHandle && !options.shouldHandle(request)) return;
     void handleCodexServerRequest(client, request, handlers).catch((cause) => {
       const error = cause instanceof Error ? cause : new Error(String(cause));
       try { client.respondError(request.id, error.message); } catch { /* The socket may have closed while the UI was open. */ }
       try { handlers.onError?.(error, request); } catch { /* Error reporting must not create an unhandled rejection. */ }
     });
+  });
+}
+
+/** Attach handlers only to requests owned by one stateful session's current thread. */
+export function attachCodexSessionRequestHandlers(session: CodexRequestSession, handlers: CodexRequestHandlers = {}) {
+  return attachCodexRequestHandlers(session.client, handlers, {
+    shouldHandle: (request) => {
+      const threadId = getServerRequestThreadId(request);
+      return Boolean(threadId && threadId === session.threadId);
+    },
   });
 }
 

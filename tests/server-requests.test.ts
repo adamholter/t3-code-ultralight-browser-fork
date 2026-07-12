@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attachCodexRequestHandlers, buildApprovalResponse, buildCurrentTimeResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions, handleCodexServerRequest, isMcpElicitationComplete } from "../src/lib/server-requests";
+import { attachCodexRequestHandlers, attachCodexSessionRequestHandlers, buildApprovalResponse, buildCurrentTimeResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions, handleCodexServerRequest, isMcpElicitationComplete } from "../src/lib/server-requests";
 
 describe("server request helpers", () => {
   it("serializes user answers in the app-server response shape", () => {
@@ -212,18 +212,50 @@ describe("server request helpers", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(client.responses).toEqual([]);
   });
+
+  it("scopes adapters to each shared client's dynamic session thread", async () => {
+    const client = new FakeResponder();
+    const handled: string[] = [];
+    const canvas = { client, threadId: "thread-canvas" as string | undefined };
+    const voice = { client, threadId: "thread-voice" as string | undefined };
+    const detachCanvas = attachCodexSessionRequestHandlers(canvas, {
+      approval: () => { handled.push("canvas"); return "accept"; },
+    });
+    const detachVoice = attachCodexSessionRequestHandlers(voice, {
+      approval: () => { handled.push("voice"); return "decline"; },
+    });
+
+    client.emit({ id: "canvas", method: "item/commandExecution/requestApproval", params: { threadId: "thread-canvas" } });
+    client.emit({ id: "voice", method: "execCommandApproval", params: { conversationId: "thread-voice" } });
+    client.emit({ id: "unowned", method: "item/commandExecution/requestApproval", params: { threadId: "thread-other" } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handled).toEqual(["canvas", "voice"]);
+    expect(client.responses).toEqual([
+      { id: "canvas", result: { decision: "accept" } },
+      { id: "voice", result: { decision: "denied" } },
+    ]);
+
+    canvas.threadId = "thread-canvas-next";
+    client.emit({ id: "old", method: "item/commandExecution/requestApproval", params: { threadId: "thread-canvas" } });
+    client.emit({ id: "next", method: "item/commandExecution/requestApproval", params: { threadId: "thread-canvas-next" } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handled).toEqual(["canvas", "voice", "canvas"]);
+    expect(client.responses.at(-1)).toEqual({ id: "next", result: { decision: "accept" } });
+    detachCanvas();
+    detachVoice();
+  });
 });
 
 class FakeResponder {
   responses: Array<{ id: string | number; result: unknown }> = [];
   errors: Array<{ id: string | number; error?: string }> = [];
-  private serverRequestHandler: ((request: any) => void) | null = null;
+  private serverRequestHandlers = new Set<(request: any) => void>();
 
   on(_event: "serverRequest", handler: (request: any) => void) {
-    this.serverRequestHandler = handler;
-    return () => { this.serverRequestHandler = null; };
+    this.serverRequestHandlers.add(handler);
+    return () => { this.serverRequestHandlers.delete(handler); };
   }
   respond(id: string | number, result: unknown) { this.responses.push({ id, result }); }
   respondError(id: string | number, error?: string) { this.errors.push({ id, error }); }
-  emit(request: any) { this.serverRequestHandler?.(request); }
+  emit(request: any) { for (const handler of this.serverRequestHandlers) handler(request); }
 }

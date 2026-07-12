@@ -8,7 +8,7 @@ const requestsModule = process.env.QA_REQUESTS_MODULE
   ? pathToFileURL(process.env.QA_REQUESTS_MODULE).href
   : new URL("../dist-lib/requests.js", import.meta.url).href;
 const { createCodexClient } = await import(clientModule);
-const { attachCodexRequestHandlers } = await import(requestsModule);
+const { attachCodexSessionRequestHandlers } = await import(requestsModule);
 const url = process.env.QA_WS_URL ?? "ws://127.0.0.1:4174/ws";
 const client = createCodexClient({
   url,
@@ -16,8 +16,11 @@ const client = createCodexClient({
   requiredCapabilities: ["requestOwnership", "threadIsolation"],
 });
 const handled = [];
+const siblingHandled = [];
 const errors = [];
-const detach = attachCodexRequestHandlers(client, {
+const session = { client, threadId: undefined };
+const siblingSession = { client, threadId: "thread-sibling" };
+const detach = attachCodexSessionRequestHandlers(session, {
   userInput: (questions) => {
     handled.push("userInput");
     return Object.fromEntries(questions.map((question) => [
@@ -27,6 +30,9 @@ const detach = attachCodexRequestHandlers(client, {
   },
   onError: (error) => errors.push(error.message),
 });
+const detachSibling = attachCodexSessionRequestHandlers(siblingSession, {
+  userInput: () => { siblingHandled.push("userInput"); return {}; },
+});
 
 let threadId;
 try {
@@ -35,6 +41,7 @@ try {
   assert.ok(model?.model, "expected a local Codex model");
   const opened = await client.startThread({ cwd: "/tmp" });
   threadId = opened.thread.id;
+  session.threadId = threadId;
   let finalText = "";
   let attempts = 0;
   while (!handled.length && attempts < 3) {
@@ -57,17 +64,21 @@ try {
     finalText = result.text;
   }
   assert.deepEqual(handled, ["userInput"]);
+  assert.deepEqual(siblingHandled, []);
   assert.match(finalText, /USER_INPUT_BETA_OK/);
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({
     threadId,
     handled,
+    siblingHandled,
+    sessionScoped: true,
     attempts,
     response: "USER_INPUT_BETA_OK",
     protocol: `${client.bridgeInfo?.protocol.major}.${client.bridgeInfo?.protocol.minor}`,
   }, null, 2));
 } finally {
   detach();
+  detachSibling();
   if (threadId) await client.request("thread/delete", { threadId }).catch(() => undefined);
   client.close();
 }
