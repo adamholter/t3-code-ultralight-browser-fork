@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.53.0
+
+- Launch Windows `.cmd` and `.bat` Codex shims through `cmd.exe` while keeping native executables and Unix commands shell-free.
+- Resolve attached-server Codex commands through `PATH` and `PATHEXT`, matching the standalone CLI rather than assuming a directly executable binary.
+- Add an OS-native disposable Codex app-server smoke test covering version discovery, initialization, account, model, thread-store, and clean shutdown paths.
+- Run that process smoke test inside every Ubuntu, macOS, and Windows standard check; Windows uses a real batch wrapper.
+
 ## 0.52.0
 
 - Add authoritative source, package, type, CLI, audit, and npm-pack CI gates on Ubuntu, macOS, and Windows at the Node 22 support floor.

@@ -101,6 +101,7 @@ describe("package version", () => {
     });
     expect(integration.security.durableLifecycleReceipt).toBe(true);
     expect(integration.security.attestedReleaseArtifacts).toBe(true);
+    expect(integration.security.windowsBatchCodexLaunch).toBe(true);
   });
 
   it("keeps public registry metadata and release automation fail-closed", () => {
@@ -124,6 +125,7 @@ describe("package version", () => {
       nodeMatrix: [22, 24, 26],
       operatingSystemMatrix: ["ubuntu-latest", "macos-latest", "windows-latest"],
       packedConsumerPerRuntime: true,
+      codexProcessSmokePerOperatingSystem: true,
     });
   });
 
@@ -134,7 +136,9 @@ describe("package version", () => {
 
   it("gates standard checks on a fresh packed consumer", () => {
     expect(packageJson.scripts.check).toContain("check:packed");
+    expect(packageJson.scripts.check).toContain("check:platform");
     expect(packageJson.scripts["check:packed"]).toContain("npm run build");
     expect(packageJson.scripts["check:packed"]).toContain("check-packed-consumer.mjs");
+    expect(packageJson.scripts["check:platform"]).toContain("check-platform-runtime.mjs");
   });
 });

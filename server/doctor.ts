@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { CodexBridge } from "./codex-bridge.js";
+import { resolveCodexCommand } from "./codex-command.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 const execFileAsync = promisify(execFile);
@@ -47,7 +48,12 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
 
   try {
     const startedAt = performance.now();
-    const { stdout } = await execFileAsync(binary, ["--version"], { timeout: timeoutMs });
+    const invocation = resolveCodexCommand(binary, ["--version"], { cwd: options.cwd });
+    const { stdout } = await execFileAsync(invocation.command, invocation.args, {
+      cwd: options.cwd,
+      timeout: timeoutMs,
+      windowsHide: true,
+    });
     checks.codexBinary = pass(stdout.trim(), startedAt);
   } catch (error) {
     checks.codexBinary = fail(formatError(error));

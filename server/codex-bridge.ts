@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
+import { resolveCodexCommand } from "./codex-command.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 type RpcId = number | string;
@@ -60,10 +61,18 @@ export class CodexBridge extends EventEmitter {
   private async boot() {
     this.stopped = false;
     this.initialized = false;
-    this.child = spawn(this.options.binary ?? "codex", this.options.args ?? ["app-server", "--stdio"], {
-      cwd: this.options.cwd ?? process.cwd(),
-      env: this.options.env ?? process.env,
+    const cwd = this.options.cwd ?? process.cwd();
+    const env = this.options.env ?? process.env;
+    const invocation = resolveCodexCommand(
+      this.options.binary ?? "codex",
+      this.options.args ?? ["app-server", "--stdio"],
+      { cwd, env },
+    );
+    this.child = spawn(invocation.command, invocation.args, {
+      cwd,
+      env,
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
     });
 
     createInterface({ input: this.child.stdout }).on("line", (line) => {
