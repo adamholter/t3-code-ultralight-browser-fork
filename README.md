@@ -6,6 +6,8 @@ Give this repository to an agent and say:
 
 > Allow our web app to talk to my local Codex. Use the ultralight chat UI, or use the headless client if our interface is custom.
 
+Agents can read [`integration.json`](integration.json) for the versioned machine contract or [`llms.txt`](llms.txt) for discovery pointers instead of scraping this README.
+
 This project is the smallest practical bridge between a browser UI and a user's local Codex. It packages the best chat interaction details from T3 Code as three reusable pieces:
 
 1. A conflict-free embedded chat UI.
@@ -19,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.24.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.25.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
@@ -27,7 +29,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.24.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.25.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```

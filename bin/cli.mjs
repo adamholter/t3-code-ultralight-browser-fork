@@ -140,6 +140,12 @@ async function main() {
     return;
   }
 
+  if (command === "integration") {
+    const contract = await readFile(new URL("../integration.json", import.meta.url), "utf8");
+    console.log(contract.trim());
+    return;
+  }
+
   if (command === "agent-prompt") {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
@@ -160,6 +166,7 @@ Usage:
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
+  t3-code-ultralight integration
   t3-code-ultralight agent-prompt
 
 Commands:
@@ -168,6 +175,7 @@ Commands:
   status        Inspect a running standalone bridge without starting Codex.
   stop          Stop a verified standalone bridge; safe to run repeatedly.
   doctor        Verify the CLI, app-server, login, models, and thread store.
+  integration   Print the machine-readable integration contract.
   agent-prompt  Print a ready-to-paste integration prompt.
 `);
 }

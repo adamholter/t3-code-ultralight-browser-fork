@@ -20,6 +20,17 @@ describe("CLI argument validation", () => {
     expect(result.stdout).toContain("stable prebuilt release asset");
   });
 
+  it("prints the packaged machine-readable integration contract", async () => {
+    const result = await runCli(["integration"]);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      schemaVersion: 1,
+      name: packageJson.name,
+      version: packageJson.version,
+      bridge: { integrationPath: "/api/integration" },
+    });
+  });
+
   it("reports and reuses a compatible running bridge", async () => {
     const server = createServer((_request, response) => {
       response.writeHead(200, { "content-type": "application/json" });

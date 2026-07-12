@@ -17,6 +17,8 @@ page.on("pageerror", (error) => consoleErrors.push(error.message));
 try {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.locator(".status-dot.ready").waitFor({ timeout: maxReadyMs });
+  const contractResponse = await page.request.get(`${baseUrl}/api/integration`);
+  const integrationContract = await contractResponse.json();
   const metrics = await page.evaluate(() => {
     const resources = performance.getEntriesByType("resource");
     const assets = resources.filter((entry) => /\.(?:js|css)(?:\?|$)/.test(entry.name));
@@ -27,13 +29,29 @@ try {
       fontRequests: resources.filter((entry) => entry.initiatorType === "css" && /\.(?:woff2?|ttf|otf)(?:\?|$)/.test(entry.name)).length,
     };
   });
-  const result = { ...metrics, maxAssetBytes, maxReadyMs, consoleErrors };
+  const result = {
+    ...metrics,
+    maxAssetBytes,
+    maxReadyMs,
+    integrationContract: {
+      available: contractResponse.ok(),
+      schemaVersion: integrationContract.schemaVersion,
+      version: integrationContract.version,
+      modes: Object.keys(integrationContract.modes ?? {}),
+      noStore: contractResponse.headers()["cache-control"] === "no-store",
+    },
+    consoleErrors,
+  };
   console.log(JSON.stringify(result, null, 2));
   if (
     metrics.assetBytes > maxAssetBytes
     || metrics.assetCount !== 2
     || metrics.fontRequests !== 0
     || metrics.readyMs > maxReadyMs
+    || !result.integrationContract.available
+    || result.integrationContract.schemaVersion !== 1
+    || result.integrationContract.modes.join(",") !== "completeChat,customUi,attachedServer"
+    || !result.integrationContract.noStore
     || consoleErrors.length
   ) throw new Error("Standalone performance QA assertions failed");
 } finally {

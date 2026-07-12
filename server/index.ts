@@ -22,6 +22,7 @@ const browserModules = {
   "/codex-client.js": resolve(libraryDist, "client.js"),
   "/codex-requests.js": resolve(libraryDist, "requests.js"),
 } as const;
+const integrationContract = resolve(root, "integration.json");
 let bridgeReady = false;
 const allowedOrigins = readAllowedOrigins(process.env.CODEX_ALLOWED_ORIGINS);
 
@@ -44,6 +45,9 @@ const server = createServer(async (request, response) => {
         maxPendingRequestsPerClient: DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT,
       },
     });
+  }
+  if (url.pathname === "/api/integration" || url.pathname === "/integration.json") {
+    return serveIntegrationContract(response);
   }
 
   const browserModule = browserModules[url.pathname as keyof typeof browserModules];
@@ -95,6 +99,19 @@ async function serveBrowserModule(filePath: string, origin: string | undefined, 
   }
   response.writeHead(200, headers);
   createReadStream(filePath).pipe(response);
+}
+
+async function serveIntegrationContract(response: ServerResponse) {
+  if (!(await isFile(integrationContract))) {
+    response.writeHead(404, { "content-type": "application/json; charset=utf-8" }).end(JSON.stringify({ error: "Integration contract is not packaged" }));
+    return;
+  }
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+    "x-content-type-options": "nosniff",
+  });
+  createReadStream(integrationContract).pipe(response);
 }
 console.log(`Codex bridge listening at http://127.0.0.1:${port}`);
 if (allowedOrigins.length) console.log(`Additional browser origins: ${allowedOrigins.join(", ")}`);

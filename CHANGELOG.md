@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.25.0
+
+- Add a versioned `integration.json` machine contract for one-link agent handoffs.
+- Describe requirements, cache-safe release commands, bridge lifecycle, all three integration modes, package exports, security invariants, and acceptance checks without prose scraping.
+- Add `llms.txt` discovery pointers for agent-friendly repository navigation.
+- Ship both files in the consumer tarball and expose the identical contract through `t3-code-ultralight integration`.
+- Serve the contract from `/api/integration` and `/integration.json` on every running standalone bridge.
+- Add version/cache-key drift gates, schema-shape checks, CLI coverage, and packaged endpoint verification.
+
 ## 0.24.0
 
 - Make `CodexSession.close()` idempotent and return a completion promise for reliable host disposal.
