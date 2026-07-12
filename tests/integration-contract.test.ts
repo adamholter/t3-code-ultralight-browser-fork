@@ -30,7 +30,7 @@ describe("live integration contract", () => {
         foreground: "t3-code-ultralight serve --port 49123",
       },
     });
-    expect(runtime.release.startCommand).toContain("start --port 49123 --json");
+    expect(runtime.release.startCommand).toContain("start --port 49123 --allow-origin '{BROWSER_ORIGIN}' --json");
     expect(runtime.release.setupCommands.custom).toContain("setup --mode custom --port 49123 --allow-origin '{BROWSER_ORIGIN}' --json");
     expect(runtime.release.setupCommands.customHosted).toContain("setup --mode custom --delivery hosted --port 49123 --allow-origin '{BROWSER_ORIGIN}' --json");
     expect(runtime.release.setupCommands.customHosted).not.toContain("--port auto");
@@ -88,7 +88,7 @@ describe("live integration contract", () => {
   it("keeps default-port commands concise", () => {
     const runtime = materializeRuntimeIntegrationContract(integration, { port: 4174 });
     expect(runtime.bridge.commands.status).toBe("t3-code-ultralight status --json");
-    expect(runtime.release.startCommand).toContain(" start --json");
+    expect(runtime.release.startCommand).toContain(" start --allow-origin '{BROWSER_ORIGIN}' --json");
   });
 
   it("creates complete copyable recipes for every supported host style", () => {

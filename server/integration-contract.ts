@@ -121,7 +121,7 @@ export function materializeRuntimeIntegrationContract(
   value.bridge.commands.status = `t3-code-ultralight status${portArgument} --json`;
   value.bridge.commands.stop = `t3-code-ultralight stop${portArgument} --json`;
   value.bridge.commands.foreground = `t3-code-ultralight serve${portArgument}`;
-  value.release.startCommand = `npx --yes '${value.release.specifier}' start${portArgument} --json`;
+  value.release.startCommand = `npx --yes '${value.release.specifier}' start${portArgument} --allow-origin '{BROWSER_ORIGIN}' --json`;
   value.release.setupCommands ??= {};
   for (const mode of ["iframe", "react", "element", "custom"]) {
     value.release.setupCommands[mode] = `npx --yes '${value.release.specifier}' setup --mode ${mode}${portArgument} --allow-origin '{BROWSER_ORIGIN}' --json`;

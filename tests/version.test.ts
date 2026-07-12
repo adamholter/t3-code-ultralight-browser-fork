@@ -18,10 +18,16 @@ describe("package version", () => {
     expect(integration.release.specifier).toContain(cacheKey);
     expect(Object.values(integration.release.setupCommands).every((command) => command.includes(cacheKey))).toBe(true);
     expect(Object.values(integration.release.setupCommands).every((command) => command.includes("--allow-origin '{BROWSER_ORIGIN}'"))).toBe(true);
+    expect(integration.release.startCommand).toContain("--allow-origin '{BROWSER_ORIGIN}'");
   });
 
   it("publishes a complete machine-readable integration contract", () => {
     expect(integration.schemaVersion).toBe(1);
+    expect(integration.requirements).toMatchObject({
+      node: ">=22",
+      supportedNodeMajors: [22, 24, 26],
+      runtimePolicy: "currently supported Node.js releases",
+    });
     expect(Object.keys(integration.modes)).toEqual(["completeChat", "customUi", "attachedServer"]);
     expect(integration.bridge).toMatchObject({ bind: "127.0.0.1", port: 4174, integrationPath: "/api/integration" });
     expect(integration.bridge.codexBinary).toMatchObject({
@@ -105,6 +111,16 @@ describe("package version", () => {
     expect(workflow).toContain("actions/attest-build-provenance@v4.1.1");
     expect(workflow).toContain("gh release upload \"$RELEASE_TAG\" release/*.tgz --clobber");
     expect(workflow).toContain("if: ${{ vars.NPM_PUBLISH_ENABLED == 'true' && env.NODE_AUTH_TOKEN != '' }}");
+  });
+
+  it("checks every currently supported Node major", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+    expect(workflow).toContain("node: [22, 24, 26]");
+    expect(workflow).toContain("node-version: ${{ matrix.node }}");
+    expect(integration.release.verification).toMatchObject({
+      nodeMatrix: [22, 24, 26],
+      packedConsumerPerRuntime: true,
+    });
   });
 
   it("keeps React optional for headless installs while declaring the wrapper peer", () => {

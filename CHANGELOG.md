@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.51.0
+
+- Prove the full source and packed-consumer contract independently on every currently supported Node.js major: 22, 24, and 26.
+- Keep Node 22 as the secure minimum instead of claiming support for end-of-life Node 18 or 20 runtimes.
+- Make the direct-start and installed-package embed examples copy-paste safe by including the exact browser origin required by the secure default.
+- Advertise the verified runtime matrix in the machine-readable integration contract.
+
 ## 0.50.0
 
 - Require exact browser origins by default, including separate localhost, `127.0.0.1`, and loopback development ports, while keeping native clients without an Origin header supported.

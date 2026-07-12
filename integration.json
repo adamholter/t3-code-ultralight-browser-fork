@@ -1,30 +1,34 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.50.0",
+  "version": "0.51.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
     "node": ">=22",
+    "supportedNodeMajors": [22, 24, 26],
+    "runtimePolicy": "currently supported Node.js releases",
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' start --allow-origin '{BROWSER_ORIGIN}' --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode iframe --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode react --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode element --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode element --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode custom --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode custom --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode iframe --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode react --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode element --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode element --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode custom --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.51.0' setup --mode custom --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json"
     },
     "verification": {
       "workflow": ".github/workflows/release.yml",
       "trigger": "published GitHub release",
       "cleanCheckout": true,
       "standardChecks": true,
+      "nodeMatrix": [22, 24, 26],
+      "packedConsumerPerRuntime": true,
       "productionAudit": true,
       "npmPublishDryRun": true,
       "githubProvenanceAttestation": true,
@@ -224,6 +228,7 @@
     "automatic setup coexists with another project's default bridge, repeats on the same deterministic port, and returns exact runtime URLs",
     "the exact generated hosted assistant recipe uses one import, streams a stateful follow-up, cancels an active turn, and disposes its scoped fail-closed request adapter",
     "published release archives are rebuilt from the tag, checked, audited, npm-dry-run verified, provenance-attested, and replaced by GitHub Actions",
+    "source and packed-consumer checks pass independently on every supported Node.js major",
     "the standalone browser app remains within 110000 decoded JavaScript and CSS bytes"
   ],
   "performance": {
