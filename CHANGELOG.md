@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.46.1
+
+- Require the explicit repository variable `NPM_PUBLISH_ENABLED=true` in addition to `NPM_TOKEN` before the release workflow may publish to npm.
+- Prevent inherited, stale, or insufficiently scoped organization credentials from failing an otherwise verified GitHub release after assets have already been rebuilt and attested.
+- Keep npm failures strict once an administrator deliberately enables that secondary channel.
+
 ## 0.46.0
 
 - Add a published-release GitHub Actions workflow that reconstructs distribution archives from the exact tag instead of trusting one developer machine.

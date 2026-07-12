@@ -58,7 +58,7 @@ describe("package version", () => {
     expect(workflow).toContain("npm publish \"$PWD/release/$tarball\" --dry-run --json");
     expect(workflow).toContain("actions/attest-build-provenance@v4.1.1");
     expect(workflow).toContain("gh release upload \"$RELEASE_TAG\" release/*.tgz --clobber");
-    expect(workflow).toContain("if: ${{ env.NODE_AUTH_TOKEN != '' }}");
+    expect(workflow).toContain("if: ${{ vars.NPM_PUBLISH_ENABLED == 'true' && env.NODE_AUTH_TOKEN != '' }}");
   });
 
   it("keeps React optional for headless installs while declaring the wrapper peer", () => {

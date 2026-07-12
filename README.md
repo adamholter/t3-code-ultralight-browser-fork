@@ -25,7 +25,7 @@ The package boundary is exercised in clean React 18/19, Next.js 16 App Router, V
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.0' setup --mode iframe --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode iframe --port auto --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project or service owns it. The receipt returns the resolved numeric port for later status and stop commands. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -33,7 +33,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.0' setup --mode custom --delivery hosted --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' setup --mode custom --delivery hosted --port auto --json
 ```
 
 ## One-command chat
@@ -41,7 +41,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
@@ -49,14 +49,14 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.46.1'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
 
 The version query is an intentional npm cache key: the URL still resolves through GitHub's latest release, while each README revision forces npm to fetch the matching prebuilt package instead of reusing an older mutable-URL cache entry. No repository clone, Git checkout, or local compilation is involved. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
 
-GitHub release archives are the canonical distribution path. Every published release triggers a clean Ubuntu build that reruns standard checks and the production dependency audit, recreates both archives, validates the exact npm publication payload with a dry run, attaches GitHub build provenance, and replaces the release assets with those verified outputs. If the repository later receives an `NPM_TOKEN`, the same idempotent workflow can additionally publish the version to the public npm registry without changing the GitHub-link setup contract.
+GitHub release archives are the canonical distribution path. Every published release triggers a clean Ubuntu build that reruns standard checks and the production dependency audit, recreates both archives, validates the exact npm publication payload with a dry run, attaches GitHub build provenance, and replaces the release assets with those verified outputs. The same idempotent workflow can additionally publish to the public npm registry only after an administrator both configures `NPM_TOKEN` and explicitly sets `NPM_PUBLISH_ENABLED=true`; an inherited or stale token cannot activate publication by itself.
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 
