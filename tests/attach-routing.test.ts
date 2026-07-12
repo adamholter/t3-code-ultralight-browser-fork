@@ -54,6 +54,40 @@ describe("attachCodexBridge routing", () => {
     await expect(controller.start()).rejects.toThrow("Codex bridge controller has been stopped");
   });
 
+  it("rejects owned browser requests before stopping the Codex process", async () => {
+    const events: string[] = [];
+    const server = createServer();
+    const bridge = new class extends FakeBridge {
+      override async stop() { events.push("bridge.stop"); }
+      override respondError(id: string | number, message: string) {
+        events.push(`respondError:${String(id)}:${message}`);
+        super.respondError(id, message);
+      }
+    }();
+    const controller = attachCodexBridge(server, { path: "/codex", autoStart: false, bridge });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const owner = new WebSocket(`ws://127.0.0.1:${port}/codex`);
+    await opened(owner);
+    owner.send(JSON.stringify({ type: "rpc", id: "start", method: "thread/start", params: {} }));
+    await nextMessage(owner, (message) => message.type === "rpcResult" && message.id === "start");
+
+    bridge.emit("request", {
+      id: 200,
+      method: "item/commandExecution/requestApproval",
+      params: { threadId: "thread-owned", command: "echo pending" },
+    });
+    await nextMessage(owner, (message) => message.type === "serverRequest" && message.id === 200);
+    await controller.stop();
+
+    expect(events).toEqual([
+      "respondError:200:Owning browser client disconnected",
+      "bridge.stop",
+    ]);
+    expect(bridge.errors).toEqual([{ id: 200, message: "Owning browser client disconnected" }]);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
   it("routes approvals only to the browser that started the thread", async () => {
     const server = createServer();
     const bridge = new FakeBridge();

@@ -83,12 +83,21 @@ try {
   assert.deepEqual(consoleErrors, []);
   assert.deepEqual(pageErrors, []);
 
+  const stubbornSocket = new WebSocket(socketUrl);
+  stubbornSocket.on("error", () => {});
+  await once(stubbornSocket, "open");
+  stubbornSocket._socket.pause();
+  const stopStartedAt = Date.now();
   const firstStop = await fetch(`${origin}/api/codex/stop`, { method: "POST" }).then((response) => response.json());
+  const stopElapsedMs = Date.now() - stopStartedAt;
+  stubbornSocket._socket.resume();
+  stubbornSocket.terminate();
   const secondStop = await fetch(`${origin}/api/codex/stop`, { method: "POST" }).then((response) => response.json());
   assert.deepEqual(firstStop, secondStop);
   assert.equal(firstStop.stopped, true);
   assert.equal(firstStop.hostListening, true);
   assert.equal(firstStop.upgradeListeners, 1);
+  assert.ok(stopElapsedMs >= 60 && stopElapsedMs < 500, `Attached stop was not bounded as expected: ${stopElapsedMs} ms`);
   assert.deepEqual(firstStop.bridgeListeners, { notification: 0, request: 0, ready: 0, exit: 0 });
   assert.equal(await fetch(`${origin}/host-route`).then((response) => response.text()), "host route intact");
   assert.equal(await page.evaluate(() => window.__attachedHost.openHostSocket()), "host-pong");
@@ -109,6 +118,7 @@ try {
     protocol: browserResult.bridgeInfo.protocol,
     capabilities: browserResult.bridgeInfo.capabilities,
     idempotentStop: firstStop === secondStop || JSON.stringify(firstStop) === JSON.stringify(secondStop),
+    nonCooperativeSocketStopMs: stopElapsedMs,
     listenersReleased: firstStop.bridgeListeners,
     hostStillListening: firstStop.hostListening,
     restartRejected: true,
@@ -192,6 +202,7 @@ controller = attachCodexBridge(server, {
   path: "/internal/codex/ws",
   cwd: process.env.HOST_WORKSPACE,
   autoStart: false,
+  browserSocketCloseTimeoutMs: 80,
 });
 await controller.start();
 server.listen(Number(process.env.PORT), "127.0.0.1");

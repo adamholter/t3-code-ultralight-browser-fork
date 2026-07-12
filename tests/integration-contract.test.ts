@@ -44,6 +44,10 @@ describe("live integration contract", () => {
       listenersReleasedOnStop: true,
       hostServerPreservedOnStop: true,
       restartAfterStop: false,
+      pendingRequestsRejectedBeforeProcessStop: true,
+      browserSocketCloseTimeoutMsDefault: 1000,
+      nonCooperativeSocketTerminationVerified: true,
+      publicWsTypeDependency: false,
     });
     expect(runtime.runtime).toEqual({
       live: true,

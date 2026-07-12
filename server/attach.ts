@@ -9,6 +9,7 @@ import { PACKAGE_VERSION } from "./version.js";
 
 export const DEFAULT_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
 export const DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT = 32;
+export const DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS = 1_000;
 
 export interface AttachCodexBridgeOptions extends CodexBridgeOptions {
   path?: string;
@@ -19,15 +20,23 @@ export interface AttachCodexBridgeOptions extends CodexBridgeOptions {
   maxPayloadBytes?: number;
   /** Maximum simultaneous RPC requests from one browser. Defaults to 32. */
   maxPendingRequestsPerClient?: number;
+  /** Maximum graceful-close wait before attached browser sockets are terminated. Defaults to 1000 ms. */
+  browserSocketCloseTimeoutMs?: number;
   /** Advanced: supply a compatible bridge instance (primarily for tests). */
   bridge?: CodexBridge;
 }
 
 export interface CodexBridgeController {
   bridge: CodexBridge;
-  webSocketServer: WebSocketServer;
+  /** Minimal lifecycle surface; the concrete `ws` implementation remains an internal detail. */
+  webSocketServer: CodexBridgeWebSocketServerHandle;
   start(): Promise<void>;
   stop(): Promise<void>;
+}
+
+export interface CodexBridgeWebSocketServerHandle {
+  readonly clients: ReadonlySet<unknown>;
+  close(callback?: (error?: Error) => void): void;
 }
 
 /**
@@ -44,6 +53,7 @@ export function attachCodexBridge(
   const socketPath = normalizeWebSocketPath(options.path);
   const maxPayloadBytes = positiveInteger(options.maxPayloadBytes, DEFAULT_MAX_PAYLOAD_BYTES, "maxPayloadBytes");
   const maxPendingRequestsPerClient = positiveInteger(options.maxPendingRequestsPerClient, DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT, "maxPendingRequestsPerClient");
+  const browserSocketCloseTimeoutMs = positiveInteger(options.browserSocketCloseTimeoutMs, DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS, "browserSocketCloseTimeoutMs");
   const sockets = new Set<WebSocket>();
   const threadOwners = new Map<string, WebSocket>();
   const requestOwners = new Map<string | number, WebSocket>();
@@ -179,7 +189,11 @@ export function attachCodexBridge(
       for (const [requestId, owner] of requestOwners) {
         if (owner !== socket) continue;
         requestOwners.delete(requestId);
-        bridge.respondError(requestId, "Owning browser client disconnected");
+        try {
+          bridge.respondError(requestId, "Owning browser client disconnected");
+        } catch (error) {
+          bridge.emit("log", { level: "debug", message: `Unable to reject disconnected browser request ${String(requestId)}: ${error instanceof Error ? error.message : String(error)}` });
+        }
       }
     });
   });
@@ -199,15 +213,21 @@ export function attachCodexBridge(
       bridge.off("exit", handleExit);
       server.off("upgrade", handleUpgrade);
       stopPromise = (async () => {
-        let bridgeError: unknown;
+        const forceClose = setTimeout(() => {
+          for (const socket of sockets) {
+            if (socket.readyState !== WebSocket.CLOSED) socket.terminate();
+          }
+        }, browserSocketCloseTimeoutMs);
         try {
-          await bridge.stop();
-        } catch (error) {
-          bridgeError = error;
+          for (const socket of sockets) socket.close(1001, "Codex bridge stopping");
+          await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
+        } finally {
+          clearTimeout(forceClose);
         }
-        for (const socket of sockets) socket.close();
-        await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
-        if (bridgeError) throw bridgeError;
+        sockets.clear();
+        threadOwners.clear();
+        requestOwners.clear();
+        await bridge.stop();
       })();
       return stopPromise;
     },

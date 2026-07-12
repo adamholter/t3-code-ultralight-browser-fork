@@ -368,14 +368,17 @@ const controller = attachCodexBridge(httpServer, {
   allowedOrigins: ["https://canvas.example.com"],
   maxPayloadBytes: 16 * 1024 * 1024,
   maxPendingRequestsPerClient: 32,
+  browserSocketCloseTimeoutMs: 1_000,
 });
 
 await controller.start();
 ```
 
-Call `await controller.stop()` during graceful shutdown. Stop is idempotent and final for that controller: it removes the exact HTTP upgrade listener plus every Codex bridge listener, closes only its owned browser sockets, and leaves the host HTTP server and unrelated WebSocket routes running. Create a new controller if the host later needs to attach Codex again. The configured `path` must be a pathname only; query strings, fragments, relative values, and protocol-relative paths are rejected before listener registration.
+Call `await controller.stop()` during graceful shutdown. Stop is idempotent and final for that controller: it removes the exact HTTP upgrade listener plus every Codex bridge listener, closes only its owned browser sockets, and leaves the host HTTP server and unrelated WebSocket routes running. Browser sockets close before the Codex process so pending approvals can receive a final rejection; a client that does not answer the close handshake is terminated after `browserSocketCloseTimeoutMs` (1000 ms by default). Create a new controller if the host later needs to attach Codex again. The configured `path` must be a pathname only; query strings, fragments, relative values, and protocol-relative paths are rejected before listener registration.
 
 Ultralight uses a `noServer` WebSocket handler and compares the request pathname before calling `handleUpgrade()`. A host route such as `/collaboration-ws` is therefore never parsed, answered, or closed by a bridge attached at `/codex-ws`.
+
+`CodexBridgeController.webSocketServer` intentionally exposes only its portable `clients` and `close()` lifecycle surface. The concrete `ws` type remains internal, preventing the server declaration from imposing an undeclared `@types/ws` dependency on TypeScript consumers.
 
 Every thread-scoped notification and app-server request is delivered only to the browser that owns its thread. This includes streamed assistant text, reasoning, tool activity, turn lifecycle, and approvals. Legacy approvals are correlated through `conversationId`; modern requests use `threadId`. Unowned thread notifications are dropped, requests with no identifiable live owner are rejected back to Codex, and a response is accepted exactly once from its recorded owner. Only genuinely unscoped bridge lifecycle notifications are broadcast.
 

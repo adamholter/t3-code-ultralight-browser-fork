@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -9,16 +9,16 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' start --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode iframe --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode react --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode element --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode element --delivery hosted --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode custom --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode custom --delivery hosted --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode iframe --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode react --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode element --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode element --delivery hosted --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode custom --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode custom --delivery hosted --json"
     }
   },
   "bridge": {
@@ -91,7 +91,11 @@
       "idempotentStop": true,
       "listenersReleasedOnStop": true,
       "hostServerPreservedOnStop": true,
-      "restartAfterStop": false
+      "restartAfterStop": false,
+      "pendingRequestsRejectedBeforeProcessStop": true,
+      "browserSocketCloseTimeoutMsDefault": 1000,
+      "nonCooperativeSocketTerminationVerified": true,
+      "publicWsTypeDependency": false
     }
   },
   "security": {
@@ -107,6 +111,7 @@
     "threadNotificationIsolation": true,
     "attachedWebSocketPathIsolation": true,
     "attachedLifecycleCleanup": true,
+    "boundedAttachedSocketShutdown": true,
     "safeMissingRequestHandlers": true,
     "localPathDisclosure": false,
     "pathFreeSetupRecipes": true,
@@ -136,6 +141,7 @@
     "setup-generated browser code inherits the bridge workspace without embedding an absolute local path",
     "the exact packed React export server-renders and streams in clean React 18 and React 19 hosts",
     "the exact packed attached-server export streams on its custom path without touching the host's HTTP or WebSocket routes",
+    "attached shutdown rejects pending owned requests before process exit and terminates non-cooperative browser sockets within its configured bound",
     "the standalone browser app remains within 110000 decoded JavaScript and CSS bytes"
   ],
   "performance": {

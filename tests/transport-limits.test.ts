@@ -41,10 +41,41 @@ describe("browser transport limits", () => {
     await close();
   });
 
+  it("bounds shutdown when a browser does not answer the WebSocket close handshake", async () => {
+    const server = createServer();
+    const bridge = new ControlledBridge();
+    const controller = attachCodexBridge(server, {
+      path: "/codex",
+      autoStart: false,
+      bridge,
+      browserSocketCloseTimeoutMs: 40,
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/codex`);
+    await new Promise<void>((resolve, reject) => {
+      socket.once("open", resolve);
+      socket.once("error", reject);
+    });
+    (socket as any)._socket.pause();
+
+    const startedAt = Date.now();
+    await controller.stop();
+    const elapsedMs = Date.now() - startedAt;
+
+    expect(elapsedMs).toBeGreaterThanOrEqual(30);
+    expect(elapsedMs).toBeLessThan(500);
+    expect(controller.webSocketServer.clients.size).toBe(0);
+    (socket as any)._socket.resume();
+    socket.terminate();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
   it("rejects invalid transport limit configuration before listening", () => {
     const server = createServer();
     expect(() => attachCodexBridge(server, { maxPayloadBytes: 0 })).toThrow("maxPayloadBytes must be a positive integer");
     expect(() => attachCodexBridge(server, { maxPendingRequestsPerClient: 1.5 })).toThrow("maxPendingRequestsPerClient must be a positive integer");
+    expect(() => attachCodexBridge(server, { browserSocketCloseTimeoutMs: 0 })).toThrow("browserSocketCloseTimeoutMs must be a positive integer");
     expect(() => attachCodexBridge(server, { path: "codex" })).toThrow("path must be an absolute URL pathname");
     expect(() => attachCodexBridge(server, { path: "/codex?token=unsafe" })).toThrow("path must contain only an absolute URL pathname");
   });

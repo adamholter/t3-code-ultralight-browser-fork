@@ -5,7 +5,7 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. From the host project's root, prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, makes the invoking directory the default workspace, starts or reuses a compatible bridge, and returns the resolved workspace, exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Generated browser code inherits the bridge workspace and intentionally contains no absolute project path; read `bridge.cwd` when trusted automation needs to verify the resolved directory. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, and use `--cwd` only to override the bridge's invoking directory. The same `--port`, `--allow-origin`, or `--reuse-origin-superset` options accepted by `start` remain available.
+2. From the host project's root, prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, makes the invoking directory the default workspace, starts or reuses a compatible bridge, and returns the resolved workspace, exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Generated browser code inherits the bridge workspace and intentionally contains no absolute project path; read `bridge.cwd` when trusted automation needs to verify the resolved directory. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, and use `--cwd` only to override the bridge's invoking directory. The same `--port`, `--allow-origin`, or `--reuse-origin-superset` options accepted by `start` remain available.
    Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
    For `delivery: "hosted"`, do not install or copy generated modules. Use the receipt's HTTP imports, apply its `csp` sources when the host has a CSP, and serve the host from an origin allowed by the bridge.
 3. Resolve every failed doctor check or report its exact recommendation.
@@ -26,6 +26,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Use the exported `CodexClientEventMap` and inferred callbacks instead of recreating stable event payload interfaces; retain the unknown-event escape hatch only for protocol events the package does not yet type.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
    Use a dedicated pathname-only socket route. Attached stop is idempotent and final, releases all Ultralight listeners, and must not close or corrupt the host's other HTTP or WebSocket routes.
+   Keep the default bounded socket-close timeout unless the host has a documented shutdown requirement; pending owned requests are rejected before Codex exits and non-cooperative clients are then terminated.
 7. Keep the bridge bound to loopback.
 8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.
 9. Never copy Codex credentials, cookies, access tokens, or config secrets into the browser.
@@ -58,6 +59,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Setup-generated browser code contains no resolved workspace path and reports `workspace.overrideEmbedded: false`.
 - The packed React export server-renders, hydrates, and completes a browser turn in clean React 18 and React 19 hosts without console, hydration, Strict Mode, or remount errors.
 - The packed attached-server export streams on a nested custom path while the host's ordinary HTTP route and separate WebSocket route work before and after idempotent bridge stop.
+- Attached stop completes within its configured bound even when a browser refuses the close handshake, and rejects pending owned requests before stopping Codex.
 - Every URL in the live integration contract follows the bridge's actual port.
 - At least one local model is available.
 - A thread can be started or resumed.

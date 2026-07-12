@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.42.0
+
+- Close attached browser sockets before stopping the Codex process so pending approvals and other owned server requests can still be rejected cleanly during teardown.
+- Catch and log late request-rejection failures instead of allowing a socket close event to crash the host process.
+- Bound the graceful WebSocket close handshake and terminate non-cooperative browser clients after a configurable timeout, defaulting to 1000 ms.
+- Clear socket, thread-owner, and request-owner registries before final process shutdown.
+- Export `DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS` and add `browserSocketCloseTimeoutMs` to the typed attached-server options.
+- Stop leaking the internal `ws.WebSocketServer` declaration through the public controller type, so TypeScript server consumers no longer need an undeclared `@types/ws` package.
+- Verify ordering with a pending owned approval, enforce timeout validation, and simulate a browser that deliberately stops reading before controller shutdown.
+- Extend the exact packed existing-server browser harness to prove an unresponsive socket is released within its configured 80 ms test bound while host routes stay online.
+- Make fresh-project QA clean its synthetic Codex threads even on render timeout and emit app-server/thread/UI diagnostics plus a failure screenshot instead of leaving opaque state behind.
+
 ## 0.41.0
 
 - Replace the attached bridge's automatic `ws` server takeover with an exact-path `noServer` upgrade handler so unrelated host WebSocket routes are never touched.

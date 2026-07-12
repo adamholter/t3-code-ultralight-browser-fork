@@ -104,6 +104,10 @@ try {
     || result.integrationContract.attachedServerCompatibility?.listenersReleasedOnStop !== true
     || result.integrationContract.attachedServerCompatibility?.hostServerPreservedOnStop !== true
     || result.integrationContract.attachedServerCompatibility?.restartAfterStop !== false
+    || result.integrationContract.attachedServerCompatibility?.pendingRequestsRejectedBeforeProcessStop !== true
+    || result.integrationContract.attachedServerCompatibility?.browserSocketCloseTimeoutMsDefault !== 1000
+    || result.integrationContract.attachedServerCompatibility?.nonCooperativeSocketTerminationVerified !== true
+    || result.integrationContract.attachedServerCompatibility?.publicWsTypeDependency !== false
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length

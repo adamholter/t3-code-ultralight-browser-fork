@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -19,6 +20,7 @@ try {
     "--no-audit",
     "--no-fund",
     packagePath,
+    "@types/node@24.13.3",
   ], {
     cwd: fixture,
     encoding: "utf8",
@@ -34,6 +36,18 @@ import {
 import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
 import { createIntegrationRecipe } from "t3-code-ultralight-browser-fork/integration";
 import { createCodexEmbedController } from "t3-code-ultralight-browser-fork/embed-events";
+import {
+  attachCodexBridge,
+  DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS,
+  type AttachCodexBridgeOptions,
+} from "t3-code-ultralight-browser-fork/server";
+import type { Server } from "node:http";
+
+declare const httpServer: Server;
+const attachedOptions: AttachCodexBridgeOptions = { autoStart: false, browserSocketCloseTimeoutMs: 750 };
+const attachedController = attachCodexBridge(httpServer, attachedOptions);
+const defaultSocketCloseTimeout: 1000 = DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS;
+void [attachedController, defaultSocketCloseTimeout];
 
 const client = createCodexClient();
 const canvas = createCodexSession({ client, cwd: "/workspace" });
@@ -105,6 +119,7 @@ client.on("connection", (status: number) => void status);
   const compiler = resolve(process.cwd(), "node_modules/.bin/tsc");
   const compile = spawnSync(compiler, ["--project", "tsconfig.json"], { cwd: fixture, encoding: "utf8" });
   if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout);
+  if (existsSync(resolve(fixture, "node_modules/@types/ws"))) throw new Error("Packed server types unexpectedly require @types/ws");
 
   await writeFile(resolve(fixture, "runtime.mjs"), `
 const allExports = ${JSON.stringify(expectedExports)};
@@ -173,6 +188,7 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
     runtimeExports: expectedExports,
     headlessWithoutReact: true,
     optionalReactPeer: true,
+    serverTypesWithoutWsTypePackage: true,
     cliEntrypoint: true,
   }, null, 2));
 } finally {

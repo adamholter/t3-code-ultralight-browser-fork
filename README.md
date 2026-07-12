@@ -23,7 +23,7 @@ The complete chat ships in about 94 KB of decoded JavaScript plus CSS. Its respo
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode iframe --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. Add `--port` or `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -31,7 +31,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' setup --mode custom --delivery hosted --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' setup --mode custom --delivery hosted --json
 ```
 
 ## One-command chat
@@ -39,7 +39,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
@@ -47,7 +47,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.41.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.42.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -262,7 +262,9 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 
 For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["https://canvas.example.com"]`.
 
-The attached bridge handles only its exact configured pathname and leaves every other HTTP upgrade untouched, so the host can keep its own WebSocket routes. `await codex.stop()` is idempotent and final: it closes only Codex sockets, removes every listener Ultralight added, and leaves the host server running. Create a new controller to attach again after stopping.
+The attached bridge handles only its exact configured pathname and leaves every other HTTP upgrade untouched, so the host can keep its own WebSocket routes. `await codex.stop()` is idempotent and final: it first closes Codex browser sockets while pending owned requests can still be rejected, forcibly terminates non-cooperative clients after one second, removes every listener Ultralight added, and then stops Codex while leaving the host server running. Set `browserSocketCloseTimeoutMs` only when the host needs a different shutdown bound. Create a new controller to attach again after stopping.
+
+The public controller exposes a minimal structural WebSocket-server handle rather than leaking the internal `ws` implementation type, so TypeScript hosts do not need to install `@types/ws` merely to import the server API.
 
 ## Included behavior
 

@@ -67,6 +67,9 @@ try {
   assert.notEqual(mismatched.status, 0);
   assert.match(mismatched.stderr, /different default workspace/);
 
+  client = createCodexClient({ url: `ws://127.0.0.1:${port}/ws`, reconnectMs: false });
+  await client.connect();
+
   browser = await chromium.launch({ headless: true });
   recipeHost = createServer((request, response) => {
     if (request.url === "/app.js") {
@@ -120,7 +123,22 @@ try {
 
   await page.getByLabel("Message Codex").fill(`Reply with exactly: ${marker}`);
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await page.locator(".assistant-message").getByText(marker, { exact: false }).waitFor({ timeout: 120_000 });
+  try {
+    await page.locator(".assistant-message").getByText(marker, { exact: false }).waitFor({ timeout: 120_000 });
+  } catch (error) {
+    await page.screenshot({ path: "/tmp/codex-web-fresh-workspace-timeout.png", fullPage: true }).catch(() => undefined);
+    const recent = await client.request("thread/list", { limit: 100, sortKey: "recency_at", sortDirection: "desc" }).catch(() => ({ data: [] }));
+    const matchingThreads = recent.data
+      .filter((entry) => entry.preview?.includes(marker) || entry.preview?.includes(customMarker))
+      .map((entry) => ({ id: entry.id, preview: entry.preview, status: entry.status }));
+    const diagnostics = {
+      consoleErrors,
+      matchingThreads,
+      working: await page.locator(".working").count(),
+      assistantMessages: await page.locator(".assistant-message").count(),
+    };
+    throw new Error(`Fresh-workspace browser turn did not render: ${error instanceof Error ? error.message : String(error)}; diagnostics=${JSON.stringify(diagnostics)}`);
+  }
   await page.locator(".working").waitFor({ state: "detached", timeout: 120_000 });
   const activeSubtitle = await page.locator(".thread-heading span").innerText();
   assert.equal(activeSubtitle, directory);
@@ -153,8 +171,6 @@ try {
   await page.screenshot({ path: "/tmp/codex-web-fresh-workspace-mobile.png", fullPage: true });
   assert.deepEqual(consoleErrors, []);
 
-  client = createCodexClient({ url: `ws://127.0.0.1:${port}/ws`, reconnectMs: false });
-  await client.connect();
   const threadPage = await client.request("thread/list", { limit: 20, sortKey: "recency_at", sortDirection: "desc" });
   const thread = threadPage.data.find((entry) => entry.preview?.includes(marker));
   const recipeThread = threadPage.data.find((entry) => entry.preview?.includes(customMarker));
@@ -186,6 +202,7 @@ try {
     consoleErrors,
   }, null, 2));
 } finally {
+  if (client) await deleteMarkerThreads(client, [marker, customMarker]).catch(() => undefined);
   client?.close();
   await browser?.close();
   if (recipeHost?.listening) await new Promise((resolveClose) => recipeHost.close(resolveClose));
@@ -195,6 +212,14 @@ try {
   }
   await rm(directory, { recursive: true, force: true });
   await rm(otherDirectory, { recursive: true, force: true });
+}
+
+async function deleteMarkerThreads(codex, markers) {
+  const page = await codex.request("thread/list", { limit: 100, sortKey: "recency_at", sortDirection: "desc" });
+  for (const thread of page.data ?? []) {
+    if (!markers.some((value) => thread.preview?.includes(value))) continue;
+    await codex.request("thread/delete", { threadId: thread.id }).catch(() => undefined);
+  }
 }
 
 function runCli(args, cwd) {
