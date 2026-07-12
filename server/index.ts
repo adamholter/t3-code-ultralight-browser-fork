@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { attachCodexBridge } from "./attach.js";
+import { attachCodexBridge, DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT } from "./attach.js";
 import { readAllowedOrigins } from "./origins.js";
 import { PACKAGE_VERSION } from "./version.js";
 
@@ -20,6 +20,10 @@ const server = createServer(async (request, response) => {
       cwd: process.env.HOME ?? process.cwd(),
       version: PACKAGE_VERSION,
       allowedOrigins,
+      transport: {
+        maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
+        maxPendingRequestsPerClient: DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT,
+      },
     });
   }
 

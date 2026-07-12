@@ -171,12 +171,18 @@ const controller = attachCodexBridge(httpServer, {
   path: "/codex-ws",
   cwd: process.cwd(),
   allowedOrigins: ["https://canvas.example.com"],
+  maxPayloadBytes: 16 * 1024 * 1024,
+  maxPendingRequestsPerClient: 32,
 });
 
 await controller.start();
 ```
 
 Call `await controller.stop()` during graceful shutdown.
+
+Every app-server request is delivered only to the browser that owns its thread. Legacy approvals are correlated through `conversationId`; modern requests use `threadId`. Requests with no identifiable live owner are rejected back to Codex rather than broadcast, and a response is accepted exactly once from its recorded owner.
+
+Browser messages must use the documented `rpc`, `respond`, or `respondError` envelope. The defaults allow messages up to 16 MiB and 32 simultaneous RPCs per browser, which accommodates normal multimodal input while bounding accidental or hostile clients. Existing-server integrations can adjust both limits explicitly as shown above. The standalone `/api/status` response reports its active defaults.
 
 ## Canvas recipe
 

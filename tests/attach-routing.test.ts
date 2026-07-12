@@ -7,6 +7,7 @@ import { CodexBridge } from "../server/codex-bridge";
 
 class FakeBridge extends CodexBridge {
   responses: Array<{ id: string | number; result: unknown }> = [];
+  errors: Array<{ id: string | number; message: string }> = [];
 
   override async start() {}
   override async stop() {}
@@ -16,6 +17,9 @@ class FakeBridge extends CodexBridge {
   }
   override respond(id: string | number, result: unknown) {
     this.responses.push({ id, result });
+  }
+  override respondError(id: string | number, message: string) {
+    this.errors.push({ id, message });
   }
 }
 
@@ -52,6 +56,28 @@ describe("attachCodexBridge routing", () => {
     owner.send(JSON.stringify({ type: "respond", id: 99, result: { decision: "accept" } }));
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(bridge.responses).toEqual([{ id: 99, result: { decision: "accept" } }]);
+
+    other.send(JSON.stringify({ type: "respond", id: 99, result: { decision: "decline" } }));
+    await nextMessage(other, (message) => message.type === "bridgeError");
+    expect(bridge.responses).toHaveLength(1);
+
+    bridge.emit("request", {
+      id: 100,
+      method: "execCommandApproval",
+      params: { conversationId: "thread-owned", command: ["echo", "legacy"] },
+    });
+    expect((await nextMessage(owner, (message) => message.type === "serverRequest" && message.id === 100)).method).toBe("execCommandApproval");
+    owner.send(JSON.stringify({ type: "respond", id: 100, result: { decision: "approved" } }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    bridge.emit("request", { id: 101, method: "item/tool/requestUserInput", params: { threadId: "thread-without-owner" } });
+    bridge.emit("request", { id: 102, method: "attestation/generate", params: {} });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(bridge.errors).toEqual([
+      { id: 101, message: "No browser client owns thread thread-without-owner" },
+      { id: 102, message: "Cannot safely route unscoped server request attestation/generate" },
+    ]);
+    expect(otherMessages.some((message) => message.id === 101 || message.id === 102)).toBe(false);
 
     await controller.stop();
     await new Promise<void>((resolve) => server.close(() => resolve()));

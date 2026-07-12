@@ -13,6 +13,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.
 9. Never copy Codex credentials, cookies, access tokens, or config secrets into the browser.
 10. Preserve approval and user-input requests instead of silently accepting them.
+    Never broadcast an unowned request or forward a response without recorded ownership.
 11. Verify one real local Codex turn through the final user-facing UI.
 
 ## Minimal agent task
@@ -39,3 +40,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.
 - Mobile or constrained-container layout does not overflow.
 - Embedded hosts receive ready and turn lifecycle events only from the expected iframe origin.
+- Malformed, oversized, over-concurrent, unowned, and duplicate-response transport paths fail closed.

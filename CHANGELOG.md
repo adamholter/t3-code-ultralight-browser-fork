@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0
+
+- Fail closed instead of broadcasting server requests with no identifiable live owner.
+- Route legacy `conversationId` approvals through the same ownership model as modern requests.
+- Reject responses with unknown, consumed, or other-client request IDs.
+- Strictly validate browser `rpc`, `respond`, and `respondError` envelopes.
+- Bound WebSocket payloads to 16 MiB and simultaneous RPCs to 32 per browser by default.
+- Make both limits configurable for existing-server integrations and visible in standalone status.
+- Handle oversized-socket errors without surfacing an uncaught process exception.
+- Add real multi-client, malformed-message, concurrency-limit, and close-code verification.
+
 ## 0.9.0
 
 - Add a versioned, lifecycle-only parent/iframe event protocol.
