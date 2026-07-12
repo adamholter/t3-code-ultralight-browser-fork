@@ -4,6 +4,7 @@ import { Composer } from "./components/Composer";
 import { PendingRequestPanel } from "./components/PendingRequestPanel";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
+import { postCodexEmbedEvent } from "./embed-events";
 import { codex } from "./lib/codex-client";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
@@ -32,7 +33,8 @@ export default function App() {
 
   useEffect(() => {
     selectedThreadId.current = selected?.id ?? null;
-  }, [selected?.id]);
+    if (embedded) postCodexEmbedEvent({ event: "thread", threadId: selected?.id ?? null });
+  }, [embedded, selected?.id]);
 
   const loadSidebar = useCallback(async () => {
     try {
@@ -41,13 +43,15 @@ export default function App() {
         codex.request<{ data: CodexModel[] }>("model/list", { limit: 100 }),
       ]);
       setThreads(threadPage.data);
-      setModels(modelPage.data.filter((entry) => !entry.hidden));
+      const visibleModels = modelPage.data.filter((entry) => !entry.hidden);
+      setModels(visibleModels);
       setModel((current) => current || modelPage.data.find((entry) => entry.isDefault)?.model || modelPage.data[0]?.model || "");
       setStatus("ready");
+      if (embedded) postCodexEmbedEvent({ event: "ready", status: "ready", modelCount: visibleModels.length });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
-  }, []);
+  }, [embedded]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -55,10 +59,19 @@ export default function App() {
   }, [dark]);
 
   useEffect(() => {
+    if (embedded) postCodexEmbedEvent({ event: "connection", status });
+  }, [embedded, status]);
+
+  useEffect(() => {
     codex.connect();
     const cleanup = [
-      codex.on("connection", (next) => { setStatus(next); if (next === "ready") void loadSidebar(); }),
-      codex.on("status", (message) => setStatus(message.status)),
+      codex.on("connection", (next) => {
+        setStatus(next);
+        if (next === "ready") void loadSidebar();
+      }),
+      codex.on("status", (message) => {
+        setStatus(message.status);
+      }),
       codex.on("serverRequest", (request) => {
         if (request.params?.threadId === selectedThreadId.current) {
           setPendingRequests((current) => [...current, request]);
@@ -83,13 +96,25 @@ export default function App() {
         if (payload.threadId === selectedThreadId.current) setItems((current) => appendItemDelta(current, payload.itemId, "aggregatedOutput", payload.delta));
       }),
       codex.on("turn/started", (payload) => {
-        if (payload.threadId === selectedThreadId.current) { setTurnId(payload.turn.id); setRunning(true); }
+        if (payload.threadId === selectedThreadId.current) {
+          setTurnId(payload.turn.id);
+          setRunning(true);
+          if (embedded) postCodexEmbedEvent({ event: "turn", phase: "started", threadId: payload.threadId, turnId: payload.turn.id });
+        }
       }),
       codex.on("turn/completed", (payload) => {
         if (payload.threadId !== selectedThreadId.current) return;
         setTurnId(null);
         setRunning(false);
         if (payload.turn?.error?.message) setError(payload.turn.error.message);
+        if (embedded) postCodexEmbedEvent({
+          event: "turn",
+          phase: "completed",
+          threadId: payload.threadId,
+          turnId: payload.turn.id,
+          status: payload.turn.status,
+          ...(payload.turn?.error?.message ? { error: payload.turn.error.message } : {}),
+        });
         void loadSidebar();
       }),
       codex.on("error", (payload) => {
@@ -100,7 +125,11 @@ export default function App() {
       codex.on("thread/name/updated", () => void loadSidebar()),
     ];
     return () => { cleanup.forEach((off) => off()); codex.close(); };
-  }, [loadSidebar]);
+  }, [embedded, loadSidebar]);
+
+  useEffect(() => {
+    if (embedded && error) postCodexEmbedEvent({ event: "error", message: error, threadId: selectedThreadId.current });
+  }, [embedded, error]);
 
   async function selectThread(thread: CodexThread) {
     dismissPendingRequests("User switched Codex threads");

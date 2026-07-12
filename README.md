@@ -58,6 +58,8 @@ import "t3-code-ultralight-browser-fork/element/auto";
 
 It is safe to import during SSR and upgrades automatically once a browser DOM exists. Use `defineCodexChatElement()` when the host needs a custom tag name or explicit registration timing.
 
+The element emits origin-verified `codex-chat-ready`, `codex-chat-connection`, `codex-chat-thread`, `codex-chat-turn`, and `codex-chat-error` events. Every event carries lifecycle metadata only—never prompts, responses, credentials, or tool payloads.
+
 Use `bridge-url="http://127.0.0.1:4174/?mode=plan"` when the embedded chat should run in Codex Plan mode and support interactive clarification questions.
 
 React projects can use the wrapper:
@@ -66,7 +68,13 @@ React projects can use the wrapper:
 import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 
 export function AssistantPanel() {
-  return <CodexChatEmbed style={{ height: 640 }} />;
+  return (
+    <CodexChatEmbed
+      style={{ height: 640 }}
+      onCodexReady={({ modelCount }) => console.log(`${modelCount} models ready`)}
+      onTurnChange={({ phase }) => setAssistantBusy(phase === "started")}
+    />
+  );
 }
 ```
 
@@ -140,6 +148,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Approval requests routed only to the browser client that owns the active turn
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
+- Origin-verified embed lifecycle events for host coordination without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
 
 ## Deliberately excluded

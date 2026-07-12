@@ -24,7 +24,15 @@ import "t3-code-ultralight-browser-fork/element/auto";
 <codex-chat bridge-url="/local-codex" min-height="560px"></codex-chat>
 ```
 
-Supported attributes are `bridge-url`, `title`, `min-height`, and `loading`. Style the isolated frame through `codex-chat::part(frame)`. Listen for `codex-chat-ready` when it loads.
+Supported attributes are `bridge-url`, `title`, `min-height`, and `loading`. Style the isolated frame through `codex-chat::part(frame)`. `codex-chat-load` reports the iframe load; `codex-chat-ready` means the local bridge and model catalog are actually ready.
+
+```ts
+const chat = document.querySelector("codex-chat");
+chat.addEventListener("codex-chat-turn", (event) => {
+  const { detail } = event as CustomEvent<{ phase: "started" | "completed" }>;
+  hostControls.busy = detail.phase === "started";
+});
+```
 
 For explicit registration or a custom tag:
 
@@ -44,6 +52,30 @@ import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 ```
 
 Start the bridge with `npx t3-code-ultralight serve`.
+
+React hosts receive the same verified events as typed callbacks:
+
+```tsx
+<CodexChatEmbed
+  onCodexReady={({ modelCount }) => setModelCount(modelCount)}
+  onConnectionChange={({ status }) => setCodexStatus(status)}
+  onThreadChange={({ threadId }) => saveThreadId(threadId)}
+  onTurnChange={({ phase }) => setBusy(phase === "started")}
+  onCodexError={({ message }) => showError(message)}
+/>
+```
+
+The complete lifecycle event set is `connection`, `ready`, `thread`, `turn`, and `error`. It intentionally excludes prompt text, response text, credentials, and tool payloads.
+
+Raw iframe hosts can use the same exact-window and exact-origin filter:
+
+```ts
+import { subscribeCodexEmbedEvents } from "t3-code-ultralight-browser-fork/embed-events";
+
+const unsubscribe = subscribeCodexEmbedEvents(iframe, (event) => {
+  if (event.event === "turn") setBusy(event.phase === "started");
+});
+```
 
 ## Browser origins
 

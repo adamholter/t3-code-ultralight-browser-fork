@@ -83,12 +83,41 @@ elementPage.on("console", (message) => {
 elementPage.on("pageerror", (error) => consoleErrors.push(error.message));
 await elementPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
 await elementPage.setContent(`<codex-chat bridge-url="${baseUrl}" title="Embedded Codex" min-height="560px"></codex-chat>`);
+await elementPage.evaluate(() => {
+  window.__codexEmbedEvents = [];
+  const element = document.querySelector("codex-chat");
+  element.addEventListener("codex-chat-event", (event) => window.__codexEmbedEvents.push(event.detail));
+  element.addEventListener("codex-chat-load", () => window.__codexEmbedEvents.push({ event: "load" }));
+});
 await elementPage.addScriptTag({ path: elementModule, type: "module" });
 await elementPage.waitForFunction(() => document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe"));
 await elementPage.waitForFunction(() => {
   const frame = document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe");
   return (frame?.contentDocument?.querySelectorAll('select[aria-label="Model"] option').length ?? 0) > 0
     && frame?.contentDocument?.querySelector(".empty-state h1")?.textContent?.includes("local Codex");
+});
+await elementPage.waitForFunction(() => window.__codexEmbedEvents?.some((event) => event.event === "ready"));
+const spoofRejected = await elementPage.evaluate(() => {
+  const iframe = document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe");
+  const before = window.__codexEmbedEvents.length;
+  window.dispatchEvent(new MessageEvent("message", {
+    source: iframe?.contentWindow,
+    origin: "https://untrusted.example",
+    data: { source: "t3-code-ultralight", version: 1, event: "error", message: "spoofed" },
+  }));
+  return window.__codexEmbedEvents.length === before;
+});
+const elementSmoke = `ELEMENT_EVENT_SMOKE_${Date.now()}`;
+cleanupTexts.push(elementSmoke);
+const elementFrame = elementPage.frameLocator("codex-chat iframe");
+await elementFrame.getByLabel("Message Codex").fill(`Reply with exactly: ${elementSmoke}`);
+await elementFrame.getByRole("button", { name: "Send", exact: true }).click();
+await elementFrame.locator(".assistant-message").getByText(elementSmoke, { exact: false }).waitFor({ timeout: 120_000 });
+await elementPage.waitForFunction(() => {
+  const events = window.__codexEmbedEvents ?? [];
+  return events.some((event) => event.event === "thread" && event.threadId)
+    && events.some((event) => event.event === "turn" && event.phase === "started")
+    && events.some((event) => event.event === "turn" && event.phase === "completed");
 });
 const elementState = await elementPage.locator("codex-chat").evaluate((element) => {
   const iframe = element.shadowRoot?.querySelector("iframe");
@@ -97,6 +126,9 @@ const elementState = await elementPage.locator("codex-chat").evaluate((element) 
     title: iframe?.title,
     minHeight: getComputedStyle(element).minHeight,
     modelOptions: iframe?.contentDocument?.querySelectorAll('select[aria-label="Model"] option').length ?? 0,
+    eventNames: window.__codexEmbedEvents.map((event) => event.event),
+    turnPhases: window.__codexEmbedEvents.filter((event) => event.event === "turn").map((event) => event.phase),
+    lifecycleOnly: window.__codexEmbedEvents.every((event) => !["text", "content", "prompt", "response", "token", "credentials"].some((key) => key in event)),
   };
 });
 await elementPage.screenshot({ path: "/tmp/codex-web-element.png", fullPage: true });
@@ -105,8 +137,14 @@ await elementPage.close();
 const elementReady = elementState.frameUrl?.includes("embed=1")
   && elementState.title === "Embedded Codex"
   && elementState.minHeight === "560px"
-  && elementState.modelOptions > 0;
-console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, overflow, questionOverflow, questionAttempts, consoleErrors }, null, 2));
+  && elementState.modelOptions > 0
+  && elementState.eventNames.includes("ready")
+  && elementState.eventNames.includes("thread")
+  && elementState.turnPhases.includes("started")
+  && elementState.turnPhases.includes("completed")
+  && elementState.lifecycleOnly
+  && spoofRejected;
+console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, embedEventNames: elementState.eventNames, embedTurnPhases: elementState.turnPhases, lifecycleOnly: elementState.lifecycleOnly, spoofRejected, overflow, questionOverflow, questionAttempts, consoleErrors }, null, 2));
 
 if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || questionOverflow || consoleErrors.length) {
   throw new Error("Browser QA assertions failed");
@@ -127,10 +165,17 @@ async function openUserInputPanel(page, marker) {
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await page.locator(".working").waitFor({ timeout: 20_000 });
     const outcome = await Promise.race([
-      page.locator(".user-input-panel").waitFor({ timeout: 120_000 }).then(() => "panel"),
-      page.locator(".working").waitFor({ state: "detached", timeout: 120_000 }).then(() => "completed"),
+      page.locator(".user-input-panel").waitFor({ timeout: 65_000 }).then(() => "panel"),
+      page.locator(".working").waitFor({ state: "detached", timeout: 65_000 }).then(() => "completed"),
+      page.waitForTimeout(60_000).then(() => "stalled"),
     ]);
     if (outcome === "panel") return attempt;
+    if (outcome === "stalled") {
+      await page.screenshot({ path: `/tmp/codex-web-question-stalled-${attempt}.png`, fullPage: true });
+      const stop = page.getByRole("button", { name: "Stop", exact: true });
+      if (await stop.isVisible()) await stop.click();
+      await page.locator(".working").waitFor({ state: "detached", timeout: 20_000 });
+    }
   }
   throw new Error("Codex completed three Plan-mode turns without invoking request_user_input");
 }

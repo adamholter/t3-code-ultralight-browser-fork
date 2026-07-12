@@ -6,6 +6,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 2. Install the package and run `npx t3-code-ultralight doctor --json` before modifying the host.
 3. Resolve every failed doctor check or report its exact recommendation.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
+   Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
 5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.
@@ -37,3 +38,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - No secret is present in browser storage or bundles.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.
 - Mobile or constrained-container layout does not overflow.
+- Embedded hosts receive ready and turn lifecycle events only from the expected iframe origin.

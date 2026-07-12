@@ -5,6 +5,7 @@ export default defineConfig({
     client: "src/lib/codex-client.ts",
     react: "src/embed/index.ts",
     element: "src/element.ts",
+    "embed-events": "src/embed-events.ts",
     "element-auto": "src/element-auto.ts",
     server: "server/attach.ts",
     doctor: "server/doctor.ts",

@@ -1,4 +1,5 @@
 import { buildEmbedUrl } from "./embed-url";
+import { subscribeCodexEmbedEvents } from "./embed-events";
 
 export interface DefineCodexChatElementOptions {
   tagName?: string;
@@ -17,6 +18,7 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
 
   class CodexChatElement extends HTMLElement {
     static observedAttributes = ["bridge-url", "title", "min-height", "loading"];
+    private unsubscribeEvents: (() => void) | null = null;
 
     connectedCallback() {
       this.render();
@@ -26,7 +28,14 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
       if (this.isConnected) this.render();
     }
 
+    disconnectedCallback() {
+      this.unsubscribeEvents?.();
+      this.unsubscribeEvents = null;
+    }
+
     private render() {
+      this.unsubscribeEvents?.();
+      this.unsubscribeEvents = null;
       const root = this.shadowRoot ?? this.attachShadow({ mode: "open" });
       root.replaceChildren();
       this.style.setProperty("--codex-chat-min-height", this.getAttribute("min-height") ?? "420px");
@@ -42,9 +51,14 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
       iframe.allow = "clipboard-read; clipboard-write";
       iframe.part.add("frame");
       iframe.addEventListener("load", () => {
-        this.dispatchEvent(new CustomEvent("codex-chat-ready", { bubbles: true, composed: true }));
+        this.dispatchEvent(new CustomEvent("codex-chat-load", { bubbles: true, composed: true }));
       }, { once: true });
       root.append(style, iframe);
+      this.unsubscribeEvents = subscribeCodexEmbedEvents(iframe, (detail) => {
+        const options = { detail, bubbles: true, composed: true };
+        this.dispatchEvent(new CustomEvent("codex-chat-event", options));
+        this.dispatchEvent(new CustomEvent(`codex-chat-${detail.event}`, options));
+      });
     }
   }
 

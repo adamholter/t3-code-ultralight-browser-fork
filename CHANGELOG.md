@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0
+
+- Add a versioned, lifecycle-only parent/iframe event protocol.
+- Report actual bridge readiness, connection status, selected thread, turn lifecycle, and errors.
+- Add typed React callbacks for every embed lifecycle event.
+- Add Web Component `codex-chat-*` events and distinguish iframe load from Codex readiness.
+- Export an SSR-safe raw iframe event subscriber with exact window and origin filtering.
+- Exclude prompts, responses, credentials, and tool payloads from all parent events.
+- Verify live ready/thread/turn delivery and forged-origin rejection in a real browser.
+
 ## 0.8.0
 
 - Add `createCodexSession()` with remembered thread state and one-call `send()` follow-ups.
