@@ -4,7 +4,7 @@ const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-r
 const { chromium } = require("playwright");
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:4174";
 const baseOrigin = new URL(baseUrl).origin;
-const maxAssetBytes = Number(process.env.QA_MAX_ASSET_BYTES ?? 260_000);
+const maxAssetBytes = Number(process.env.QA_MAX_ASSET_BYTES ?? 110_000);
 const maxReadyMs = Number(process.env.QA_MAX_READY_MS ?? 5_000);
 
 const browser = await chromium.launch({ headless: true });
@@ -59,6 +59,8 @@ try {
       version: integrationContract.version,
       modes: Object.keys(integrationContract.modes ?? {}),
       noStore: contractResponse.headers()["cache-control"] === "no-store",
+      budgetMatches: integrationContract.performance?.browserAppBudgetBytes === maxAssetBytes,
+      markdownRuntimeDependencies: integrationContract.performance?.externalMarkdownRuntimeDependencies,
       runtimeAware: integrationContract.runtime?.live === true
         && integrationContract.runtime.origin === baseOrigin
         && integrationContract.bridge?.httpUrl === baseOrigin
@@ -79,6 +81,8 @@ try {
     || result.integrationContract.schemaVersion !== 1
     || result.integrationContract.modes.join(",") !== "completeChat,customUi,attachedServer"
     || !result.integrationContract.noStore
+    || !result.integrationContract.budgetMatches
+    || result.integrationContract.markdownRuntimeDependencies !== 0
     || !result.integrationContract.runtimeAware
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404

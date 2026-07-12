@@ -16,12 +16,14 @@ This project is the smallest practical bridge between a browser UI and a user's 
 
 It uses the user's existing Codex login, configuration, models, skills, MCP tools, workspace permissions, and thread history. API keys and Codex credentials never enter browser JavaScript.
 
+The complete chat ships in about 90 KB of decoded JavaScript plus CSS. Its response renderer has no external Markdown runtime: it creates escaped React nodes directly, keeps raw response HTML inert, and still covers the code, tables, tasks, links, quotes, and formatting Codex commonly emits.
+
 ## One-command integration
 
 An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.35.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' setup --mode iframe --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -29,7 +31,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.35.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
 ```
 
 ## One-command chat
@@ -37,7 +39,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.35.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -45,7 +47,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.35.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -245,6 +247,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - MCP elicitation forms for text, numbers, booleans, selects, multi-selects, and safe authorization URLs
 - Model, reasoning effort, and working-directory selection
 - Markdown, code copy, desktop/mobile layouts, and themes
+- Built-in safe response Markdown with no raw-HTML execution or external Markdown runtime dependency
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
 - Idempotent startup plus human and JSON runtime status inspection
@@ -259,6 +262,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Versioned browser handshake with early protocol and required-capability validation
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - No-store HTML/metadata, immutable hashed assets, stale-asset 404s, and an embed-compatible CSP
+- Enforced 110 KB decoded JavaScript-plus-CSS ceiling for the complete browser app
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - No-bundler chat and headless-client modules served directly by the local bridge
 - Origin-verified embed lifecycle events for host coordination without response-data leakage

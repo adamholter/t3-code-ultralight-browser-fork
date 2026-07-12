@@ -94,6 +94,8 @@ React hosts receive the same verified events as typed callbacks:
 
 The complete lifecycle event set is `connection`, `ready`, `thread`, `turn`, and `error`. It intentionally excludes prompt text, response text, credentials, and tool payloads.
 
+The complete chat renders Markdown into React nodes without injecting response HTML. It supports the response structures Codex commonly emits—including fenced/inline code, lists and tasks, tables, quotes, links, images, and emphasis—while leaving HTML literal and rejecting unsafe URL protocols. The built-in renderer has no external Markdown runtime dependency; `npm run qa:markdown` verifies representative desktop/mobile output and the 110 KB application budget.
+
 Raw iframe hosts can use the same exact-window and exact-origin filter:
 
 ```ts

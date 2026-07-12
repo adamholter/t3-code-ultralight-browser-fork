@@ -7,6 +7,7 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 - Zero-install browser delivery: add `--delivery hosted` for element or custom modes
 - Non-loopback hosts: pass exact `--allow-origin`; the receipt repeats it under `originPolicy`
 - Trusted file or sandbox hosts: pass `--allow-origin null` and require `opaqueOriginAllowed: true`
+- Complete chat budget: 110000 decoded JS+CSS bytes; built-in safe Markdown has no external runtime dependency
 - Agent implementation guide: ./docs/AGENT_INTEGRATION.md
 - Human quickstart and API overview: ./README.md
 - Detailed recipes and security model: ./docs/INTEGRATION.md

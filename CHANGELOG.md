@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.36.0
+
+- Replace the ReactMarkdown, unified, micromark, mdast/hast, and remark-GFM runtime chain with a purpose-built safe React-node renderer for Codex responses.
+- Reduce standalone JavaScript from 222.84 KB to 72.09 KB and total decoded JavaScript plus CSS from 240,402 bytes to 90,578 bytes, a 62% reduction.
+- Lower the enforced browser-app ceiling from 260,000 to 110,000 bytes so the removed dependency graph cannot silently return.
+- Preserve fenced and indented code with copy controls, inline code, headings, hard breaks, emphasis, strikethrough, safe links/autolinks, images, quotes, ordered/unordered/task lists, nesting, and aligned GFM tables.
+- Render response HTML as inert text and reject unsafe link/image protocols without using `dangerouslySetInnerHTML`.
+- Add malformed-entity protection plus unit coverage for common response structures and executable-markup rejection.
+- Add `npm run qa:markdown` with inspected desktop/mobile screenshots, overflow assertions, rich-content counts, and browser error checks.
+
 ## 0.35.0
 
 - Verify zero-server `file://` tools with the browser's real opaque Origin value `null`.
