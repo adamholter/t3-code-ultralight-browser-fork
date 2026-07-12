@@ -76,6 +76,7 @@ describe("live integration contract", () => {
     expect(external.originPolicy).toEqual({
       loopbackAutomatic: true,
       additionalAllowedOrigins: ["https://canvas.example.com"],
+      opaqueOriginAllowed: false,
       nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
     });
 

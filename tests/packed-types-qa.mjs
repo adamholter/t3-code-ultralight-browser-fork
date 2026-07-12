@@ -65,7 +65,8 @@ const hostedRecipe = createIntegrationRecipe(contract, { mode: "custom", deliver
 const hostedInstall: false = hostedRecipe.requiresPackageInstall;
 const hostedClient: string = hostedRecipe.hostedModules.client;
 const originFlag: "--allow-origin <exact browser origin>" = hostedRecipe.originPolicy.nonLoopbackRequiresExactFlag;
-void [hostedInstall, hostedClient, originFlag];
+const opaqueOriginAllowed: boolean = hostedRecipe.originPolicy.opaqueOriginAllowed;
+void [hostedInstall, hostedClient, originFlag, opaqueOriginAllowed];
 
 // @ts-expect-error Hosted recipes intentionally have no package install command.
 void hostedRecipe.installCommand;

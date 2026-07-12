@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.35.0
+
+- Verify zero-server `file://` tools with the browser's real opaque Origin value `null`.
+- Execute the exact generated hosted custom recipe from a temporary HTML file, load both browser modules with `Access-Control-Allow-Origin: null`, stream a real Codex turn, and dispose cleanly.
+- Verify the file-origin WebSocket upgrade carries the trusted opaque origin and completes without browser console or page errors.
+- Add typed `originPolicy.opaqueOriginAllowed` metadata so an intentional `--allow-origin null` grant cannot be confused with automatic loopback access.
+- Preserve the normalized `null` allowlist in setup and recipe receipts.
+- Add `npm run qa:file` and contributor guidance for repeatable installed-artifact verification.
+
 ## 0.34.0
 
 - Add an executable HTTPS non-loopback browser-origin harness for the zero-install hosted recipe.

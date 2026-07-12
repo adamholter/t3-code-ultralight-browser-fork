@@ -95,6 +95,7 @@ try {
   assert.deepEqual(setupReport.integration.originPolicy, {
     loopbackAutomatic: true,
     additionalAllowedOrigins: [allowedOrigin],
+    opaqueOriginAllowed: false,
     nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
   });
   recipe = setupReport.integration;

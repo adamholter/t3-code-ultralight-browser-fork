@@ -29,6 +29,7 @@ interface IntegrationRecipeBase {
   originPolicy: {
     loopbackAutomatic: true;
     additionalAllowedOrigins: string[];
+    opaqueOriginAllowed: boolean;
     nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>";
   };
 }
@@ -146,6 +147,7 @@ export function createIntegrationRecipe(
   const workingDirectory = cwd ?? "/absolute/project/path";
   const socketUrl = runtime.bridge.websocketUrl as string;
   const socketOrigin = new URL(socketUrl).origin;
+  const uniqueAllowedOrigins = [...new Set(allowedOrigins)];
   const shared = {
     bridgeUrl,
     statusUrl: `${bridgeUrl}${runtime.bridge.statusPath}`,
@@ -153,7 +155,8 @@ export function createIntegrationRecipe(
     verify: "Send one real turn through the final user-facing UI and confirm streamed output plus stop behavior.",
     originPolicy: {
       loopbackAutomatic: true as const,
-      additionalAllowedOrigins: [...new Set(allowedOrigins)],
+      additionalAllowedOrigins: uniqueAllowedOrigins,
+      opaqueOriginAllowed: uniqueAllowedOrigins.includes("null"),
       nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>" as const,
     },
   };

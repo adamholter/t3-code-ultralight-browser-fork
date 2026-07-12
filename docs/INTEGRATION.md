@@ -116,6 +116,8 @@ npx t3-code-ultralight start \
 
 Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
 
+When `null` is explicitly configured, the recipe reports `originPolicy.opaqueOriginAllowed: true`. `npm run qa:file` opens the generated hosted recipe directly from a temporary file, verifies both module responses use `Access-Control-Allow-Origin: null`, streams a real browser WebSocket turn, and removes the file afterward. Never treat `null` as a wildcard: it represents every opaque-origin document, so grant it only when the local file or sandbox is trusted.
+
 The setup recipe repeats the effective policy under `originPolicy`: `loopbackAutomatic`, deduplicated `additionalAllowedOrigins`, and `nonLoopbackRequiresExactFlag`. This keeps extracted integration recipes self-contained. `npm run qa:origin` exercises the generated hosted recipe from a temporary HTTPS non-loopback hostname, verifies exact CORS and WebSocket acceptance, and confirms an unlisted sibling hostname is denied by both transports.
 
 Origin sets are compared exactly during normal process reuse. For example, running `start` without `--allow-origin` refuses to reuse a bridge that already allows `https://canvas.example.com`, even though the requested empty set is technically a subset. This prevents a new tool from unknowingly inheriting another tool's broader browser access.
