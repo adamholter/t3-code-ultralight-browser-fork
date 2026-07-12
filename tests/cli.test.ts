@@ -8,6 +8,32 @@ import packageJson from "../package.json";
 const cli = fileURLToPath(new URL("../bin/cli.mjs", import.meta.url));
 
 describe("CLI argument validation", () => {
+  it("fails closed on unknown commands, typoed flags, duplicates, and stray values", async () => {
+    const help = await runCli(["--help"]);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain("Usage:");
+
+    const unknown = await runCli(["strat"]);
+    expect(unknown.code).not.toBe(0);
+    expect(unknown.stderr).toContain('Unknown command "strat"');
+
+    const duplicate = await runCli(["status", "--port", "4174", "--port", "4175"]);
+    expect(duplicate.code).not.toBe(0);
+    expect(duplicate.stderr).toContain("--port may be provided only once");
+
+    const stray = await runCli(["integration", "extra"]);
+    expect(stray.code).not.toBe(0);
+    expect(stray.stderr).toContain('Unexpected argument "extra"');
+
+    const port = String(await reservePort());
+    const typo = await runCli(["start", "--port", port, "--allow-orign", "https://canvas.example.com"]);
+    expect(typo.code).not.toBe(0);
+    expect(typo.stderr).toContain('Unknown option "--allow-orign"');
+    const status = await runCli(["status", "--port", port, "--json"]);
+    expect(status.code).not.toBe(0);
+    expect(JSON.parse(status.stdout)).toMatchObject({ running: false });
+  });
+
   it("fails before startup when --allow-origin has no value", async () => {
     const result = await runCli(["serve", "--allow-origin"]);
     expect(result.code).not.toBe(0);

@@ -5,10 +5,14 @@ import { PendingRequestPanel } from "./components/PendingRequestPanel";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
 import { postCodexEmbedEvent } from "./embed-events";
-import { codex } from "./lib/codex-client";
+import { createCodexClient } from "./lib/codex-client";
 import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server-requests";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
+
+// The packaged headless client defaults to the standard port 4174. The
+// standalone app must instead follow whichever port serves this page.
+const codex = createCodexClient({ bridgeUrl: () => window.location.origin });
 
 export default function App() {
   const searchParams = new URLSearchParams(window.location.search);

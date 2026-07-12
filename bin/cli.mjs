@@ -9,6 +9,15 @@ import { fileURLToPath } from "node:url";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const DEFAULT_PORT = 4174;
+const commandOptions = {
+  start: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
+  serve: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
+  status: { values: ["--port"], repeatable: [], booleans: ["--json"] },
+  stop: { values: ["--port"], repeatable: [], booleans: ["--json"] },
+  doctor: { values: ["--codex", "--cwd"], repeatable: [], booleans: ["--json"] },
+  integration: { values: [], repeatable: [], booleans: [] },
+  "agent-prompt": { values: [], repeatable: [], booleans: [] },
+};
 const { version: packageVersion } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
 await main().catch((cause) => {
@@ -18,6 +27,11 @@ await main().catch((cause) => {
 
 async function main() {
   const command = process.argv[2] ?? "serve";
+  if (["help", "--help", "-h"].includes(command)) {
+    printHelp();
+    return;
+  }
+  validateCommandArgs(command, process.argv.slice(3));
 
   if (command === "serve") {
     const port = parsePort(valueAfter("--port"));
@@ -160,6 +174,10 @@ Preserve approvals and verify one live turn through the final UI.`);
     return;
   }
 
+  printHelp();
+}
+
+function printHelp() {
   console.log(`
 t3-code-ultralight
 
@@ -181,6 +199,33 @@ Commands:
   integration   Print the machine-readable integration contract.
   agent-prompt  Print a ready-to-paste integration prompt.
 `);
+}
+
+function validateCommandArgs(command, args) {
+  const spec = commandOptions[command];
+  if (!spec) throw new Error(`Unknown command ${JSON.stringify(command)}. Run \`t3-code-ultralight --help\` for usage.`);
+  const values = new Set(spec.values);
+  const repeatable = new Set(spec.repeatable);
+  const booleans = new Set(spec.booleans);
+  const seen = new Set();
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (values.has(argument)) {
+      if (seen.has(argument) && !repeatable.has(argument)) throw new Error(`${argument} may be provided only once.`);
+      seen.add(argument);
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value.`);
+      index += 1;
+      continue;
+    }
+    if (booleans.has(argument)) {
+      if (seen.has(argument)) throw new Error(`${argument} may be provided only once.`);
+      seen.add(argument);
+      continue;
+    }
+    if (argument.startsWith("-")) throw new Error(`Unknown option ${JSON.stringify(argument)} for ${command}. Run \`t3-code-ultralight --help\` for usage.`);
+    throw new Error(`Unexpected argument ${JSON.stringify(argument)} for ${command}. Run \`t3-code-ultralight --help\` for usage.`);
+  }
 }
 
 function valueAfter(flag) {

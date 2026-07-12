@@ -21,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.28.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.29.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -29,7 +29,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.28.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.29.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -51,6 +51,8 @@ npx t3-code-ultralight stop
 ```
 
 `stop` is idempotent and supports `--port` and `--json`; it will not signal an unrelated listener.
+
+The CLI rejects unknown commands, typoed options, duplicate singleton flags, and stray values before probing a port or starting a process. Run `t3-code-ultralight --help` for the exact accepted command shapes; `--allow-origin` is the intentionally repeatable option.
 
 The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 

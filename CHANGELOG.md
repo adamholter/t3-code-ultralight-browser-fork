@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.0
+
+- Reject unknown CLI commands instead of printing successful help output.
+- Reject typoed options, stray positional values, duplicate singleton flags, and accidental values after booleans.
+- Validate the complete command shape before any status probe, child spawn, stop signal, or doctor process.
+- Preserve explicit `help`, `--help`, and `-h` zero-exit behavior.
+- Keep `--allow-origin` intentionally repeatable while deduplicating its normalized values.
+- Add no-side-effect validation for misspelled start flags and comprehensive agent-command error coverage.
+- Keep the bundled standalone UI connected to its serving origin on arbitrary `--port` values while exported headless clients retain the standard port-4174 default.
+- Add a CI configuration guard and live alternate-port browser, embed, Web Component, CSP, and performance verification.
+
 ## 0.28.0
 
 - Require an exact allowed-origin set when reusing an existing standalone bridge.

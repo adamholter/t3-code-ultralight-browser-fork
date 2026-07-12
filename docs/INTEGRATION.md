@@ -14,6 +14,8 @@ For automation or agent parsing, use `doctor --json`. The command is read-only a
 
 Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` and `start` are idempotent only for an identical version and allowed-origin set, making repeated agent setup safe without silently inheriting broader access. A conflicting version, any missing or extra origin, invalid port, or unrelated listener fails with an actionable message. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat. Pass `--reuse-origin-superset` only when the invoking host intentionally accepts every additional origin already configured; the JSON receipt exposes the accepted extras.
 
+CLI parsing is strict and occurs before side effects. Unknown commands/options, misspellings, duplicate `--port`/`--codex`/`--cwd`/boolean flags, and positional arguments fail nonzero. Only `--allow-origin` may repeat. Use `t3-code-ultralight --help` as the authoritative syntax reference instead of guessing flag names.
+
 ## Mode 0: framework-neutral Web Component
 
 Use this for Vue, Svelte, Angular, Lit, Astro, vanilla TypeScript, or any host that supports custom elements:
