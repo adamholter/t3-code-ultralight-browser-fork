@@ -191,19 +191,47 @@ async function main() {
   }
 
   if (command === "agent-prompt") {
-    console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
-Allow this web app to talk to the user's local Codex.
-Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package setup command from the host project's root with --mode iframe, react, element, or custom, the host's exact --allow-origin (including localhost port), and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
-Use --port auto when this project should coexist with another local Codex bridge; keep the selected port from the receipt for later status and stop commands.
-If Codex is not the default PATH command, pass the same --codex path to setup, start, or serve; bridge reuse is isolated by a path-private binary fingerprint.
-Keep the bridge loopback-only and allow every browser host, including localhost dev servers, by exact --allow-origin. The bridge UI itself remains automatic. Use --allow-loopback-origins only as an intentional compatibility escape hatch.
-Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
-Preserve approvals and verify one live turn through the final UI.`);
+    const contract = JSON.parse(await readFile(new URL("../integration.json", import.meta.url), "utf8"));
+    console.log(createAgentPrompt(contract));
     return;
   }
 
   printHelp();
+}
+
+function createAgentPrompt(contract) {
+  const specifier = contract.release.specifier;
+  return `# Add local Codex to this application
+
+Repository: ${contract.repository}
+
+Allow this existing application to talk to the user's authenticated local Codex. Do not clone or build the bridge. Use its canonical prebuilt GitHub release archive and work from this application's root.
+
+First inspect the host, then choose exactly one route:
+- iframe: isolated complete chat with the fewest host dependencies.
+- react: complete chat in a React 18/19 or Next.js host.
+- element: complete chat in plain HTML, Vue, Svelte, or another browser framework.
+- custom: headless stateful assistant for a canvas, voice, spatial, game, or bespoke UI; use createCodexAssistant, not the lower-level client, unless shared-socket ownership is intentional.
+- attached server: when an existing Node HTTP server should own the process, install the archive and use attachCodexBridge from t3-code-ultralight-browser-fork/server.
+
+For iframe, react, element, or custom, replace MODE and HOST_ORIGIN and run:
+
+npx --yes '${specifier}' setup --mode MODE --port auto --allow-origin HOST_ORIGIN --json
+
+HOST_ORIGIN must be the exact browser origin, including a localhost development port. For element or custom with no npm or bundler, add --delivery hosted. If Codex is not the intended PATH command, add --codex PATH. Use --allow-loopback-origins only when trusting every local browser origin is deliberate.
+
+For an attached Node server, install without compiling this repository:
+
+npm install '${specifier}'
+
+Follow the setup receipt as authoritative:
+1. Use its resolved URLs, code, CSP additions, and cleanup rule instead of assuming port 4174.
+2. Run lifecycle.ensure.installed or lifecycle.ensure.zeroInstall before the host dev/server process so the exact port, workspace, Codex binary, and origin policy survive restarts.
+3. Keep the bridge loopback-only. Never copy Codex credentials, cookies, tokens, or config secrets into browser code.
+4. Preserve approval, permission, question, and MCP requests; omitted custom handlers must fail closed.
+5. Verify the receipt status endpoint and one real streamed Codex turn through the final user-facing UI. Verify stop/new-thread controls when the selected route exposes them.
+
+Read integration.json for the machine contract and docs/AGENT_INTEGRATION.md only when the receipt does not answer a host-specific question.`;
 }
 
 function printHelp() {

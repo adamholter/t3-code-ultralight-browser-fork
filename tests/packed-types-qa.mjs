@@ -182,6 +182,14 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
   const cli = resolve(fixture, "node_modules/t3-code-ultralight-browser-fork/bin/cli.mjs");
   const help = spawnSync(process.execPath, [cli, "--help"], { cwd: fixture, encoding: "utf8" });
   if (help.status !== 0 || !help.stdout.includes("setup")) throw new Error(help.stderr || help.stdout || "Packed CLI help failed");
+  const agentPrompt = spawnSync(process.execPath, [cli, "agent-prompt"], { cwd: fixture, encoding: "utf8" });
+  if (
+    agentPrompt.status !== 0
+    || !agentPrompt.stdout.includes(`t3-code-ultralight-browser-fork.tgz?v=${version}`)
+    || !agentPrompt.stdout.includes("setup --mode MODE --port auto --allow-origin HOST_ORIGIN --json")
+    || !agentPrompt.stdout.includes("createCodexAssistant, not the lower-level client")
+    || !agentPrompt.stdout.includes("one real streamed Codex turn through the final user-facing UI")
+  ) throw new Error(agentPrompt.stderr || agentPrompt.stdout || "Packed CLI agent prompt is incomplete");
   const integration = spawnSync(process.execPath, [cli, "integration"], { cwd: fixture, encoding: "utf8" });
   if (integration.status !== 0 || JSON.parse(integration.stdout).version !== version) {
     throw new Error(integration.stderr || integration.stdout || "Packed CLI integration contract failed");
@@ -198,6 +206,7 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
     optionalReactPeer: true,
     serverTypesWithoutWsTypePackage: true,
     cliEntrypoint: true,
+    agentPromptSelfContained: true,
   }, null, 2));
 } finally {
   await rm(fixture, { recursive: true, force: true });

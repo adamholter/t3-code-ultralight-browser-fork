@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.55.0
+
+- Make `agent-prompt` a self-contained handoff derived from the packaged integration contract, including the exact versioned release command, host-mode decision guide, attached-server route, durable lifecycle wiring, security boundary, and final live-turn verification.
+- Correct root `AGENTS.md` guidance to prefer `createCodexAssistant` for canvas, voice, and bespoke interfaces while reserving the lower-level client for deliberate thread or shared-socket ownership.
+- Verify the complete agent handoff from both the source CLI and a clean installed release tarball so published guidance cannot silently drift from `integration.json`.
+- Advertise a directly runnable, version-pinned `agentPromptCommand` in the machine-readable release contract.
+
 ## 0.54.0
 
 - Promote the complete one-link CLI lifecycle into every native operating-system gate: setup, detached bridge launch, machine-readable receipt, status, stop, exact-port restart, and a post-restart turn.

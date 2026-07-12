@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import integration from "../integration.json";
 import packageJson from "../package.json";
 
 const cli = fileURLToPath(new URL("../bin/cli.mjs", import.meta.url));
@@ -85,12 +86,18 @@ describe("CLI argument validation", () => {
     expect(result.stderr).toContain("--allow-loopback-origins");
   });
 
-  it("points agents at the stable prebuilt release", async () => {
+  it("prints a self-contained, versioned integration handoff", async () => {
     const result = await runCli(["agent-prompt"]);
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("stable prebuilt release asset");
-    expect(result.stdout).toContain("package setup command");
+    expect(result.stdout).toContain(integration.repository);
+    expect(result.stdout).toContain(integration.release.specifier);
+    expect(result.stdout).toContain("setup --mode MODE --port auto --allow-origin HOST_ORIGIN --json");
+    expect(result.stdout).toContain("createCodexAssistant, not the lower-level client");
+    expect(result.stdout).toContain("attachCodexBridge");
+    expect(result.stdout).toContain("lifecycle.ensure.installed");
     expect(result.stdout).toContain("--delivery hosted");
+    expect(result.stdout).toContain("one real streamed Codex turn through the final user-facing UI");
+    expect(result.stdout).not.toContain("linked in the README");
   });
 
   it("prints the packaged machine-readable integration contract", async () => {

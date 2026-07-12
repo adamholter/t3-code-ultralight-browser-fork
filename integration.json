@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.54.0",
+  "version": "0.55.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -12,16 +12,17 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' start --allow-origin '{BROWSER_ORIGIN}' --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0",
+    "agentPromptCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' agent-prompt",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' start --allow-origin '{BROWSER_ORIGIN}' --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode iframe --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode react --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode element --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode element --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode custom --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode custom --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode iframe --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode react --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode element --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode element --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode custom --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode custom --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json"
     },
     "verification": {
       "workflow": ".github/workflows/release.yml",
@@ -31,6 +32,7 @@
       "nodeMatrix": [22, 24, 26],
       "operatingSystemMatrix": ["ubuntu-latest", "macos-latest", "windows-latest"],
       "packedConsumerPerRuntime": true,
+      "packedAgentPromptVerified": true,
       "codexProcessSmokePerOperatingSystem": true,
       "cliLifecycleSmokePerOperatingSystem": true,
       "productionAudit": true,
@@ -205,7 +207,8 @@
     "explicitOpaqueFileOriginVerified": true,
     "responseMarkdownRawHtml": false,
     "attestedReleaseArtifacts": true,
-    "windowsBatchCodexLaunch": true
+    "windowsBatchCodexLaunch": true,
+    "selfContainedAgentHandoff": true
   },
   "acceptance": [
     "doctor reports ok true",
@@ -216,6 +219,7 @@
     "an unlisted browser origin is rejected even when it is another localhost or loopback page",
     "an allowed loopback browser host streams while an unlisted sibling is denied hosted modules, WebSocket, iframe commands, and framing",
     "a fresh packed consumer compiles and imports every declared package export",
+    "the packed agent-prompt contains the exact versioned release archive, all host routes, lifecycle wiring, security constraints, and final streamed-turn verification",
     "an allowed HTTPS non-loopback host streams while an unlisted sibling origin fails HTTP modules and WebSocket upgrades",
     "a trusted file origin streams only with the explicit null allowlist and matching CORS",
     "a complete-chat host can send before iframe readiness, receive only IDs, stop, and start a clean thread without iframe DOM access",

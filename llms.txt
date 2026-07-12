@@ -3,6 +3,7 @@
 Ultralight localhost bridge, headless client, and embeddable chat UI for a user's authenticated local Codex.
 
 - Machine-readable integration contract: ./integration.json
+- Self-contained agent handoff: run the release CLI's `agent-prompt`; it embeds the exact versioned setup and install commands plus route, lifecycle, security, and verification guidance
 - One-command verified recipe: run the release CLI with `setup --mode iframe|react|element|custom --allow-origin <exact browser origin> --json`
 - Run setup from the host project root; its normalized directory becomes the bridge default, with `--cwd` as an override
 - Bridge reuse requires the exact version, origin policy, workspace fingerprint, and Codex-binary fingerprint; browser status never exposes either path

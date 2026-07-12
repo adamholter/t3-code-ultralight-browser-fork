@@ -8,6 +8,12 @@ Give this repository to an agent and say:
 
 Agents can read [`integration.json`](integration.json) for the versioned machine contract or [`llms.txt`](llms.txt) for discovery pointers instead of scraping this README.
 
+For a complete ready-to-paste agent handoff with the current verified archive already embedded, run:
+
+```bash
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' agent-prompt
+```
+
 This project is the smallest practical bridge between a browser UI and a user's local Codex. It packages the best chat interaction details from T3 Code as three reusable pieces:
 
 1. A conflict-free embedded chat UI.
@@ -25,7 +31,7 @@ The package boundary is exercised in clean React 18/19, Next.js 16 App Router, V
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode iframe --port auto --allow-origin http://localhost:3000 --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode iframe --port auto --allow-origin http://localhost:3000 --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. If the intended CLI is not the default PATH command, add `--codex /path/to/codex`; setup uses that same resolved executable for diagnostics and the background app-server. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project, service, or Codex binary owns it. The receipt returns the resolved numeric port plus installed-package and zero-install lifecycle commands for ensuring, inspecting, and stopping that exact bridge. Wire its idempotent `lifecycle.ensure` command before the host's own dev/server process so a reboot or prior stop cannot leave the browser pointed at a different port. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace and selected binary separately, while browser status exposes only fingerprints and its copyable code embeds neither local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge and return `lifecycle: null`.
@@ -33,7 +39,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' setup --mode custom --delivery hosted --port auto --allow-origin http://localhost:3000 --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' setup --mode custom --delivery hosted --port auto --allow-origin http://localhost:3000 --json
 ```
 
 ## One-command chat
@@ -41,7 +47,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0' start --allow-origin http://localhost:3000
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0' start --allow-origin http://localhost:3000
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. The example allows an app served from exactly `http://localhost:3000` to embed `http://127.0.0.1:4174/?embed=1`. If you only open the bridge's own UI at `http://127.0.0.1:4174`, no `--allow-origin` is needed. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, workspace fingerprint, and Codex-binary fingerprint.
@@ -49,7 +55,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.54.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.55.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start --allow-origin http://localhost:3000
 ```

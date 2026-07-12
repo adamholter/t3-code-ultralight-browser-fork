@@ -16,9 +16,14 @@ describe("package version", () => {
     expect(readFileSync(new URL("../README.md", import.meta.url), "utf8")).toContain(cacheKey);
     expect(readFileSync(new URL("../docs/AGENT_INTEGRATION.md", import.meta.url), "utf8")).toContain(cacheKey);
     expect(integration.release.specifier).toContain(cacheKey);
+    expect(integration.release.agentPromptCommand).toContain(cacheKey);
+    expect(integration.release.agentPromptCommand).toContain(" agent-prompt");
     expect(Object.values(integration.release.setupCommands).every((command) => command.includes(cacheKey))).toBe(true);
     expect(Object.values(integration.release.setupCommands).every((command) => command.includes("--allow-origin '{BROWSER_ORIGIN}'"))).toBe(true);
     expect(integration.release.startCommand).toContain("--allow-origin '{BROWSER_ORIGIN}'");
+    const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+    expect(agents).toContain("custom canvas, voice, or bespoke UI through `createCodexAssistant`");
+    expect(agents).not.toContain("custom UI through `createCodexClient`");
   });
 
   it("publishes a complete machine-readable integration contract", () => {
@@ -84,6 +89,7 @@ describe("package version", () => {
       workflow: ".github/workflows/release.yml",
       cleanCheckout: true,
       standardChecks: true,
+      packedAgentPromptVerified: true,
       productionAudit: true,
       npmPublishDryRun: true,
       githubProvenanceAttestation: true,
@@ -102,6 +108,7 @@ describe("package version", () => {
     expect(integration.security.durableLifecycleReceipt).toBe(true);
     expect(integration.security.attestedReleaseArtifacts).toBe(true);
     expect(integration.security.windowsBatchCodexLaunch).toBe(true);
+    expect(integration.security.selfContainedAgentHandoff).toBe(true);
   });
 
   it("keeps public registry metadata and release automation fail-closed", () => {
