@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.0
+
+- Promote the complete one-link CLI lifecycle into every native operating-system gate: setup, detached bridge launch, machine-readable receipt, status, stop, exact-port restart, and a post-restart turn.
+- Stream a browser-client turn through the disposable Codex-compatible app-server on Ubuntu, macOS, and Windows instead of limiting native verification to diagnostics and handshake calls.
+- Exercise the real Windows `.cmd` Codex shim through both foreground diagnostics and the detached bridge used by generated integration receipts.
+
 ## 0.53.0
 
 - Launch Windows `.cmd` and `.bat` Codex shims through `cmd.exe` while keeping native executables and Unix commands shell-free.

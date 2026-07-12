@@ -126,6 +126,7 @@ describe("package version", () => {
       operatingSystemMatrix: ["ubuntu-latest", "macos-latest", "windows-latest"],
       packedConsumerPerRuntime: true,
       codexProcessSmokePerOperatingSystem: true,
+      cliLifecycleSmokePerOperatingSystem: true,
     });
   });
 
