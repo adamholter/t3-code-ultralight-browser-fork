@@ -21,10 +21,11 @@ async function main() {
 
   if (command === "serve") {
     const port = parsePort(valueAfter("--port"));
-    const allowedOrigins = valuesAfter("--allow-origin").map(normalizeOrigin);
+    const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
     const existing = await readBridgeStatus(port);
     if (existing) {
-      assertCompatibleBridge(existing, port, allowedOrigins);
+      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset);
       console.log(`Codex bridge v${existing.version} is already ${existing.status} at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}.`);
       return;
     }
@@ -37,11 +38,12 @@ async function main() {
 
   if (command === "start") {
     const port = parsePort(valueAfter("--port"));
-    const allowedOrigins = valuesAfter("--allow-origin").map(normalizeOrigin);
+    const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
     const existing = await readBridgeStatus(port);
     if (existing) {
-      assertCompatibleBridge(existing, port, allowedOrigins);
-      printStartReport(existing, port, true, null);
+      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset);
+      printStartReport(existing, port, true, null, allowedOrigins, reuseOriginSuperset);
       return;
     }
 
@@ -56,6 +58,7 @@ async function main() {
         "--port",
         String(port),
         ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
+        ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
       ], {
         detached: true,
         env: process.env,
@@ -65,12 +68,12 @@ async function main() {
       closeSync(log);
     }
     child.unref();
-    const status = await waitForBridgeReady(port, child, allowedOrigins);
+    const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset);
     if (!status) {
       const detail = await readLogTail(logPath);
       throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
     }
-    printStartReport(status, port, status.pid !== child.pid, logPath);
+    printStartReport(status, port, status.pid !== child.pid, logPath, allowedOrigins, reuseOriginSuperset);
     return;
   }
 
@@ -161,8 +164,8 @@ Preserve approvals and verify one live turn through the final UI.`);
 t3-code-ultralight
 
 Usage:
-  t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--json]
-  t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]...
+  t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--json]
+  t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset]
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
@@ -220,13 +223,17 @@ function normalizeOrigin(value) {
   return url.origin;
 }
 
-function assertCompatibleBridge(existing, port, allowedOrigins) {
+function assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset = false) {
   if (existing.version !== packageVersion) {
     throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
   }
   const missingOrigins = allowedOrigins.filter((origin) => !existing.allowedOrigins.includes(origin));
   if (missingOrigins.length) {
     throw new Error(`The existing Codex bridge does not allow: ${missingOrigins.join(", ")}. Run ${stopCommand(port)}, then restart with the requested --allow-origin values.`);
+  }
+  const extraOrigins = existing.allowedOrigins.filter((origin) => !allowedOrigins.includes(origin));
+  if (extraOrigins.length && !reuseOriginSuperset) {
+    throw new Error(`The existing Codex bridge additionally allows: ${extraOrigins.join(", ")}. Refusing to broaden this tool's origin policy silently. Run ${stopCommand(port)} and restart with the exact requested origins, or pass --reuse-origin-superset only if the broader allowlist is intentional.`);
   }
 }
 
@@ -273,7 +280,7 @@ async function waitForBridgeStop(port, pid) {
   return false;
 }
 
-async function waitForBridgeReady(port, child, allowedOrigins) {
+async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset) {
   const deadline = Date.now() + 10_000;
   let spawnError = null;
   child.once("error", (error) => { spawnError = error; });
@@ -281,7 +288,7 @@ async function waitForBridgeReady(port, child, allowedOrigins) {
     if (spawnError) throw spawnError;
     const status = await readBridgeStatus(port);
     if (status) {
-      assertCompatibleBridge(status, port, allowedOrigins);
+      assertCompatibleBridge(status, port, allowedOrigins, reuseOriginSuperset);
       if (status.status === "ready") return status;
     }
     if (child.exitCode !== null) return null;
@@ -303,7 +310,8 @@ async function readLogTail(logPath) {
   }
 }
 
-function printStartReport(status, port, reused, logPath) {
+function printStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset) {
+  const extraAllowedOrigins = status.allowedOrigins.filter((origin) => !requestedOrigins.includes(origin));
   const report = {
     started: !reused,
     reused,
@@ -313,11 +321,17 @@ function printStartReport(status, port, reused, logPath) {
     status: status.status,
     pid: status.pid,
     allowedOrigins: status.allowedOrigins,
+    extraAllowedOrigins,
+    originSupersetAccepted: reused && reuseOriginSuperset && extraAllowedOrigins.length > 0,
     logPath: reused ? null : logPath,
   };
   if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
   else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
   else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nLogs: ${logPath}`);
+}
+
+function unique(values) {
+  return [...new Set(values)];
 }
 
 function stopCommand(port) {

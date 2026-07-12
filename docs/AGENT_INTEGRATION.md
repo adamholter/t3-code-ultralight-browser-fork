@@ -5,10 +5,11 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
+2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.28.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
    Before modifying the host, append `doctor --json` to that direct command, or run `npx t3-code-ultralight doctor --json` when the package is installed.
 3. Resolve every failed doctor check or report its exact recommendation.
    Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `start` will safely reuse a compatible one and returns only after readiness.
+   Require an exact allowed-origin match. Use `--reuse-origin-superset` only when the host explicitly intends to inherit every extra origin shown in the JSON receipt.
    If a verified bridge must be replaced for an upgrade or origin change, use `npx t3-code-ultralight stop --json`; never kill an unverified listener by port alone.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
@@ -45,7 +46,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - The host starts without manual source copying.
 - `doctor --json` reports `ok: true`.
 - The bridge reports ready.
-- Re-running `start` reuses the compatible bridge or explains the exact version/origin conflict.
+- Re-running `start` reuses only an exact version/origin match or explains the conflict.
 - At least one local model is available.
 - A thread can be started or resumed.
 - Assistant deltas stream visibly.

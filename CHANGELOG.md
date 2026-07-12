@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.28.0
+
+- Require an exact allowed-origin set when reusing an existing standalone bridge.
+- Prevent loopback-only tools from silently inheriting another tool's broader browser allowlist.
+- Add explicit `--reuse-origin-superset` for hosts that intentionally accept every configured extra origin.
+- Report `extraAllowedOrigins` and `originSupersetAccepted` in machine-readable start receipts.
+- Deduplicate repeated origin arguments before comparison and child startup.
+- Add exact-match, fail-closed subset, explicit-superset, and packaged CLI verification.
+
 ## 0.27.0
 
 - Remove the user's home/working path from standalone status metadata.

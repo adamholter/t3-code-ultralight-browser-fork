@@ -21,15 +21,15 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.28.0' start
 ```
 
-The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
+The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
 
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.28.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -38,7 +38,7 @@ The version query is an intentional npm cache key: the URL still resolves throug
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 
-`start` launches in the background, waits for verified readiness, and returns a PID plus a private temporary log path. It reuses a compatible bridge already running on the requested port, but fails before startup when its version or allowed-origin configuration is incompatible. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
+`start` launches in the background, waits for verified readiness, and returns a PID plus a private temporary log path. It reuses an exact version/origin match already running on the requested port, but fails before startup when either differs. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
 
 ```bash
 npx t3-code-ultralight status --json
@@ -78,6 +78,8 @@ npx t3-code-ultralight start --allow-origin https://canvas.example.com
 ```
 
 Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.
+
+Reuse is fail-closed: a loopback-only invocation will not silently inherit extra origins from an existing bridge. If a host intentionally accepts an already-running origin superset, it must pass `--reuse-origin-superset`; JSON output then reports `originSupersetAccepted: true` and lists every extra origin.
 
 Projects with an ESM bundler can instead use the package export:
 

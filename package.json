@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,

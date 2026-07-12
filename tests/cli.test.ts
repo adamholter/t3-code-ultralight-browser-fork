@@ -62,6 +62,22 @@ describe("CLI argument validation", () => {
         version: packageJson.version,
         pid: process.pid,
         logPath: null,
+        extraAllowedOrigins: [],
+        originSupersetAccepted: false,
+      });
+
+      const narrower = await runCli(["start", "--port", port, "--json"]);
+      expect(narrower.code).not.toBe(0);
+      expect(narrower.stderr).toContain("additionally allows: https://canvas.example.com");
+      expect(narrower.stderr).toContain("--reuse-origin-superset");
+
+      const intentionalSuperset = await runCli(["start", "--port", port, "--reuse-origin-superset", "--json"]);
+      expect(intentionalSuperset.code).toBe(0);
+      expect(JSON.parse(intentionalSuperset.stdout)).toMatchObject({
+        reused: true,
+        allowedOrigins: ["https://canvas.example.com"],
+        extraAllowedOrigins: ["https://canvas.example.com"],
+        originSupersetAccepted: true,
       });
 
       const incompatible = await runCli(["serve", "--port", port, "--allow-origin", "https://voice.example.com"]);

@@ -12,7 +12,7 @@ npx t3-code-ultralight doctor
 
 For automation or agent parsing, use `doctor --json`. The command is read-only and does not create a thread.
 
-Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` is idempotent for an identical version and allowed-origin set, making repeated agent setup safe. A conflicting version, missing requested origin, invalid port, or unrelated listener fails with an actionable message rather than silently reusing the wrong process. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat.
+Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` and `start` are idempotent only for an identical version and allowed-origin set, making repeated agent setup safe without silently inheriting broader access. A conflicting version, any missing or extra origin, invalid port, or unrelated listener fails with an actionable message. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat. Pass `--reuse-origin-superset` only when the invoking host intentionally accepts every additional origin already configured; the JSON receipt exposes the accepted extras.
 
 ## Mode 0: framework-neutral Web Component
 
@@ -103,6 +103,8 @@ npx t3-code-ultralight start \
 ```
 
 Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
+
+Origin sets are compared exactly during normal process reuse. For example, running `start` without `--allow-origin` refuses to reuse a bridge that already allows `https://canvas.example.com`, even though the requested empty set is technically a subset. This prevents a new tool from unknowingly inheriting another tool's broader browser access.
 
 The isolated chat iframe connects from its own loopback origin, so its parent page does not normally need an entry. A headless client runs in the parent page and does.
 
