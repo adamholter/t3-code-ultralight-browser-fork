@@ -49,6 +49,19 @@ describe("attachCodexBridge routing", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(otherMessages.some((message) => message.type === "serverRequest")).toBe(false);
 
+    const ownedNotification = nextMessage(owner, (message) => message.method === "item/agentMessage/delta");
+    bridge.emit("notification", {
+      method: "item/agentMessage/delta",
+      params: { threadId: "thread-owned", turnId: "turn-owned", delta: "private output" },
+    });
+    expect((await ownedNotification).params.delta).toBe("private output");
+    bridge.emit("notification", {
+      method: "item/agentMessage/delta",
+      params: { threadId: "thread-without-owner", turnId: "turn-unowned", delta: "unowned output" },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(otherMessages.some((message) => message.type === "notification")).toBe(false);
+
     other.send(JSON.stringify({ type: "respond", id: 99, result: { decision: "accept" } }));
     await nextMessage(other, (message) => message.type === "bridgeError");
     expect(bridge.responses).toHaveLength(0);

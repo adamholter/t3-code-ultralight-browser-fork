@@ -106,16 +106,34 @@ export class CodexClient {
     const Socket = this.options.WebSocketImpl ?? WebSocket;
     if (this.socket?.readyState === Socket.OPEN) return Promise.resolve();
     if (this.connectionPromise) return this.connectionPromise;
+    let url: string;
+    try {
+      url = this.resolveUrl();
+    } catch (cause) {
+      return Promise.reject(cause instanceof Error ? cause : new Error(String(cause)));
+    }
     this.connectionPromise = new Promise((resolve, reject) => {
       this.resolveConnection = resolve;
       this.rejectConnection = reject;
     });
+    const connection = this.connectionPromise;
     const connectionTimer = globalThis.setTimeout(() => {
-      const error = new Error(`Codex bridge connection timed out: ${this.resolveUrl()}`);
+      const error = new Error(`Codex bridge connection timed out: ${url}`);
       this.rejectConnection?.(error);
       this.socket?.close();
     }, this.options.connectionTimeoutMs ?? 10_000);
-    this.socket = new Socket(this.resolveUrl());
+    try {
+      this.socket = new Socket(url);
+    } catch (cause) {
+      clearTimeout(connectionTimer);
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      this.rejectConnection?.(error);
+      this.socket = null;
+      this.connectionPromise = null;
+      this.resolveConnection = null;
+      this.rejectConnection = null;
+      return connection;
+    }
     this.socket.addEventListener("open", () => {
       clearTimeout(connectionTimer);
       this.resolveConnection?.();
@@ -132,7 +150,7 @@ export class CodexClient {
     });
     this.socket.addEventListener("error", () => {
       clearTimeout(connectionTimer);
-      this.rejectConnection?.(new Error(`Unable to connect to Codex bridge: ${this.resolveUrl()}`));
+      this.rejectConnection?.(new Error(`Unable to connect to Codex bridge: ${url}`));
       this.rejectConnection = null;
     });
     this.socket.addEventListener("close", () => {
@@ -149,17 +167,21 @@ export class CodexClient {
       this.connectionPromise = null;
       if (!this.manuallyClosed && this.options.reconnectMs !== false) {
         this.reconnectTimer = globalThis.setTimeout(
-          () => void this.connect(),
+          () => {
+            this.reconnectTimer = null;
+            void this.connect().catch((error) => this.emit("reconnectError", error));
+          },
           this.options.reconnectMs ?? 900,
         );
       }
     });
-    return this.connectionPromise;
+    return connection;
   }
 
   close() {
     this.manuallyClosed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
     this.rejectConnection?.(new Error("Codex bridge connection closed by client"));
     this.socket?.close();
     this.socket = null;

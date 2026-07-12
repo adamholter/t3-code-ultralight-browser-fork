@@ -14,6 +14,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 9. Never copy Codex credentials, cookies, access tokens, or config secrets into the browser.
 10. Preserve approval and user-input requests instead of silently accepting them.
     Never broadcast an unowned request or forward a response without recorded ownership.
+    Never broadcast thread-scoped notifications; deltas and tool activity belong only to the recorded thread owner.
     Render structured permission capabilities and scope explicitly; never map them to a generic approval payload.
     Render supported MCP elicitation schemas as typed controls and fail closed on nested, unknown, or unsafe schemas.
 11. Verify one real local Codex turn through the final user-facing UI.
@@ -46,3 +47,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Mobile or constrained-container layout does not overflow.
 - Embedded hosts receive ready and turn lifecycle events only from the expected iframe origin.
 - Malformed, oversized, over-concurrent, unowned, and duplicate-response transport paths fail closed.
+- A passive second browser cannot observe another browser's thread-scoped notifications.

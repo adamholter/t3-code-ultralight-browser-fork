@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.0
+
+- Route every thread-scoped Codex notification only to the browser that owns that thread.
+- Drop unowned thread notifications instead of leaking them to unrelated local tools.
+- Continue broadcasting only genuinely unscoped bridge lifecycle notifications.
+- Contain failed automatic reconnect attempts and expose them through `reconnectError` without unhandled promise rejections.
+- Return malformed WebSocket construction as a normal rejected `connect()` promise.
+- Surface initial and retry connection failures in the complete chat without leaving stale errors after recovery.
+- Verify notification privacy with deterministic sockets and a passive second client against the live Codex bridge.
+
 ## 0.14.0
 
 - Run the bundled standalone chat on Preact's React-compatible runtime.

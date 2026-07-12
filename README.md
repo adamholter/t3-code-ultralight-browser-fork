@@ -151,6 +151,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - One-call `chat()` plus lower-level text and multimodal turn APIs
 - Stateful `send()` sessions with scoped streaming events and real turn cancellation
 - Approval requests routed only to the browser client that owns the active turn
+- Thread-scoped deltas, tool activity, and lifecycle notifications routed only to their owning browser
 - Unowned server requests and duplicate cross-client responses rejected instead of broadcast
 - Strict browser envelopes, 16 MiB payload bounds, and 32 in-flight RPCs per client by default
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode

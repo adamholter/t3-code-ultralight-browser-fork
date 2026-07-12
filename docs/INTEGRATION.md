@@ -138,6 +138,8 @@ Useful lower-level client events:
 
 The generic `request(method, params)` method exposes the complete app-server RPC surface without growing this SDK. `runTurn()` and `runInput()` are available when the host manages thread lifecycle itself.
 
+Connection state is emitted through `client.on("connection", status => ...)`. Failed automatic retries are contained and emitted through `client.on("reconnectError", error => ...)`; they do not create unhandled promise rejections in the host page.
+
 ## Interactive questions
 
 The complete chat renders `request_user_input` as an accessible options/free-text form. Add `mode=plan` to its bridge URL when the chat should use Codex Plan mode:
@@ -224,7 +226,7 @@ await controller.start();
 
 Call `await controller.stop()` during graceful shutdown.
 
-Every app-server request is delivered only to the browser that owns its thread. Legacy approvals are correlated through `conversationId`; modern requests use `threadId`. Requests with no identifiable live owner are rejected back to Codex rather than broadcast, and a response is accepted exactly once from its recorded owner.
+Every thread-scoped notification and app-server request is delivered only to the browser that owns its thread. This includes streamed assistant text, reasoning, tool activity, turn lifecycle, and approvals. Legacy approvals are correlated through `conversationId`; modern requests use `threadId`. Unowned thread notifications are dropped, requests with no identifiable live owner are rejected back to Codex, and a response is accepted exactly once from its recorded owner. Only genuinely unscoped bridge lifecycle notifications are broadcast.
 
 Browser messages must use the documented `rpc`, `respond`, or `respondError` envelope. The defaults allow messages up to 16 MiB and 32 simultaneous RPCs per browser, which accommodates normal multimodal input while bounding accidental or hostile clients. Existing-server integrations can adjust both limits explicitly as shown above. The standalone `/api/status` response reports its active defaults.
 

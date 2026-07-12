@@ -57,7 +57,16 @@ export function attachCodexBridge(
     for (const socket of sockets) send(socket, payload);
   };
 
-  bridge.on("notification", (notification) => broadcast({ type: "notification", ...notification }));
+  bridge.on("notification", (notification) => {
+    const payload = { type: "notification", ...notification };
+    const threadId = readThreadId(notification.params);
+    if (!threadId) {
+      broadcast(payload);
+      return;
+    }
+    const owner = threadOwners.get(threadId);
+    if (owner?.readyState === WebSocket.OPEN) send(owner, payload);
+  });
   bridge.on("request", (request) => {
     const threadId = readThreadId(request.params);
     const owner = threadId ? threadOwners.get(threadId) : undefined;

@@ -6,14 +6,18 @@ type Script = (socket: FakeWebSocket, message: any) => void;
 class FakeWebSocket {
   static readonly OPEN = 1;
   static script: Script = () => undefined;
+  static shouldOpen = () => true;
   readyState = 0;
   private listeners = new Map<string, Set<(event: any) => void>>();
 
   constructor(_url: string | URL) {
-    queueMicrotask(() => {
-      this.readyState = FakeWebSocket.OPEN;
-      this.emit("open", {});
-    });
+    const SocketClass = this.constructor as typeof FakeWebSocket;
+    if (SocketClass.shouldOpen()) {
+      queueMicrotask(() => {
+        this.readyState = FakeWebSocket.OPEN;
+        this.emit("open", {});
+      });
+    }
   }
 
   addEventListener(type: string, listener: (event: any) => void) {
@@ -41,6 +45,24 @@ class FakeWebSocket {
 }
 
 const WebSocketImpl = FakeWebSocket as unknown as typeof WebSocket;
+
+class ReconnectWebSocket extends FakeWebSocket {
+  static instances: ReconnectWebSocket[] = [];
+  static attempts = 0;
+  static override shouldOpen = () => ++ReconnectWebSocket.attempts === 1;
+
+  constructor(url: string | URL) {
+    super(url);
+    ReconnectWebSocket.instances.push(this);
+    const attempt = ReconnectWebSocket.instances.length;
+    if (attempt > 1) {
+      queueMicrotask(() => {
+        this.emit("error", {});
+        this.close();
+      });
+    }
+  }
+}
 
 describe("CodexClient", () => {
   it("times out unanswered RPC requests", async () => {
@@ -86,6 +108,35 @@ describe("CodexClient", () => {
     FakeWebSocket.script = (socket) => queueMicrotask(() => socket.close());
     const client = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
     await expect(client.request("thread/list", {})).rejects.toThrow("connection closed");
+  });
+
+  it("contains failed background reconnects instead of leaking unhandled rejections", async () => {
+    ReconnectWebSocket.instances = [];
+    ReconnectWebSocket.attempts = 0;
+    const client = createCodexClient({
+      url: "ws://localhost/codex",
+      WebSocketImpl: ReconnectWebSocket as unknown as typeof WebSocket,
+      reconnectMs: 0,
+    });
+    const reconnectFailure = new Promise<Error>((resolve) => client.on("reconnectError", resolve));
+    await client.connect();
+    ReconnectWebSocket.instances[0].close();
+    expect((await reconnectFailure).message).toContain("Unable to connect to Codex bridge");
+    client.close();
+  });
+
+  it("returns constructor failures as rejected connection promises", async () => {
+    class ThrowingWebSocket {
+      static readonly OPEN = 1;
+      constructor() { throw new Error("Invalid WebSocket URL"); }
+    }
+    const client = createCodexClient({
+      url: "not-a-websocket-url",
+      WebSocketImpl: ThrowingWebSocket as unknown as typeof WebSocket,
+      reconnectMs: false,
+    });
+    await expect(client.connect()).rejects.toThrow("Invalid WebSocket URL");
+    client.close();
   });
 
   it("creates a thread and sends multimodal input through one chat call", async () => {

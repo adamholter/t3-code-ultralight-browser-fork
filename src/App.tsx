@@ -64,11 +64,20 @@ export default function App() {
   }, [embedded, status]);
 
   useEffect(() => {
-    codex.connect();
+    void codex.connect().catch((cause) => {
+      setStatus("offline");
+      setError(cause instanceof Error ? cause.message : String(cause));
+    });
     const cleanup = [
       codex.on("connection", (next) => {
         setStatus(next);
-        if (next === "ready") void loadSidebar();
+        if (next === "ready") {
+          setError(null);
+          void loadSidebar();
+        }
+      }),
+      codex.on("reconnectError", (cause) => {
+        setError(cause instanceof Error ? cause.message : String(cause));
       }),
       codex.on("status", (message) => {
         setStatus(message.status);
