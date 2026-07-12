@@ -32,16 +32,17 @@ export function resolveCodexCommand(
   }
 
   const commandInterpreter = env.ComSpec ?? env.COMSPEC ?? "cmd.exe";
+  const commandLine = [
+    quoteWindowsBatchArgument(executable, "path"),
+    ...args.map((arg) => quoteWindowsBatchArgument(arg, "argument")),
+  ].join(" ");
   return {
     command: commandInterpreter,
-    args: [
-      "/d",
-      "/s",
-      "/v:off",
-      "/c",
-      quoteWindowsBatchArgument(executable, "path"),
-      ...args.map((arg) => quoteWindowsBatchArgument(arg, "argument")),
-    ],
+    // With /s, cmd.exe requires one outer pair of quotes around a command
+    // whose executable path is itself quoted. Passing the quoted path and
+    // arguments as separate argv entries causes cmd to consume the path's
+    // opening quote and leave an invalid trailing quote instead.
+    args: ["/d", "/s", "/v:off", "/c", `"${commandLine}"`],
     windowsVerbatimArguments: true,
   };
 }

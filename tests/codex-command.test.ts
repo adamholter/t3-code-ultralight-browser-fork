@@ -8,7 +8,7 @@ describe("Codex command resolution", () => {
       env: { PATH: "", ComSpec: "C:\\Windows\\System32\\cmd.exe" },
     })).toEqual({
       command: "C:\\Windows\\System32\\cmd.exe",
-      args: ["/d", "/s", "/v:off", "/c", '"codex.cmd"', '"app-server"', '"--stdio"'],
+      args: ["/d", "/s", "/v:off", "/c", '""codex.cmd" "app-server" "--stdio""'],
       windowsVerbatimArguments: true,
     });
   });
