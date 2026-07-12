@@ -6,8 +6,9 @@ import { PendingRequestPanel } from "../src/components/PendingRequestPanel";
 
 const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
 const { chromium } = require("playwright");
-const css = readdirSync(resolve("dist/assets")).find((file) => file.endsWith(".css"));
-if (!css) throw new Error("Built application CSS was not found");
+const defaultCss = readdirSync(resolve("dist/assets")).find((file) => file.endsWith(".css"));
+const cssPath = process.env.QA_CSS_PATH ?? (defaultCss ? resolve("dist/assets", defaultCss) : null);
+if (!cssPath) throw new Error("Built application CSS was not found");
 
 const markup = renderToStaticMarkup(
   <PendingRequestPanel
@@ -39,7 +40,7 @@ try {
   const consoleErrors: string[] = [];
   page.on("console", (message: { type(): string; text(): string }) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   await page.setContent(`<main class="app-shell embedded"><section class="workspace" style="display:flex;align-items:end;padding-top:24px">${markup}</section></main>`);
-  await page.addStyleTag({ path: resolve("dist/assets", css) });
+  await page.addStyleTag({ path: cssPath });
   await page.locator(".permission-panel").waitFor();
   const buttons = await page.locator(".permission-panel button").allTextContents();
   await page.screenshot({ path: "/tmp/codex-web-permission-desktop.png", fullPage: true });
