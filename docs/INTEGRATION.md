@@ -116,7 +116,7 @@ No-bundler hosts can import the same self-contained API from the running bridge:
 import { createCodexSession } from "http://127.0.0.1:4174/codex-client.js";
 ```
 
-The module endpoint follows the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
+Request adapters are available at `http://127.0.0.1:4174/codex-requests.js`. Both module endpoints follow the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
 
 ```ts
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
@@ -181,6 +181,25 @@ The complete chat renders `request_user_input` as an accessible options/free-tex
 ```html
 <codex-chat bridge-url="http://127.0.0.1:4174/?mode=plan"></codex-chat>
 ```
+
+For a custom UI, the recommended path is one typed adapter subscription:
+
+```ts
+import { attachCodexRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+
+const detach = attachCodexRequestHandlers(codex.client, {
+  approval: async (request) => await ui.confirmApproval(request) ? "accept" : "decline",
+  userInput: (questions, request) => ui.askQuestions(questions, request),
+  permission: (permission, request) => ui.reviewPermission(permission, request),
+  mcpForm: (elicitation, defaults, request) => ui.fillMcpForm(elicitation, defaults, request),
+  mcpUrl: (elicitation, request) => ui.completeMcpUrl(elicitation, request),
+  onError: (error) => ui.showError(error.message),
+});
+```
+
+The adapter serializes each protocol correctly, answers `currentTime/read` automatically, maps legacy approvals, and returns safe defaults when a handler is absent: approvals and MCP decline, questions skip, permissions reject, and unknown requests fail closed. Call `detach()` when the host UI unmounts. Use `handleCodexServerRequest()` for one-off dispatch without a subscription.
+
+The lower-level helpers remain available when a host needs complete manual control:
 
 Custom interfaces can use the framework-neutral response helpers:
 

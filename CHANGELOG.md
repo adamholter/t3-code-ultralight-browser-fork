@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19.0
+
+- Add `attachCodexRequestHandlers()` as one typed subscription for custom interfaces.
+- Dispatch approvals, user questions, structured permissions, MCP forms/URLs, current time, and custom requests through schema-correct handlers.
+- Fail closed without stalling when a handler is absent: decline approvals/MCP, skip questions, reject permissions, and error on unknown interactions.
+- Contain handler and error-reporter failures without creating unhandled rejections after socket closure.
+- Export `handleCodexServerRequest()` for one-off dispatch and direct tests.
+- Serve the self-contained adapter at `/codex-requests.js` for no-bundler canvas and voice UIs.
+- Add deterministic response-shape, missing-handler, exception, unsubscribe, browser-module, and live Plan-question verification.
+
 ## 0.18.0
 
 - Serve self-contained `/codex-chat.js` and `/codex-client.js` modules from the standalone bridge.

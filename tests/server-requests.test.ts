@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApprovalResponse, buildCurrentTimeResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions, isMcpElicitationComplete } from "../src/lib/server-requests";
+import { attachCodexRequestHandlers, buildApprovalResponse, buildCurrentTimeResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions, handleCodexServerRequest, isMcpElicitationComplete } from "../src/lib/server-requests";
 
 describe("server request helpers", () => {
   it("serializes user answers in the app-server response shape", () => {
@@ -126,4 +126,104 @@ describe("server request helpers", () => {
       params: { mode: "openai/form", serverName: "Nested", message: "No", requestedSchema: { type: "object", properties: { nested: { type: "object", properties: {} } } } },
     })).toBeNull();
   });
+
+  it("adapts typed custom UI handlers to every response protocol", async () => {
+    const client = new FakeResponder();
+    await handleCodexServerRequest(client, {
+      id: "approval",
+      method: "execCommandApproval",
+      params: { threadId: "thread-1" },
+    }, { approval: () => "accept" });
+    await handleCodexServerRequest(client, {
+      id: "question",
+      method: "item/tool/requestUserInput",
+      params: { questions: [{ id: "choice", header: "Choice", question: "Pick", isOther: false, isSecret: false, options: null }] },
+    }, { userInput: () => ({ choice: ["Beta"] }) });
+    await handleCodexServerRequest(client, {
+      id: "permission",
+      method: "item/permissions/requestApproval",
+      params: { permissions: { network: { enabled: true }, fileSystem: null } },
+    }, { permission: () => ({ scope: "session", strictAutoReview: true }) });
+    await handleCodexServerRequest(client, {
+      id: "mcp",
+      method: "mcpServer/elicitation/request",
+      params: {
+        mode: "form",
+        serverName: "Demo",
+        message: "Configure",
+        requestedSchema: { type: "object", required: ["name"], properties: { name: { type: "string" } } },
+      },
+    }, { mcpForm: (_form, defaults) => ({ ...defaults, name: "Codex" }) });
+    await handleCodexServerRequest(client, { id: "time", method: "currentTime/read", params: {} });
+
+    expect(client.responses).toEqual([
+      { id: "approval", result: { decision: "approved" } },
+      { id: "question", result: { answers: { choice: { answers: ["Beta"] } } } },
+      { id: "permission", result: { permissions: { network: { enabled: true } }, scope: "session", strictAutoReview: true } },
+      { id: "mcp", result: { action: "accept", content: { name: "Codex" }, _meta: null } },
+      { id: "time", result: expect.objectContaining({ currentTimeAt: expect.any(Number) }) },
+    ]);
+    expect(client.errors).toEqual([]);
+  });
+
+  it("declines, skips, or rejects safely when custom handlers are missing", async () => {
+    const client = new FakeResponder();
+    await handleCodexServerRequest(client, { id: 1, method: "item/commandExecution/requestApproval", params: {} });
+    await handleCodexServerRequest(client, {
+      id: 2,
+      method: "item/tool/requestUserInput",
+      params: { questions: [{ id: "q", header: "Q", question: "Answer", isOther: false, isSecret: false, options: null }] },
+    });
+    await handleCodexServerRequest(client, {
+      id: 3,
+      method: "item/permissions/requestApproval",
+      params: { permissions: { network: null, fileSystem: null } },
+    });
+    await handleCodexServerRequest(client, {
+      id: 4,
+      method: "mcpServer/elicitation/request",
+      params: { mode: "url", serverName: "Demo", message: "Connect", url: "https://example.com", elicitationId: "x" },
+    });
+    await handleCodexServerRequest(client, { id: 5, method: "unknown/request", params: {} });
+    expect(client.responses).toEqual([
+      { id: 1, result: { decision: "decline" } },
+      { id: 2, result: { answers: {} } },
+      { id: 4, result: { action: "decline", content: null, _meta: null } },
+    ]);
+    expect(client.errors).toEqual([
+      { id: 3, error: "Permission request declined" },
+      { id: 5, error: "Unsupported browser interaction: unknown/request" },
+    ]);
+  });
+
+  it("contains subscribed handler failures and can unsubscribe cleanly", async () => {
+    const client = new FakeResponder();
+    const reported: string[] = [];
+    const detach = attachCodexRequestHandlers(client, {
+      approval: () => { throw new Error("Approval UI crashed"); },
+      onError: (error) => reported.push(error.message),
+    });
+    client.emit({ id: "failed", method: "item/commandExecution/requestApproval", params: {} });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.errors).toEqual([{ id: "failed", error: "Approval UI crashed" }]);
+    expect(reported).toEqual(["Approval UI crashed"]);
+    detach();
+    client.emit({ id: "detached", method: "item/commandExecution/requestApproval", params: {} });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.responses).toEqual([]);
+  });
 });
+
+class FakeResponder {
+  responses: Array<{ id: string | number; result: unknown }> = [];
+  errors: Array<{ id: string | number; error?: string }> = [];
+  private serverRequestHandler: ((request: any) => void) | null = null;
+
+  on(_event: "serverRequest", handler: (request: any) => void) {
+    this.serverRequestHandler = handler;
+    return () => { this.serverRequestHandler = null; };
+  }
+  respond(id: string | number, result: unknown) { this.responses.push({ id, result }); }
+  respondError(id: string | number, error?: string) { this.errors.push({ id, error }); }
+  emit(request: any) { this.serverRequestHandler?.(request); }
+}

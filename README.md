@@ -49,7 +49,7 @@ Plain HTML needs no bundler or package import. The running bridge serves a stabl
 <codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
 ```
 
-For a no-bundler canvas, voice, or other custom UI, import the standalone client directly from `http://127.0.0.1:4174/codex-client.js`. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. Both module routes use that same origin policy and expose no credentials.
+For a no-bundler canvas, voice, or other custom UI, import the standalone client from `http://127.0.0.1:4174/codex-client.js` and request adapters from `/codex-requests.js`. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
 
 Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
 
@@ -118,6 +118,22 @@ console.log(answer.text);
 
 The session remembers its thread automatically. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
 
+Custom interfaces can cover every interactive request with one fail-closed adapter:
+
+```ts
+import { attachCodexRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+
+const detachRequests = attachCodexRequestHandlers(codex.client, {
+  approval: async (request) => yourUI.approve(request) ? "accept" : "decline",
+  userInput: (questions) => yourUI.ask(questions),
+  permission: (request) => yourUI.reviewPermission(request),
+  mcpForm: (request, defaults) => yourUI.fill(request, defaults),
+  mcpUrl: (request) => yourUI.openAuthorization(request),
+});
+```
+
+Missing handlers decline or skip safely, and `currentTime/read` is answered automatically.
+
 For shared clients or lower-level control, use `createCodexClient()` and subscribe directly:
 
 ```ts
@@ -176,6 +192,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - No-bundler chat and headless-client modules served directly by the local bridge
 - Origin-verified embed lifecycle events for host coordination without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
+- One-subscription request adapter for approvals, questions, permissions, MCP, time, and safe fallbacks
 - Exported negotiated bridge version, capabilities, and active transport limits
 - Automatic whole-second current-time replies and stale request cleanup in the complete chat
 

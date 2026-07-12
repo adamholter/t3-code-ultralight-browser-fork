@@ -20,6 +20,7 @@ const libraryDist = resolve(root, "dist-lib");
 const browserModules = {
   "/codex-chat.js": resolve(libraryDist, "element-auto.js"),
   "/codex-client.js": resolve(libraryDist, "client.js"),
+  "/codex-requests.js": resolve(libraryDist, "requests.js"),
 } as const;
 let bridgeReady = false;
 const allowedOrigins = readAllowedOrigins(process.env.CODEX_ALLOWED_ORIGINS);

@@ -13,6 +13,7 @@ const host = createServer((request, response) => {
     response.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
     response.end(`
       import { createCodexClient } from ${JSON.stringify(`${bridgeOrigin}/codex-client.js`)};
+      import { handleCodexServerRequest } from ${JSON.stringify(`${bridgeOrigin}/codex-requests.js`)};
       const chat = document.querySelector("codex-chat");
       window.__embedReady = false;
       chat.addEventListener("codex-chat-ready", () => { window.__embedReady = true; });
@@ -21,12 +22,17 @@ const host = createServer((request, response) => {
         reconnectMs: false,
         requiredCapabilities: ["hostedModules", "threadIsolation"],
       });
-      window.__headless = client.connect()
-        .then(() => client.listModels())
-        .then((models) => ({
+      const adapterResponses = [];
+      const adapterProof = handleCodexServerRequest({
+        respond: (id, result) => adapterResponses.push({ id, result }),
+        respondError: () => {},
+      }, { id: "approval", method: "item/commandExecution/requestApproval", params: {} });
+      window.__headless = Promise.all([client.connect().then(() => client.listModels()), adapterProof])
+        .then(([models]) => ({
           modelCount: models.data.length,
           protocol: client.bridgeInfo.protocol,
           capabilities: client.bridgeInfo.capabilities,
+          safeDefaultDecision: adapterResponses[0].result.decision,
         }));
     `);
     return;
@@ -61,7 +67,7 @@ page.on("console", (message) => {
 });
 page.on("pageerror", (error) => pageErrors.push(error.message));
 page.on("response", (response) => {
-  if ([`${bridgeOrigin}/codex-chat.js`, `${bridgeOrigin}/codex-client.js`].includes(response.url())) {
+  if ([`${bridgeOrigin}/codex-chat.js`, `${bridgeOrigin}/codex-client.js`, `${bridgeOrigin}/codex-requests.js`].includes(response.url())) {
     moduleResponses.set(response.url(), response);
   }
 });
@@ -81,7 +87,8 @@ try {
   await page.screenshot({ path: "/tmp/codex-web-no-bundler-mobile.png", fullPage: true });
   const chatResponse = moduleResponses.get(`${bridgeOrigin}/codex-chat.js`);
   const clientResponse = moduleResponses.get(`${bridgeOrigin}/codex-client.js`);
-  const headersValid = [chatResponse, clientResponse].every((response) =>
+  const requestsResponse = moduleResponses.get(`${bridgeOrigin}/codex-requests.js`);
+  const headersValid = [chatResponse, clientResponse, requestsResponse].every((response) =>
     response?.status() === 200
     && response.headers()["access-control-allow-origin"] === hostOrigin
     && response.headers()["cache-control"] === "no-store"
@@ -103,8 +110,8 @@ try {
   console.log(JSON.stringify(result, null, 2));
   if (
     !result.customElement || iframeCount !== 1 || headless.modelCount < 1
-    || headless.protocol.major !== 1 || !headless.capabilities.includes("hostedModules")
-    || moduleResponses.size !== 2 || !headersValid || hostOverflow || frameOverflow || consoleErrors.length || pageErrors.length
+    || headless.protocol.major !== 1 || !headless.capabilities.includes("hostedModules") || headless.safeDefaultDecision !== "decline"
+    || moduleResponses.size !== 3 || !headersValid || hostOverflow || frameOverflow || consoleErrors.length || pageErrors.length
   ) throw new Error("No-bundler browser QA assertions failed");
 } finally {
   await browser.close();

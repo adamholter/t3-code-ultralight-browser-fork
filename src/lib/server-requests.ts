@@ -61,6 +61,89 @@ export type McpElicitationRequest =
 
 export type McpElicitationValues = Record<string, string | number | boolean | string[]>;
 
+type MaybePromise<T> = T | Promise<T>;
+
+export interface CodexRequestResponder {
+  on(event: "serverRequest", handler: (request: PendingServerRequest) => void): () => void;
+  respond(id: string | number, result: unknown): void;
+  respondError(id: string | number, error?: string): void;
+}
+
+export interface CodexRequestHandlers {
+  approval?: (request: PendingServerRequest) => MaybePromise<"accept" | "decline" | null>;
+  userInput?: (questions: UserInputQuestion[], request: PendingServerRequest) => MaybePromise<UserInputAnswerValues | null>;
+  permission?: (permission: PermissionRequest, request: PendingServerRequest) => MaybePromise<{ scope: "turn" | "session"; strictAutoReview?: boolean } | null>;
+  mcpForm?: (elicitation: Extract<McpElicitationRequest, { mode: "form" | "openai/form" }>, defaults: McpElicitationValues, request: PendingServerRequest) => MaybePromise<McpElicitationValues | "decline" | "cancel" | null>;
+  mcpUrl?: (elicitation: Extract<McpElicitationRequest, { mode: "url" }>, request: PendingServerRequest) => MaybePromise<"accept" | "decline" | "cancel" | null>;
+  unsupported?: (request: PendingServerRequest) => MaybePromise<unknown | undefined>;
+  onError?: (error: Error, request: PendingServerRequest) => void;
+}
+
+/**
+ * Subscribe a custom UI to every browser-interactive Codex request. Missing
+ * handlers decline or skip safely instead of leaving the active turn stalled.
+ */
+export function attachCodexRequestHandlers(client: CodexRequestResponder, handlers: CodexRequestHandlers = {}) {
+  return client.on("serverRequest", (request) => {
+    void handleCodexServerRequest(client, request, handlers).catch((cause) => {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      try { client.respondError(request.id, error.message); } catch { /* The socket may have closed while the UI was open. */ }
+      try { handlers.onError?.(error, request); } catch { /* Error reporting must not create an unhandled rejection. */ }
+    });
+  });
+}
+
+/** Handle one request using the same fail-closed adapter without subscribing. */
+export async function handleCodexServerRequest(client: Pick<CodexRequestResponder, "respond" | "respondError">, request: PendingServerRequest, handlers: CodexRequestHandlers = {}) {
+  if (request.method === "currentTime/read") {
+    client.respond(request.id, buildCurrentTimeResponse());
+    return;
+  }
+
+  const questions = getUserInputQuestions(request);
+  if (questions) {
+    const answers = await handlers.userInput?.(questions, request) ?? {};
+    client.respond(request.id, buildUserInputResponse(answers));
+    return;
+  }
+
+  const permission = getPermissionRequest(request);
+  if (permission) {
+    const decision = await handlers.permission?.(permission, request) ?? null;
+    if (!decision) client.respondError(request.id, "Permission request declined");
+    else client.respond(request.id, buildPermissionResponse(permission, decision.scope, decision.strictAutoReview));
+    return;
+  }
+
+  const elicitation = getMcpElicitationRequest(request);
+  if (elicitation?.mode === "url") {
+    const action = await handlers.mcpUrl?.(elicitation, request) ?? "decline";
+    client.respond(request.id, buildMcpElicitationAction(action));
+    return;
+  }
+  if (elicitation) {
+    const result = await handlers.mcpForm?.(elicitation, getMcpElicitationDefaults(elicitation), request) ?? "decline";
+    client.respond(request.id, typeof result === "string"
+      ? buildMcpElicitationAction(result)
+      : buildMcpElicitationResponse(elicitation, result));
+    return;
+  }
+  if (request.method === "mcpServer/elicitation/request") {
+    client.respond(request.id, buildMcpElicitationAction("decline"));
+    return;
+  }
+
+  if (isApprovalRequest(request.method)) {
+    const decision = await handlers.approval?.(request) ?? "decline";
+    client.respond(request.id, buildApprovalResponse(request.method, decision));
+    return;
+  }
+
+  const custom = await handlers.unsupported?.(request);
+  if (custom === undefined) client.respondError(request.id, `Unsupported browser interaction: ${request.method}`);
+  else client.respond(request.id, custom);
+}
+
 export function getUserInputQuestions(request: PendingServerRequest): UserInputQuestion[] | null {
   if (request.method !== "item/tool/requestUserInput" || !Array.isArray(request.params.questions)) return null;
   const questions = request.params.questions.filter(isUserInputQuestion);

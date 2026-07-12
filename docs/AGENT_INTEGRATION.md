@@ -10,6 +10,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
    For plain HTML without a bundler, load `/codex-chat.js` directly from the running bridge; do not copy generated files into the host.
 5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
+   Attach `attachCodexRequestHandlers()` once instead of recreating approval, question, permission, MCP, time, and unsupported-request switching in every host.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.
 8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.
@@ -53,3 +54,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - A passive second browser cannot observe another browser's thread-scoped notifications.
 - The negotiated browser protocol major is compatible and required capabilities are advertised before RPCs begin.
 - Plain HTML integrations load the hosted module directly and pass exact-origin CORS without copying build artifacts.
+- Custom UIs attach one request adapter and leave every unimplemented interaction on its documented safe fallback.
