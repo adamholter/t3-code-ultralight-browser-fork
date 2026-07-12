@@ -50,6 +50,14 @@ const installCommand: string = recipe.installCommand;
 const clientModule: string = recipe.hostedModules.client;
 void [installCommand, clientModule];
 
+const hostedRecipe = createIntegrationRecipe(contract, { mode: "custom", delivery: "hosted", port: 4174 });
+const hostedInstall: false = hostedRecipe.requiresPackageInstall;
+const hostedClient: string = hostedRecipe.hostedModules.client;
+void [hostedInstall, hostedClient];
+
+// @ts-expect-error Hosted recipes intentionally have no package install command.
+void hostedRecipe.installCommand;
+
 // @ts-expect-error Setup modes are intentionally finite and typo-safe.
 createIntegrationRecipe(contract, { mode: "canvas", port: 4174 });
 

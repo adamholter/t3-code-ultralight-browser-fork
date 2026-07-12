@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const DEFAULT_PORT = 4174;
 const commandOptions = {
-  setup: { values: ["--port", "--allow-origin", "--mode", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
+  setup: { values: ["--port", "--allow-origin", "--mode", "--delivery", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
   start: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
   serve: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
   status: { values: ["--port"], repeatable: [], booleans: ["--json"] },
@@ -54,6 +54,7 @@ async function main() {
   if (command === "setup") {
     const port = parsePort(valueAfter("--port"));
     const mode = parseSetupMode(valueAfter("--mode"));
+    const delivery = parseSetupDelivery(valueAfter("--delivery"), mode);
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
     const { runDoctor } = await import("../dist-lib/doctor.js");
@@ -62,7 +63,7 @@ async function main() {
       cwd: valueAfter("--cwd"),
     });
     if (!doctor.ok) {
-      const report = { ok: false, mode, doctor, bridge: null, integration: null };
+      const report = { ok: false, mode, delivery, doctor, bridge: null, integration: null };
       printSetupReport(report);
       process.exitCode = 1;
       return;
@@ -72,12 +73,13 @@ async function main() {
     const { createIntegrationRecipe } = await import("../dist-lib/integration.js");
     const integration = createIntegrationRecipe(contract, {
       mode,
+      delivery,
       port,
       cwd: valueAfter("--cwd"),
     });
     const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset);
     const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset);
-    printSetupReport({ ok: true, mode, doctor, bridge, integration });
+    printSetupReport({ ok: true, mode, delivery, doctor, bridge, integration });
     return;
   }
 
@@ -166,7 +168,7 @@ async function main() {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package setup command with --mode iframe, react, element, or custom and JSON output. Follow its verified integration receipt. Use iframe unless the existing UI needs custom rendering.
+Run the package setup command with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use iframe unless the existing UI needs custom rendering.
 Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
@@ -181,7 +183,7 @@ function printHelp() {
 t3-code-ultralight
 
 Usage:
-  t3-code-ultralight setup [--mode iframe|react|element|custom] [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
+  t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
   t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--json]
   t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset]
   t3-code-ultralight status [--port 4174] [--json]
@@ -264,6 +266,20 @@ function parseSetupMode(value) {
     throw new Error(`Invalid --mode ${JSON.stringify(mode)}. Use iframe, react, element, or custom.`);
   }
   return mode;
+}
+
+function parseSetupDelivery(value, mode) {
+  if (value && !["package", "hosted"].includes(value)) {
+    throw new Error(`Invalid --delivery ${JSON.stringify(value)}. Use package or hosted.`);
+  }
+  const delivery = value ?? (mode === "iframe" ? "hosted" : "package");
+  if (mode === "iframe" && delivery !== "hosted") {
+    throw new Error("iframe integrations support only --delivery hosted");
+  }
+  if (mode === "react" && delivery !== "package") {
+    throw new Error("react integrations support only --delivery package");
+  }
+  return delivery;
 }
 
 function normalizeOrigin(value) {
@@ -438,9 +454,13 @@ function printSetupReport(report) {
     return;
   }
   console.log(`Codex is ready at ${report.bridge.url}.`);
-  console.log(`Integration mode: ${report.mode}`);
+  console.log(`Integration mode: ${report.mode} (${report.delivery})`);
   if (report.integration.installCommand) console.log(`\nInstall in the host:\n${report.integration.installCommand}`);
-  console.log(`\nAdd to the host:\n${report.integration.code}`);
+  else console.log("No package install is required for this delivery.");
+  console.log(`\nAdd this ${report.integration.codeLanguage} to the host:\n${report.integration.code}`);
+  if (Object.keys(report.integration.csp).length) {
+    console.log(`\nCSP source additions:\n${JSON.stringify(report.integration.csp, null, 2)}`);
+  }
   console.log(`\nVerify:\n${report.integration.verify}`);
 }
 

@@ -21,17 +21,23 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode iframe --json
 ```
 
-Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, the exact versioned install command, runtime-correct URLs, copyable code, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+
+For example, a static canvas or voice tool with no npm or bundler can use:
+
+```bash
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
+```
 
 ## One-command chat
 
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -39,7 +45,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -83,7 +89,7 @@ Plain HTML needs no bundler or package import. The running bridge serves a stabl
 <codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
 ```
 
-For a no-bundler canvas, voice, or other custom UI, import the standalone client from `http://127.0.0.1:4174/codex-client.js` and request adapters from `/codex-requests.js`. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
+For a no-bundler canvas, voice, or other custom UI, `setup --mode custom --delivery hosted --json` returns exact imports for the standalone client and request adapters served by the running bridge. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
 
 Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
 

@@ -5,8 +5,9 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--cwd` for a custom session and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
+2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, `--cwd` for a custom session, and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
    Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
+   For `delivery: "hosted"`, do not install or copy generated modules. Use the receipt's HTTP imports, apply its `csp` sources when the host has a CSP, and serve the host from an origin allowed by the bridge.
 3. Resolve every failed doctor check or report its exact recommendation.
    Treat any CLI parse error as a failed setup step; do not retry by dropping an unrecognized security or lifecycle flag.
    `setup` and `start` safely reuse a compatible bridge and return only after readiness. Use `npx t3-code-ultralight status --json` for a separate inspection.
@@ -67,4 +68,5 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - A passive second browser cannot observe another browser's thread-scoped notifications.
 - The negotiated browser protocol major is compatible and required capabilities are advertised before RPCs begin.
 - Plain HTML integrations load the hosted module directly and pass exact-origin CORS without copying build artifacts.
+- The exact generated hosted custom recipe executes in a browser, streams a real turn, and disposes without a package install.
 - Custom UIs attach one request adapter and leave every unimplemented interaction on its documented safe fallback.

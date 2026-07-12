@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -9,14 +9,16 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' start --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode iframe --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode react --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode element --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode custom --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode iframe --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode react --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode element --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode element --delivery hosted --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode custom --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.32.0' setup --mode custom --delivery hosted --json"
     }
   },
   "bridge": {
@@ -38,12 +40,14 @@
       "recommended": true,
       "iframeUrl": "http://127.0.0.1:4174/?embed=1",
       "webComponentModule": "http://127.0.0.1:4174/codex-chat.js",
+      "elementDeliveries": ["package", "hosted"],
       "packageExports": ["t3-code-ultralight-browser-fork/element/auto", "t3-code-ultralight-browser-fork/react"]
     },
     "customUi": {
       "useWhen": "The host already owns a canvas, voice, spatial, game, or bespoke interface.",
       "browserModule": "http://127.0.0.1:4174/codex-client.js",
       "requestModule": "http://127.0.0.1:4174/codex-requests.js",
+      "deliveries": ["package", "hosted"],
       "packageExports": ["t3-code-ultralight-browser-fork/client", "t3-code-ultralight-browser-fork/requests"],
       "primaryApi": "createCodexSession",
       "requestApi": "attachCodexRequestHandlers",
@@ -75,7 +79,8 @@
     "localPathDisclosure": false,
     "upgradeSafeCaching": true,
     "embedCompatibleCsp": true,
-    "runtimeAwareIntegrationContract": true
+    "runtimeAwareIntegrationContract": true,
+    "zeroInstallHostedRecipes": true
   },
   "acceptance": [
     "doctor reports ok true",

@@ -46,6 +46,16 @@ describe("CLI argument validation", () => {
     expect(result.stderr).toContain('Invalid --mode "dashboard"');
   });
 
+  it("validates setup delivery and mode compatibility before diagnostics", async () => {
+    const unknown = await runCli(["setup", "--delivery", "cdn", "--json"]);
+    expect(unknown.code).not.toBe(0);
+    expect(unknown.stderr).toContain('Invalid --delivery "cdn"');
+
+    const reactHosted = await runCli(["setup", "--mode", "react", "--delivery", "hosted", "--json"]);
+    expect(reactHosted.code).not.toBe(0);
+    expect(reactHosted.stderr).toContain("react integrations support only --delivery package");
+  });
+
   it("returns a machine-readable failed setup receipt without starting a bridge", async () => {
     const port = String(await reservePort());
     const result = await runCli(["setup", "--mode", "custom", "--port", port, "--codex", "/missing/codex", "--json"]);
@@ -53,6 +63,7 @@ describe("CLI argument validation", () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       ok: false,
       mode: "custom",
+      delivery: "package",
       doctor: { ok: false },
       bridge: null,
       integration: null,
@@ -67,6 +78,7 @@ describe("CLI argument validation", () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("stable prebuilt release asset");
     expect(result.stdout).toContain("package setup command");
+    expect(result.stdout).toContain("--delivery hosted");
   });
 
   it("prints the packaged machine-readable integration contract", async () => {

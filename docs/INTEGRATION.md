@@ -10,7 +10,7 @@ For a new integration, prefer the combined setup receipt:
 npx t3-code-ultralight setup --mode iframe --json
 ```
 
-Choose `iframe`, `react`, `element`, or `custom`. The command runs the same read-only diagnostics below, starts or reuses only a version/origin-compatible background bridge, and returns a typed mode-specific recipe with install command, runtime URLs, copyable code, cleanup guidance, and verification endpoints. Pass `--cwd` for a custom session. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
+Choose `iframe`, `react`, `element`, or `custom`. Element and custom recipes default to package delivery; pass `--delivery hosted` when the browser must import bridge-served modules without npm or a bundler. Iframe is always hosted and React is always package-delivered; incompatible combinations fail before diagnostics or startup. The command runs the same read-only diagnostics below, starts or reuses only a version/origin-compatible background bridge, and returns a typed recipe with runtime URLs, copyable code, code language, exact CSP source additions, cleanup guidance, and verification endpoints. Pass `--cwd` for a custom session. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
 
 Run diagnostics separately when setup and host editing are intentionally split:
 

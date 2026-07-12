@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.32.0
+
+- Add `--delivery package|hosted` to setup recipes for Web Component and custom canvas, voice, or bespoke interfaces.
+- Generate zero-install hosted recipes that import the live `/codex-chat.js`, `/codex-client.js`, and `/codex-requests.js` modules directly.
+- Keep iframe delivery hosted and React delivery package-only, rejecting invalid combinations before diagnostics or process startup.
+- Include a `delivery` discriminator, `codeLanguage`, and exact CSP source additions in every typed recipe.
+- Preserve strongly narrowed TypeScript results for explicit hosted and package recipe calls.
+- Add an end-to-end browser harness that executes the exact generated hosted custom recipe, streams a real Codex response, and verifies cleanup without npm or copied artifacts.
+
 ## 0.31.0
 
 - Add `setup --mode iframe|react|element|custom --json` to combine read-only Codex diagnostics, safe background bridge startup, and a complete copyable host recipe.
