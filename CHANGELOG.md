@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.0
+
+- Render structured network and filesystem permission requests in the complete chat.
+- Show exact requested capabilities, reason, and working directory before granting.
+- Add explicit turn/session grant scope and optional strict command-by-command review.
+- Export framework-neutral permission parsers, descriptions, and response builders.
+- Answer thread-scoped `currentTime/read` requests with schema-correct whole Unix seconds.
+- Reject requests for inactive UI threads instead of leaving app-server waiting.
+- Remove prompts when app-server reports that a request resolved automatically.
+- Add response-shape, static-render, desktop, and mobile permission verification.
+
 ## 0.10.0
 
 - Fail closed instead of broadcasting server requests with no identifiable live owner.

@@ -138,6 +138,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Commands, file changes, MCP calls, and tool activity
 - Approval and stop controls
 - Interactive Codex questions with options, free text, secret inputs, and multi-question forms
+- Structured permission review with exact capability details, turn/session scope, and strict command review
 - Model, reasoning effort, and working-directory selection
 - Markdown, code copy, desktop/mobile layouts, and themes
 - Automatic local bridge restart and browser reconnect
@@ -152,6 +153,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - Origin-verified embed lifecycle events for host coordination without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
+- Automatic whole-second current-time replies and stale request cleanup in the complete chat
 
 ## Deliberately excluded
 

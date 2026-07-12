@@ -6,6 +6,7 @@ import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
 import { postCodexEmbedEvent } from "./embed-events";
 import { codex } from "./lib/codex-client";
+import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server-requests";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
 
@@ -73,9 +74,19 @@ export default function App() {
         setStatus(message.status);
       }),
       codex.on("serverRequest", (request) => {
-        if (request.params?.threadId === selectedThreadId.current) {
-          setPendingRequests((current) => [...current, request]);
+        const requestThreadId = getServerRequestThreadId(request);
+        if (!requestThreadId || requestThreadId !== selectedThreadId.current) {
+          codex.respondError(request.id, "Request belongs to an inactive browser thread");
+          return;
         }
+        if (request.method === "currentTime/read") {
+          codex.respond(request.id, buildCurrentTimeResponse());
+          return;
+        }
+        setPendingRequests((current) => [...current, request]);
+      }),
+      codex.on("serverRequest/resolved", (payload) => {
+        setPendingRequests((current) => current.filter((request) => request.id !== payload.requestId));
       }),
       codex.on("item/started", (payload) => {
         if (payload.threadId === selectedThreadId.current) setItems((current) => reconcileStreamedItem(current, payload.item));

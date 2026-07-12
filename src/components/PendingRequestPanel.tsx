@@ -1,6 +1,6 @@
 import { ShieldAlert } from "lucide-react";
-import { useState } from "react";
-import { buildApprovalResponse, buildUserInputResponse, getUserInputQuestions, isApprovalRequest } from "../lib/server-requests";
+import { useId, useState } from "react";
+import { buildApprovalResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getPermissionRequest, getUserInputQuestions, isApprovalRequest, type PermissionRequest } from "../lib/server-requests";
 import type { PendingServerRequest } from "../types";
 
 interface PendingRequestPanelProps {
@@ -12,11 +12,40 @@ interface PendingRequestPanelProps {
 export function PendingRequestPanel({ request, onRespond, onReject }: PendingRequestPanelProps) {
   const questions = getUserInputQuestions(request);
   if (questions) return <UserInputPanel questions={questions} onRespond={onRespond} />;
+  const permissions = getPermissionRequest(request);
+  if (permissions) return <PermissionPanel request={permissions} onRespond={onRespond} onReject={onReject} />;
   if (isApprovalRequest(request.method)) return <ApprovalBar request={request} onRespond={onRespond} />;
   if (request.method === "mcpServer/elicitation/request") {
     return <UnsupportedRequest request={request} onRespond={onRespond} onReject={() => onRespond({ action: "decline", content: null, _meta: null })} />;
   }
   return <UnsupportedRequest request={request} onRespond={onRespond} onReject={onReject} />;
+}
+
+function PermissionPanel({ request, onRespond, onReject }: { request: PermissionRequest; onRespond: (result: unknown) => void; onReject: (message?: string) => void }) {
+  const [strictAutoReview, setStrictAutoReview] = useState(false);
+  const headingId = useId();
+  const details = describePermissionRequest(request);
+  return (
+    <section className="permission-panel" aria-labelledby={headingId}>
+      <div className="request-heading">
+        <strong id={headingId}>Codex requests additional permissions</strong>
+        <span>{request.reason || "Review the requested access before continuing."}</span>
+      </div>
+      {request.cwd && <div className="permission-cwd">Working in {request.cwd}</div>}
+      <ul className="permission-list">
+        {details.length ? details.map((detail, index) => <li key={`${detail}-${index}`}>{detail}</li>) : <li>No additional capabilities were described.</li>}
+      </ul>
+      <label className="permission-review">
+        <input type="checkbox" checked={strictAutoReview} onChange={(event) => setStrictAutoReview(event.target.checked)} />
+        <span><strong>Review every later command</strong><small>Keep command-by-command review enabled for the rest of this turn.</small></span>
+      </label>
+      <div className="request-actions permission-actions">
+        <button type="button" onClick={() => onReject("Permission request declined")}>Decline</button>
+        <button type="button" className="request-primary" onClick={() => onRespond(buildPermissionResponse(request, "turn", strictAutoReview))}>Allow for this turn</button>
+        <button type="button" className="request-primary" onClick={() => onRespond(buildPermissionResponse(request, "session", strictAutoReview))}>Allow for session</button>
+      </div>
+    </section>
+  );
 }
 
 function UserInputPanel({ questions, onRespond }: { questions: NonNullable<ReturnType<typeof getUserInputQuestions>>; onRespond: (result: unknown) => void }) {

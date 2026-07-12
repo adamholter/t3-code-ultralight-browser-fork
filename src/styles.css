@@ -158,6 +158,15 @@ button { color: inherit; }
 .request-actions button { border: 1px solid var(--line-strong); border-radius: 7px; padding: 6px 10px; background: var(--panel); font-size: 11px; cursor: pointer; }
 .request-actions .request-primary { border-color: var(--text); background: var(--text); color: var(--bg); }
 .request-actions button:disabled { opacity: .35; cursor: default; }
+.permission-panel { width: min(calc(100% - 40px), 820px); max-height: min(52dvh, 520px); margin: 0 auto 10px; overflow-y: auto; border: 1px solid color-mix(in srgb, #d29a3e 45%, var(--line)); border-radius: 11px; padding: 14px; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / 8%); }
+.permission-cwd { overflow: hidden; margin: -3px 0 10px; color: var(--faint); font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.permission-list { display: grid; gap: 5px; margin: 0; padding: 10px 10px 10px 27px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft); color: var(--text); font-family: "JetBrains Mono", monospace; font-size: 10.5px; line-height: 1.45; }
+.permission-review { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 8px; margin-top: 11px; color: var(--muted); cursor: pointer; }
+.permission-review input { margin: 2px 0 0; accent-color: var(--accent); }
+.permission-review > span { display: flex; flex-direction: column; gap: 1px; }
+.permission-review strong { color: var(--text); font-size: 11px; }
+.permission-review small { font-size: 10px; line-height: 1.35; }
+.permission-actions { flex-wrap: wrap; }
 .error-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line)); padding: 8px 16px; background: color-mix(in srgb, var(--danger) 8%, var(--bg)); color: var(--danger); font-size: 11px; }
 .error-banner button { border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; }
 .sidebar-scrim { display: none; }
@@ -182,8 +191,9 @@ button { color: inherit; }
   .composer-hint { display: none; }
   .cwd-input { display: none; }
   .select-control select { max-width: 112px; }
-  .approval-bar, .user-input-panel { width: calc(100% - 20px); }
-  .user-input-panel { max-height: 58dvh; padding: 12px; }
+  .approval-bar, .user-input-panel, .permission-panel { width: calc(100% - 20px); }
+  .user-input-panel, .permission-panel { max-height: 58dvh; padding: 12px; }
+  .permission-actions button { flex: 1 1 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,6 +14,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 9. Never copy Codex credentials, cookies, access tokens, or config secrets into the browser.
 10. Preserve approval and user-input requests instead of silently accepting them.
     Never broadcast an unowned request or forward a response without recorded ownership.
+    Render structured permission capabilities and scope explicitly; never map them to a generic approval payload.
 11. Verify one real local Codex turn through the final user-facing UI.
 
 ## Minimal agent task
@@ -35,6 +36,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Assistant deltas stream visibly.
 - Tool activity does not crash the renderer.
 - Stop and approval paths remain operable.
+- Permission requests show exact capabilities and return schema-correct turn or session grants.
 - Custom sessions retain their thread, scope streamed events, and interrupt Codex when stopped.
 - No secret is present in browser storage or bundles.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.

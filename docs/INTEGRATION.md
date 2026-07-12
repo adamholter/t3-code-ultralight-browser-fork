@@ -160,6 +160,23 @@ codex.on("serverRequest", async (request) => {
 
 `values` is a record of question IDs to string arrays. Use `codex.respondError(id, message)` when the host cannot safely handle a server request.
 
+Permission requests have a different response schema. Parse and display every requested capability, then let the user choose the grant scope:
+
+```ts
+import { buildPermissionResponse, getPermissionRequest } from "t3-code-ultralight-browser-fork/requests";
+
+codex.on("serverRequest", async (request) => {
+  const permission = getPermissionRequest(request);
+  if (!permission) return;
+
+  const choice = await yourUI.reviewPermission(permission);
+  if (!choice) return codex.respondError(request.id, "Permission request declined");
+  codex.respond(request.id, buildPermissionResponse(permission, choice.scope, choice.strictAutoReview));
+});
+```
+
+The complete chat includes this review panel. It grants exactly the requested network and filesystem profile, defaults the primary choice to the current turn, makes session scope explicit, and can keep strict command-by-command review enabled. It also answers thread-scoped `currentTime/read` requests locally with whole Unix seconds and removes prompts resolved automatically by app-server.
+
 ## Mode 3: existing Node server
 
 Attach to an existing `node:http` server rather than launching a second service:
