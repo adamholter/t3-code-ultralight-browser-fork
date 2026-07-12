@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { closeSync, mkdtempSync, openSync, realpathSync } from "node:fs";
+import { accessSync, closeSync, constants, mkdtempSync, openSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
@@ -75,7 +75,7 @@ async function main() {
       cwd: workspaceCwd,
     });
     if (!doctor.ok) {
-      const report = { ok: false, mode, delivery, doctor, bridge: null, integration: null };
+      const report = { ok: false, mode, delivery, doctor, bridge: null, lifecycle: null, integration: null };
       printSetupReport(report);
       process.exitCode = 1;
       return;
@@ -93,7 +93,8 @@ async function main() {
     });
     const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
-    printSetupReport({ ok: true, mode, delivery, doctor, bridge, integration });
+    const lifecycle = createLifecycleReport(contract.release.specifier, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    printSetupReport({ ok: true, mode, delivery, doctor, bridge, lifecycle, integration });
     return;
   }
 
@@ -546,11 +547,63 @@ function workspaceFingerprint(cwd) {
 function normalizeCodexBinary(value = "codex") {
   const binary = value.trim();
   if (!binary) throw new Error("--codex requires a non-empty value.");
-  return binary.includes("/") || binary.includes("\\") ? resolve(binary) : binary;
+  if (binary.includes("/") || binary.includes("\\")) {
+    const absolute = resolve(binary);
+    try { return realpathSync(absolute); } catch { return absolute; }
+  }
+  const extensions = process.platform === "win32" && !extname(binary)
+    ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";")
+    : [""];
+  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
+    if (!directory) continue;
+    for (const extension of extensions) {
+      const candidate = resolve(directory, `${binary}${extension}`);
+      try {
+        accessSync(candidate, constants.X_OK);
+        return realpathSync(candidate);
+      } catch { /* Try the next PATH entry. */ }
+    }
+  }
+  return binary;
 }
 
 function codexBinaryFingerprint(binary) {
   return createHash("sha256").update(normalizeCodexBinary(binary)).digest("hex");
+}
+
+function createLifecycleReport(specifier, port, allowedOrigins, reuseOriginSuperset, cwd, codexBinary) {
+  const ensureArgs = [
+    "start",
+    "--port",
+    String(port),
+    "--codex",
+    codexBinary,
+    ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
+    ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
+    "--json",
+  ];
+  const statusArgs = ["status", "--port", String(port), "--json"];
+  const stopArgs = ["stop", "--port", String(port), "--json"];
+  const command = (name, args) => ({ command: name, args, cwd });
+  return {
+    requiredBeforeBrowser: true,
+    runFrom: cwd,
+    resolvedPort: port,
+    resolvedPortStable: true,
+    hostStartupRecommendation: "Run ensure before starting the web host; it is idempotent and preserves the recipe's exact port.",
+    ensure: {
+      installed: command("t3-code-ultralight", ensureArgs),
+      zeroInstall: command("npx", ["--yes", specifier, ...ensureArgs]),
+    },
+    status: {
+      installed: command("t3-code-ultralight", statusArgs),
+      zeroInstall: command("npx", ["--yes", specifier, ...statusArgs]),
+    },
+    stop: {
+      installed: command("t3-code-ultralight", stopArgs),
+      zeroInstall: command("npx", ["--yes", specifier, ...stopArgs]),
+    },
+  };
 }
 
 function printSetupReport(report) {
@@ -570,11 +623,16 @@ function printSetupReport(report) {
   console.log(`Integration mode: ${report.mode} (${report.delivery})`);
   if (report.integration.installCommand) console.log(`\nInstall in the host:\n${report.integration.installCommand}`);
   else console.log("No package install is required for this delivery.");
+  console.log(`\nEnsure the local bridge before starting the host:\n${formatCommand(report.lifecycle.ensure.zeroInstall)}`);
   console.log(`\nAdd this ${report.integration.codeLanguage} to the host:\n${report.integration.code}`);
   if (Object.keys(report.integration.csp).length) {
     console.log(`\nCSP source additions:\n${JSON.stringify(report.integration.csp, null, 2)}`);
   }
   console.log(`\nVerify:\n${report.integration.verify}`);
+}
+
+function formatCommand({ command, args }) {
+  return [command, ...args].map((value) => /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`).join(" ");
 }
 
 function unique(values) {

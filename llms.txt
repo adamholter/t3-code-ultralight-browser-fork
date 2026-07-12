@@ -7,6 +7,7 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 - Run setup from the host project root; its normalized directory becomes the bridge default, with `--cwd` as an override
 - Bridge reuse requires the exact version, origin policy, workspace fingerprint, and Codex-binary fingerprint; browser status never exposes either path
 - Custom Codex CLI: pass the same `--codex PATH` to setup, start, or serve; diagnostics and the background app-server both use it
+- Durable host startup: use the setup receipt's structured `lifecycle.ensure.installed` or `lifecycle.ensure.zeroInstall` command before the web process; it restores the exact resolved port, workspace, binary, and origins
 - Zero-install browser delivery: add `--delivery hosted` for element or custom modes
 - Custom UI primary API: import `createCodexAssistant` from `/codex-assistant.js` or `t3-code-ultralight-browser-fork/assistant`; it owns stateful threads, cancellation, scoped fail-closed requests, and cleanup
 - Complete-chat host control: `codex-chat.sendPrompt()`, React imperative ref, or `/codex-embed.js` for raw iframes

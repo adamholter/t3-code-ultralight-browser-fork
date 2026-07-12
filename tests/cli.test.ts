@@ -70,6 +70,7 @@ describe("CLI argument validation", () => {
       delivery: "package",
       doctor: { ok: false },
       bridge: null,
+      lifecycle: null,
       integration: null,
     });
     const status = await runCli(["status", "--port", port, "--json"]);
@@ -106,7 +107,7 @@ describe("CLI argument validation", () => {
         pid: process.pid,
         allowedOrigins: ["https://canvas.example.com"],
         workspaceFingerprint: fingerprint(process.cwd()),
-        codexBinaryFingerprint: binaryFingerprint("codex"),
+        codexBinaryFingerprint: binaryFingerprint("/test/codex"),
       }));
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -116,11 +117,11 @@ describe("CLI argument validation", () => {
       expect(status.code).toBe(0);
       expect(JSON.parse(status.stdout)).toMatchObject({ running: true, version: packageJson.version, status: "ready" });
 
-      const reused = await runCli(["serve", "--port", port, "--allow-origin", "https://canvas.example.com/"]);
+      const reused = await runCli(["serve", "--port", port, "--allow-origin", "https://canvas.example.com/", "--codex", "/test/codex"]);
       expect(reused.code).toBe(0);
       expect(reused.stdout).toContain("is already ready");
 
-      const backgroundReuse = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--json"]);
+      const backgroundReuse = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--codex", "/test/codex", "--json"]);
       expect(backgroundReuse.code).toBe(0);
       expect(JSON.parse(backgroundReuse.stdout)).toMatchObject({
         started: false,
@@ -134,12 +135,12 @@ describe("CLI argument validation", () => {
         originSupersetAccepted: false,
       });
 
-      const narrower = await runCli(["start", "--port", port, "--json"]);
+      const narrower = await runCli(["start", "--port", port, "--codex", "/test/codex", "--json"]);
       expect(narrower.code).not.toBe(0);
       expect(narrower.stderr).toContain("additionally allows: https://canvas.example.com");
       expect(narrower.stderr).toContain("--reuse-origin-superset");
 
-      const intentionalSuperset = await runCli(["start", "--port", port, "--reuse-origin-superset", "--json"]);
+      const intentionalSuperset = await runCli(["start", "--port", port, "--reuse-origin-superset", "--codex", "/test/codex", "--json"]);
       expect(intentionalSuperset.code).toBe(0);
       expect(JSON.parse(intentionalSuperset.stdout)).toMatchObject({
         reused: true,
@@ -148,7 +149,7 @@ describe("CLI argument validation", () => {
         originSupersetAccepted: true,
       });
 
-      const incompatible = await runCli(["serve", "--port", port, "--allow-origin", "https://voice.example.com"]);
+      const incompatible = await runCli(["serve", "--port", port, "--allow-origin", "https://voice.example.com", "--codex", "/test/codex"]);
       expect(incompatible.code).not.toBe(0);
       expect(incompatible.stderr).toContain("does not allow: https://voice.example.com");
       expect(incompatible.stderr).toContain(`stop --port ${port}`);
@@ -160,7 +161,7 @@ describe("CLI argument validation", () => {
 
       const otherWorkspace = await mkdtemp(resolve(tmpdir(), "t3-other-workspace-"));
       try {
-        const mismatchedWorkspace = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--json"], otherWorkspace);
+        const mismatchedWorkspace = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--codex", "/test/codex", "--json"], otherWorkspace);
         expect(mismatchedWorkspace.code).not.toBe(0);
         expect(mismatchedWorkspace.stderr).toContain("different default workspace");
         expect(mismatchedWorkspace.stderr).toContain(`t3-other-workspace-`);
@@ -184,7 +185,7 @@ describe("CLI argument validation", () => {
         pid: process.pid,
         allowedOrigins: [],
         workspaceFingerprint: fingerprint(workspace),
-        codexBinaryFingerprint: binaryFingerprint("codex"),
+        codexBinaryFingerprint: binaryFingerprint("/test/codex"),
       }));
     });
     try {
@@ -192,7 +193,7 @@ describe("CLI argument validation", () => {
         server.once("error", reject);
         server.listen(candidate, "127.0.0.1", resolveListen);
       });
-      const result = await runCli(["start", "--port", "auto", "--cwd", workspace, "--json"]);
+      const result = await runCli(["start", "--port", "auto", "--cwd", workspace, "--codex", "/test/codex", "--json"]);
       expect(result.code).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({
         port: candidate,

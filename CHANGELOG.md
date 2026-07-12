@@ -1,12 +1,20 @@
 # Changelog
 
+## 0.49.0
+
+- Return a structured lifecycle receipt from successful setup with installed-package and zero-install `{ command, args, cwd }` operations for ensure, status, and stop.
+- Pin lifecycle ensure to the recipe's resolved numeric port, workspace, origin policy, and Codex executable so host startup remains valid after reboots or full bridge stops.
+- Keep lifecycle ensure idempotent and make failed setup return `lifecycle: null` without changing a process.
+- Resolve command names and symlinks to the executable's real path before fingerprinting, so PATH changes cannot silently switch the app-server behind a compatible-looking selector.
+- Search every deterministic candidate for an existing exact match before using a newly available earlier port, preventing duplicate bridges after port availability changes.
+- Add live restart verification that sends a real turn, stops the bridge through the receipt, restores its exact endpoint, and sends another real turn through unchanged browser configuration.
+
 ## 0.48.0
 
 - Propagate `--codex` from setup diagnostics into the actual background and foreground Codex app-server instead of silently falling back to the PATH default.
 - Support the same `--codex` override across `setup`, `start`, `serve`, and `doctor`.
 - Add a path-private Codex-binary fingerprint to browser status and require an exact binary match before reusing a bridge.
 - Make deterministic automatic-port selection preserve an incompatible bridge that targets another Codex installation and choose a separate stable port.
-- Search every deterministic candidate for an existing exact match before using a newly available earlier port, preventing duplicate bridges after port availability changes.
 - Return the selected binary only in the trusted CLI receipt; generated browser code and browser-readable status never expose its local path.
 - Add a live executable-wrapper harness that proves diagnostics and a real streamed turn use the custom binary, matching starts reuse it, mismatched starts fail closed, and the default bridge remains untouched.
 

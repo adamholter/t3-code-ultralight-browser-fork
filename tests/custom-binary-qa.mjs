@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const cli = resolve(root, "bin/cli.mjs");
-const fixture = await mkdtemp(resolve(tmpdir(), "t3-custom-binary-"));
+const fixture = await realpath(await mkdtemp(resolve(tmpdir(), "t3-custom-binary-")));
 const wrapper = resolve(fixture, "codex-wrapper.mjs");
 const calls = resolve(fixture, "calls.jsonl");
 const realCodex = execFileSync("which", ["codex"], { encoding: "utf8" }).trim();

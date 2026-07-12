@@ -68,6 +68,16 @@ describe("package version", () => {
       githubProvenanceAttestation: true,
       verifiedAssetReplacement: true,
     });
+    expect(integration.release.setupReceiptLifecycle).toMatchObject({
+      requiredBeforeBrowser: true,
+      exactResolvedPort: true,
+      exactWorkspace: true,
+      exactCodexBinary: true,
+      installedAndZeroInstallCommands: true,
+      idempotentEnsure: true,
+      restartBrowserVerified: true,
+    });
+    expect(integration.security.durableLifecycleReceipt).toBe(true);
     expect(integration.security.attestedReleaseArtifacts).toBe(true);
   });
 
