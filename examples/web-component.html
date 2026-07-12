@@ -2,9 +2,18 @@
 <script type="module" src="http://127.0.0.1:4174/codex-chat.js"></script>
 
 <main style="height: min(760px, 90vh)">
+  <button id="ask-selection">Ask about selection</button>
   <codex-chat
     bridge-url="http://127.0.0.1:4174"
     title="Local project assistant"
     min-height="560px"
   ></codex-chat>
 </main>
+
+<script type="module">
+  await customElements.whenDefined("codex-chat");
+  const chat = document.querySelector("codex-chat");
+  document.querySelector("#ask-selection").addEventListener("click", () => {
+    void chat.sendPrompt("Explain the selected canvas nodes", { newThread: true });
+  });
+</script>

@@ -33,9 +33,13 @@ import {
 } from "t3-code-ultralight-browser-fork/client";
 import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
 import { createIntegrationRecipe } from "t3-code-ultralight-browser-fork/integration";
+import { createCodexEmbedController } from "t3-code-ultralight-browser-fork/embed-events";
 
 const client = createCodexClient();
 const canvas = createCodexSession({ client, cwd: "/workspace" });
+declare const iframe: HTMLIFrameElement;
+const embed = createCodexEmbedController(iframe);
+void embed.send("Explain the selection", { cwd: "/workspace", newThread: true });
 
 client.on("item/agentMessage/delta", (event) => {
   const delta: string = event.delta;
@@ -60,6 +64,12 @@ const recipe = createIntegrationRecipe(contract, { mode: "custom", port: 4174, c
 const installCommand: string = recipe.installCommand;
 const clientModule: string = recipe.hostedModules.client;
 void [installCommand, clientModule];
+
+const iframeRecipe = createIntegrationRecipe(contract, { mode: "iframe", port: 4174, cwd: "/workspace" });
+const controllerModule: string = iframeRecipe.controllerModule;
+const controllerCode: string = iframeRecipe.controllerCode;
+const controllerDispose: "codex.dispose()" = iframeRecipe.controllerDispose;
+void [controllerModule, controllerCode, controllerDispose];
 
 const hostedRecipe = createIntegrationRecipe(contract, { mode: "custom", delivery: "hosted", port: 4174 });
 const hostedInstall: false = hostedRecipe.requiresPackageInstall;
@@ -112,7 +122,7 @@ const required = {
   "./react": "CodexChatEmbed",
   "./element": "defineCodexChatElement",
   "./element/auto": "defineCodexChatElement",
-  "./embed-events": "subscribeCodexEmbedEvents",
+  "./embed-events": "createCodexEmbedController",
   "./server": "attachCodexBridge",
   "./doctor": "runDoctor",
   "./integration": "createIntegrationRecipe",

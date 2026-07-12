@@ -15,8 +15,10 @@ const host = createServer((request, response) => {
     response.end(`
       import { createCodexClient } from ${JSON.stringify(`${bridgeOrigin}/codex-client.js`)};
       import { handleCodexServerRequest } from ${JSON.stringify(`${bridgeOrigin}/codex-requests.js`)};
+      import { createCodexEmbedController } from ${JSON.stringify(`${bridgeOrigin}/codex-embed.js`)};
       const chat = document.querySelector("codex-chat");
       window.__embedReady = false;
+      window.__controllerAvailable = typeof createCodexEmbedController === "function";
       chat.addEventListener("codex-chat-ready", () => { window.__embedReady = true; });
       const client = createCodexClient({
         ${useDefaultClientUrl ? "" : `url: ${JSON.stringify(`${bridgeSocketOrigin}/ws`)},`}
@@ -68,7 +70,7 @@ page.on("console", (message) => {
 });
 page.on("pageerror", (error) => pageErrors.push(error.message));
 page.on("response", (response) => {
-  if ([`${bridgeOrigin}/codex-chat.js`, `${bridgeOrigin}/codex-client.js`, `${bridgeOrigin}/codex-requests.js`].includes(response.url())) {
+  if ([`${bridgeOrigin}/codex-chat.js`, `${bridgeOrigin}/codex-embed.js`, `${bridgeOrigin}/codex-client.js`, `${bridgeOrigin}/codex-requests.js`].includes(response.url())) {
     moduleResponses.set(response.url(), response);
   }
 });
@@ -87,9 +89,10 @@ try {
   const frameOverflow = await frame.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await page.screenshot({ path: "/tmp/codex-web-no-bundler-mobile.png", fullPage: true });
   const chatResponse = moduleResponses.get(`${bridgeOrigin}/codex-chat.js`);
+  const embedResponse = moduleResponses.get(`${bridgeOrigin}/codex-embed.js`);
   const clientResponse = moduleResponses.get(`${bridgeOrigin}/codex-client.js`);
   const requestsResponse = moduleResponses.get(`${bridgeOrigin}/codex-requests.js`);
-  const headersValid = [chatResponse, clientResponse, requestsResponse].every((response) =>
+  const headersValid = [chatResponse, embedResponse, clientResponse, requestsResponse].every((response) =>
     response?.status() === 200
     && response.headers()["access-control-allow-origin"] === hostOrigin
     && response.headers()["cache-control"] === "no-store"
@@ -97,6 +100,7 @@ try {
   );
   const result = {
     customElement: await page.evaluate(() => !!customElements.get("codex-chat")),
+    controllerAvailable: await page.evaluate(() => window.__controllerAvailable),
     iframeCount,
     embedReady: true,
     headless,
@@ -110,9 +114,9 @@ try {
   };
   console.log(JSON.stringify(result, null, 2));
   if (
-    !result.customElement || iframeCount !== 1 || headless.modelCount < 1
+    !result.customElement || !result.controllerAvailable || iframeCount !== 1 || headless.modelCount < 1
     || headless.protocol.major !== 1 || !headless.capabilities.includes("hostedModules") || headless.safeDefaultDecision !== "decline"
-    || moduleResponses.size !== 3 || !headersValid || hostOverflow || frameOverflow || consoleErrors.length || pageErrors.length
+    || moduleResponses.size !== 4 || !headersValid || hostOverflow || frameOverflow || consoleErrors.length || pageErrors.length
   ) throw new Error("No-bundler browser QA assertions failed");
 } finally {
   await browser.close();

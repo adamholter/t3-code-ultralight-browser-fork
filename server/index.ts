@@ -20,6 +20,7 @@ const dist = resolve(root, "dist");
 const libraryDist = resolve(root, "dist-lib");
 const browserModules = {
   "/codex-chat.js": resolve(libraryDist, "element-auto.js"),
+  "/codex-embed.js": resolve(libraryDist, "embed-events.js"),
   "/codex-client.js": resolve(libraryDist, "client.js"),
   "/codex-requests.js": resolve(libraryDist, "requests.js"),
 } as const;
@@ -137,9 +138,10 @@ async function serveStatic(pathname: string, response: ServerResponse) {
   }
   const filePath = exists ? safePath : resolve(dist, "index.html");
   const isHashedAsset = /^assets\/.+-[A-Za-z0-9_-]+\.(?:js|css)$/.test(requested);
+  const frameAncestors = allowedOrigins.includes("null") ? "* file:" : "*";
   response.writeHead(200, {
     "cache-control": isHashedAsset ? "public, max-age=31536000, immutable" : "no-store",
-    "content-security-policy": "default-src 'self'; base-uri 'none'; connect-src 'self' ws: wss:; font-src 'self' data:; frame-ancestors *; img-src 'self' data: blob: https:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'none'",
+    "content-security-policy": `default-src 'self'; base-uri 'none'; connect-src 'self' ws: wss:; font-src 'self' data:; frame-ancestors ${frameAncestors}; img-src 'self' data: blob: https:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'none'`,
     "content-type": contentType(filePath),
     "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",

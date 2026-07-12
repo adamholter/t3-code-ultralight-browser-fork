@@ -39,6 +39,10 @@ export interface IframeIntegrationRecipe extends IntegrationRecipeBase {
   delivery: "hosted";
   requiresPackageInstall: false;
   embedUrl: string;
+  controllerModule: string;
+  controllerCode: string;
+  controllerCodeLanguage: "js";
+  controllerDispose: "codex.dispose()";
 }
 
 export interface ReactIntegrationRecipe extends IntegrationRecipeBase {
@@ -118,6 +122,7 @@ export function materializeRuntimeIntegrationContract(
   value.release.setupCommands.customHosted = `npx --yes '${value.release.specifier}' setup --mode custom --delivery hosted${portArgument} --json`;
   value.modes.completeChat.iframeUrl = `${origin}/?embed=1`;
   value.modes.completeChat.webComponentModule = `${origin}/codex-chat.js`;
+  value.modes.completeChat.controllerModule = `${origin}/codex-embed.js`;
   value.modes.customUi.browserModule = `${origin}/codex-client.js`;
   value.modes.customUi.requestModule = `${origin}/codex-requests.js`;
   value.runtime = {
@@ -169,9 +174,13 @@ export function createIntegrationRecipe(
       delivery: "hosted",
       requiresPackageInstall: false,
       embedUrl: runtime.modes.completeChat.iframeUrl,
-      code: `<iframe src="${runtime.modes.completeChat.iframeUrl}" title="Local Codex chat" style="width:100%;height:100%;min-height:420px;border:0"></iframe>`,
+      controllerModule: runtime.modes.completeChat.controllerModule,
+      controllerCode: `import { createCodexEmbedController } from "${runtime.modes.completeChat.controllerModule}";\n\nconst iframe = document.querySelector("#local-codex");\nconst codex = createCodexEmbedController(iframe);\nawait codex.send("Explain the current selection", { cwd: ${JSON.stringify(workingDirectory)} });`,
+      controllerCodeLanguage: "js",
+      controllerDispose: "codex.dispose()",
+      code: `<iframe id="local-codex" src="${runtime.modes.completeChat.iframeUrl}" title="Local Codex chat" style="width:100%;height:100%;min-height:420px;border:0"></iframe>`,
       codeLanguage: "html",
-      csp: { "frame-src": [bridgeUrl] },
+      csp: { "script-src": [bridgeUrl], "frame-src": [bridgeUrl] },
     };
   }
   if (mode === "react") {

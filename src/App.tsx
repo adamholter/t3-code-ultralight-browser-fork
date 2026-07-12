@@ -4,7 +4,12 @@ import { Composer } from "./components/Composer";
 import { PendingRequestPanel } from "./components/PendingRequestPanel";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
-import { postCodexEmbedEvent } from "./embed-events";
+import {
+  postCodexEmbedEvent,
+  subscribeCodexEmbedCommands,
+  type CodexEmbedCommandHandlers,
+  type CodexEmbedSendOptions,
+} from "./embed-events";
 import { createCodexClient } from "./lib/codex-client";
 import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server-requests";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
@@ -25,7 +30,6 @@ export default function App() {
   const [items, setItems] = useState<ThreadItem[]>([]);
   const [draft, setDraft] = useState("");
   const [running, setRunning] = useState(false);
-  const [turnId, setTurnId] = useState<string | null>(null);
   const [model, setModel] = useState(localStorage.getItem("codex-web:model") ?? "");
   const [effort, setEffort] = useState(localStorage.getItem("codex-web:effort") ?? "low");
   const [cwd, setCwd] = useState(localStorage.getItem("codex-web:cwd") ?? "/Users/adam");
@@ -34,7 +38,12 @@ export default function App() {
   const [pendingRequests, setPendingRequests] = useState<PendingServerRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dark, setDark] = useState(() => localStorage.getItem("codex-web:theme") !== "light");
+  const [embedAllowedOrigins, setEmbedAllowedOrigins] = useState<string[] | null>(embedded ? null : []);
   const selectedThreadId = useRef<string | null>(null);
+  const runningRef = useRef(false);
+  const turnIdRef = useRef<string | null>(null);
+  const interruptedTurnIds = useRef(new Set<string>());
+  const embedCommandHandlers = useRef<CodexEmbedCommandHandlers | null>(null);
 
   useEffect(() => {
     selectedThreadId.current = selected?.id ?? null;
@@ -121,14 +130,30 @@ export default function App() {
       }),
       codex.on("turn/started", (payload) => {
         if (payload.threadId === selectedThreadId.current) {
-          setTurnId(payload.turn.id);
+          if (interruptedTurnIds.current.has(payload.turn.id)) return;
+          if (turnIdRef.current && turnIdRef.current !== payload.turn.id) return;
+          turnIdRef.current = payload.turn.id;
+          runningRef.current = true;
           setRunning(true);
           if (embedded) postCodexEmbedEvent({ event: "turn", phase: "started", threadId: payload.threadId, turnId: payload.turn.id });
         }
       }),
       codex.on("turn/completed", (payload) => {
+        interruptedTurnIds.current.delete(payload.turn.id);
         if (payload.threadId !== selectedThreadId.current) return;
-        setTurnId(null);
+        if (turnIdRef.current && turnIdRef.current !== payload.turn.id) {
+          if (embedded) postCodexEmbedEvent({
+            event: "turn",
+            phase: "completed",
+            threadId: payload.threadId,
+            turnId: payload.turn.id,
+            status: payload.turn.status,
+            ...(payload.turn?.error?.message ? { error: payload.turn.error.message } : {}),
+          });
+          return;
+        }
+        turnIdRef.current = null;
+        runningRef.current = false;
         setRunning(false);
         if (payload.turn?.error?.message) setError(payload.turn.error.message);
         if (embedded) postCodexEmbedEvent({
@@ -154,6 +179,24 @@ export default function App() {
   useEffect(() => {
     if (embedded && error) postCodexEmbedEvent({ event: "error", message: error, threadId: selectedThreadId.current });
   }, [embedded, error]);
+
+  useEffect(() => {
+    if (!embedded) return;
+    let cancelled = false;
+    void fetch("/api/status", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Could not load embed origin policy (${response.status})`);
+        const status = await response.json() as { allowedOrigins?: unknown };
+        if (!Array.isArray(status.allowedOrigins) || !status.allowedOrigins.every((origin) => typeof origin === "string")) {
+          throw new Error("Bridge returned an invalid embed origin policy");
+        }
+        if (!cancelled) setEmbedAllowedOrigins(status.allowedOrigins);
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => { cancelled = true; };
+  }, [embedded]);
 
   async function selectThread(thread: CodexThread) {
     dismissPendingRequests("User switched Codex threads");
@@ -181,21 +224,30 @@ export default function App() {
     setSelected(null);
     setItems([]);
     setDraft("");
+    runningRef.current = false;
+    turnIdRef.current = null;
     setRunning(false);
-    setTurnId(null);
     setSidebarOpen(false);
     setError(null);
   }
 
-  async function send() {
-    const text = draft.trim();
-    if (!text || running || status !== "ready") return;
-    setDraft("");
+  async function sendPrompt(input: string, options: CodexEmbedSendOptions = {}) {
+    const text = input.trim();
+    if (!text) throw new Error("Codex prompt cannot be empty");
+    if (runningRef.current) throw new Error("Codex is already running a turn");
+    if (status !== "ready") throw new Error("Codex is not ready");
+    const turnCwd = options.cwd?.trim() || cwd;
+    if (options.cwd) {
+      setCwd(turnCwd);
+      localStorage.setItem("codex-web:cwd", turnCwd);
+    }
+    if (options.newThread) newThread();
+    runningRef.current = true;
     setError(null);
     try {
-      let thread = selected;
+      let thread = options.newThread ? null : selected;
       if (!thread) {
-        const response = await codex.request<{ thread: CodexThread }>("thread/start", { cwd, ...(model ? { model } : {}) });
+        const response = await codex.request<{ thread: CodexThread }>("thread/start", { cwd: turnCwd, ...(model ? { model } : {}) });
         thread = response.thread;
         selectedThreadId.current = thread.id;
         setSelected(thread);
@@ -205,22 +257,67 @@ export default function App() {
       const response = await codex.request<{ turn: { id: string } }>("turn/start", {
         threadId: thread.id,
         input: [{ type: "text", text, text_elements: [] }],
-        cwd,
+        cwd: turnCwd,
         ...(model ? { model } : {}),
         ...(effort ? { effort } : {}),
         ...(collaborationMode && model ? { collaborationMode: { mode: collaborationMode, settings: { model, reasoning_effort: effort || null, developer_instructions: null } } } : {}),
       });
-      setTurnId(response.turn.id);
+      turnIdRef.current = response.turn.id;
+      return { threadId: thread.id, turnId: response.turn.id };
     } catch (cause) {
+      runningRef.current = false;
+      turnIdRef.current = null;
       setRunning(false);
       setError(cause instanceof Error ? cause.message : String(cause));
+      throw cause;
     }
   }
 
-  async function stop() {
-    if (!selected || !turnId) return;
-    await codex.request("turn/interrupt", { threadId: selected.id, turnId });
+  function send() {
+    const text = draft.trim();
+    if (!text || running || runningRef.current || status !== "ready") return;
+    setDraft("");
+    void sendPrompt(text).catch(() => undefined);
   }
+
+  async function stop() {
+    const activeThreadId = selectedThreadId.current;
+    const activeTurnId = turnIdRef.current;
+    if (!activeThreadId || !activeTurnId) return;
+    interruptedTurnIds.current.add(activeTurnId);
+    if (interruptedTurnIds.current.size > 64) {
+      interruptedTurnIds.current.delete(interruptedTurnIds.current.values().next().value!);
+    }
+    try {
+      await codex.request("turn/interrupt", { threadId: activeThreadId, turnId: activeTurnId });
+    } catch (cause) {
+      if (!(cause instanceof Error) || !/no active turn to interrupt/i.test(cause.message)) {
+        interruptedTurnIds.current.delete(activeTurnId);
+        throw cause;
+      }
+    }
+    turnIdRef.current = null;
+    runningRef.current = false;
+    setRunning(false);
+  }
+
+  embedCommandHandlers.current = {
+    send: sendPrompt,
+    newThread: () => {
+      if (runningRef.current) throw new Error("Stop the active Codex turn before starting a new thread");
+      newThread();
+    },
+    stop,
+  };
+
+  useEffect(() => {
+    if (!embedded || !embedAllowedOrigins) return;
+    return subscribeCodexEmbedCommands({
+      send: (text, options) => embedCommandHandlers.current!.send(text, options),
+      newThread: () => embedCommandHandlers.current!.newThread(),
+      stop: () => embedCommandHandlers.current!.stop(),
+    }, embedAllowedOrigins);
+  }, [embedded, embedAllowedOrigins]);
 
   function answerRequest(result: unknown) {
     const request = pendingRequests[0];

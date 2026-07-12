@@ -16,14 +16,14 @@ This project is the smallest practical bridge between a browser UI and a user's 
 
 It uses the user's existing Codex login, configuration, models, skills, MCP tools, workspace permissions, and thread history. API keys and Codex credentials never enter browser JavaScript.
 
-The complete chat ships in about 90 KB of decoded JavaScript plus CSS. Its response renderer has no external Markdown runtime: it creates escaped React nodes directly, keeps raw response HTML inert, and still covers the code, tables, tasks, links, quotes, and formatting Codex commonly emits.
+The complete chat ships in about 94 KB of decoded JavaScript plus CSS. Its response renderer has no external Markdown runtime: it creates escaped React nodes directly, keeps raw response HTML inert, and still covers the code, tables, tasks, links, quotes, and formatting Codex commonly emits.
 
 ## One-command integration
 
 An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' setup --mode iframe --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -31,7 +31,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
 ```
 
 ## One-command chat
@@ -39,7 +39,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -47,7 +47,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.36.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -103,7 +103,7 @@ Repeat `--allow-origin` for additional hosts. The bridge still binds only to `12
 
 Every setup recipe includes an `originPolicy` object. It records that loopback browser origins work automatically, lists the exact additional origins configured for this bridge, and names the required `--allow-origin <exact browser origin>` flag for any other host. The HTTPS non-loopback path is tested with real browser CORS and WebSocket Origin headers; an unlisted sibling is rejected on both transports.
 
-A trusted standalone HTML file can use the same zero-install recipe with `--allow-origin null`. Browsers represent `file://` and sandboxed documents with the opaque Origin value `null`; the receipt sets `originPolicy.opaqueOriginAllowed: true` only when that access was explicitly requested. Do not grant `null` to untrusted local files or sandboxed content.
+A trusted standalone HTML file can use the same zero-install recipe with `--allow-origin null`. Browsers represent `file://` and sandboxed documents with the opaque Origin value `null`; the receipt sets `originPolicy.opaqueOriginAllowed: true` only when that access was explicitly requested. The complete chat's `frame-ancestors` policy also adds `file:` only under this explicit grant. Do not grant `null` to untrusted local files or sandboxed content.
 
 ```bash
 npx t3-code-ultralight setup --mode custom --delivery hosted --allow-origin null --cwd /absolute/project/path --json
@@ -127,22 +127,39 @@ import "t3-code-ultralight-browser-fork/element/auto";
 
 It is safe to import during SSR and upgrades automatically once a browser DOM exists. Use `defineCodexChatElement()` when the host needs a custom tag name or explicit registration timing.
 
-The element emits origin-verified `codex-chat-ready`, `codex-chat-connection`, `codex-chat-thread`, `codex-chat-turn`, and `codex-chat-error` events. Every event carries lifecycle metadata only—never prompts, responses, credentials, or tool payloads.
+The element emits origin-verified `codex-chat-ready`, `codex-chat-connection`, `codex-chat-thread`, `codex-chat-turn`, `codex-chat-command`, and `codex-chat-error` events. Events carry lifecycle metadata and command acknowledgements only—never prompts, responses, credentials, or tool payloads.
+
+Canvas, voice, and other host controls can drive the complete chat without rebuilding its renderer:
+
+```ts
+const chat = document.querySelector("codex-chat");
+await chat.sendPrompt(transcript, { cwd: projectPath, newThread: true });
+await chat.stop();
+await chat.newThread();
+```
+
+Calls made before the iframe is ready wait for its command channel. `sendPrompt()` resolves when Codex accepts the turn and returns only its thread and turn IDs; streamed response content stays inside the isolated chat.
 
 Use `bridge-url="http://127.0.0.1:4174/?mode=plan"` when the embedded chat should run in Codex Plan mode and support interactive clarification questions.
 
 React projects can use the wrapper:
 
 ```tsx
-import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
+import { useRef } from "react";
+import { CodexChatEmbed, type CodexChatEmbedHandle } from "t3-code-ultralight-browser-fork/react";
 
 export function AssistantPanel() {
+  const codex = useRef<CodexChatEmbedHandle>(null);
   return (
-    <CodexChatEmbed
-      style={{ height: 640 }}
-      onCodexReady={({ modelCount }) => console.log(`${modelCount} models ready`)}
-      onTurnChange={({ phase }) => setAssistantBusy(phase === "started")}
-    />
+    <>
+      <button onClick={() => codex.current?.sendPrompt("Explain the selected canvas nodes")}>Ask Codex</button>
+      <CodexChatEmbed
+        controllerRef={codex}
+        style={{ height: 640 }}
+        onCodexReady={({ modelCount }) => console.log(`${modelCount} models ready`)}
+        onTurnChange={({ phase }) => setAssistantBusy(phase === "started")}
+      />
+    </>
   );
 }
 ```
@@ -150,6 +167,17 @@ export function AssistantPanel() {
 The React export supports host-provided React 18 or 19. React is an optional peer, so headless, Web Component, and server-only installs do not pull it in.
 
 The iframe is intentional: T3's polished chat CSS stays isolated from the host app, making this the safest one-line integration.
+
+Raw iframe hosts can load the same dependency-free controller directly from the running bridge:
+
+```ts
+import { createCodexEmbedController } from "http://127.0.0.1:4174/codex-embed.js";
+
+const codex = createCodexEmbedController(document.querySelector("#local-codex"));
+await codex.send("Explain the current selection", { cwd: projectPath });
+```
+
+The child accepts commands only from its exact parent window and an origin allowed by the bridge. Loopback hosts work automatically; a non-loopback or trusted `file://` parent must use the same explicit `--allow-origin` policy as the headless client. Spoofed origins are ignored without acknowledgement.
 
 ## Custom canvas or voice UI
 
@@ -265,7 +293,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Enforced 110 KB decoded JavaScript-plus-CSS ceiling for the complete browser app
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - No-bundler chat and headless-client modules served directly by the local bridge
-- Origin-verified embed lifecycle events for host coordination without response-data leakage
+- Origin-verified embed lifecycle events and host commands without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
 - One-subscription request adapter for approvals, questions, permissions, MCP, time, and safe fallbacks
 - Exported negotiated bridge version, capabilities, and active transport limits

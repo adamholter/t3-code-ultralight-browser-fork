@@ -5,6 +5,8 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 - Machine-readable integration contract: ./integration.json
 - One-command verified recipe: run the release CLI with `setup --mode iframe|react|element|custom --json`
 - Zero-install browser delivery: add `--delivery hosted` for element or custom modes
+- Complete-chat host control: `codex-chat.sendPrompt()`, React imperative ref, or `/codex-embed.js` for raw iframes
+- Host commands: send, stop, and newThread; exact parent window and bridge-allowed Origin required; acknowledgements never contain prompt or response text
 - Non-loopback hosts: pass exact `--allow-origin`; the receipt repeats it under `originPolicy`
 - Trusted file or sandbox hosts: pass `--allow-origin null` and require `opaqueOriginAllowed: true`
 - Complete chat budget: 110000 decoded JS+CSS bytes; built-in safe Markdown has no external runtime dependency

@@ -39,6 +39,7 @@ try {
   const httpSurface = {
     indexNoStore: indexHeaders["cache-control"] === "no-store",
     embedAllowed: !indexHeaders["x-frame-options"] && indexHeaders["content-security-policy"]?.includes("frame-ancestors *"),
+    opaqueFramingRequiresOptIn: !indexHeaders["content-security-policy"]?.includes("frame-ancestors * file:"),
     csp: indexHeaders["content-security-policy"]?.includes("script-src 'self'") && indexHeaders["content-security-policy"]?.includes("object-src 'none'"),
     noReferrer: indexHeaders["referrer-policy"] === "no-referrer",
     nosniff: indexHeaders["x-content-type-options"] === "nosniff",
@@ -66,6 +67,7 @@ try {
         && integrationContract.bridge?.httpUrl === baseOrigin
         && integrationContract.bridge?.websocketUrl === baseOrigin.replace(/^http/, "ws") + "/ws"
         && integrationContract.modes?.completeChat?.iframeUrl === `${baseOrigin}/?embed=1`
+        && integrationContract.modes?.completeChat?.controllerModule === `${baseOrigin}/codex-embed.js`
         && integrationContract.modes?.customUi?.browserModule === `${baseOrigin}/codex-client.js`,
     },
     httpSurface,

@@ -1,3 +1,8 @@
 export { CodexChatEmbed } from "./CodexChatEmbed";
-export type { CodexChatEmbedProps } from "./CodexChatEmbed";
-export type { CodexEmbedEvent, CodexEmbedEventPayload } from "../embed-events";
+export type { CodexChatEmbedHandle, CodexChatEmbedProps } from "./CodexChatEmbed";
+export type {
+  CodexEmbedCommandResult,
+  CodexEmbedEvent,
+  CodexEmbedEventPayload,
+  CodexEmbedSendOptions,
+} from "../embed-events";

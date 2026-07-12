@@ -22,6 +22,7 @@ describe("live integration contract", () => {
     expect(runtime.modes.completeChat).toMatchObject({
       iframeUrl: "http://127.0.0.1:49123/?embed=1",
       webComponentModule: "http://127.0.0.1:49123/codex-chat.js",
+      controllerModule: "http://127.0.0.1:49123/codex-embed.js",
     });
     expect(runtime.modes.customUi).toMatchObject({
       browserModule: "http://127.0.0.1:49123/codex-client.js",
@@ -40,7 +41,12 @@ describe("live integration contract", () => {
   it("creates complete copyable recipes for every supported host style", () => {
     const iframe = createIntegrationRecipe(integration, { mode: "iframe", port: 4174 });
     expect(iframe).toMatchObject({ mode: "iframe", delivery: "hosted", requiresPackageInstall: false, embedUrl: "http://127.0.0.1:4174/?embed=1" });
-    expect(iframe.code).toContain("<iframe");
+    expect(iframe.code).toContain('<iframe id="local-codex"');
+    expect(iframe.controllerModule).toBe("http://127.0.0.1:4174/codex-embed.js");
+    expect(iframe.controllerCode).toContain("createCodexEmbedController");
+    expect(iframe.controllerCodeLanguage).toBe("js");
+    expect(iframe.controllerDispose).toBe("codex.dispose()");
+    expect(iframe.csp).toEqual({ "script-src": ["http://127.0.0.1:4174"], "frame-src": ["http://127.0.0.1:4174"] });
 
     const react = createIntegrationRecipe(integration, { mode: "react", port: 49123 });
     expect(react).toMatchObject({ mode: "react", delivery: "package", requiresPackageInstall: true, bridgeUrl: "http://127.0.0.1:49123" });

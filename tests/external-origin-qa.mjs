@@ -18,6 +18,7 @@ const bridgeSocketOrigin = `ws://127.0.0.1:${bridgePort}`;
 const hostProtocol = process.env.QA_HOST_PROTOCOL ?? "https";
 if (!["http", "https"].includes(hostProtocol)) throw new Error("QA_HOST_PROTOCOL must be http or https");
 const marker = `EXTERNAL_ORIGIN_${Date.now()}`;
+const embedMarker = `EXTERNAL_EMBED_${Date.now()}`;
 let recipe;
 const tls = hostProtocol === "https" ? await createTestCertificate() : null;
 
@@ -25,6 +26,7 @@ const hostHandler = (request, response) => {
   if (request.url === "/app.js") {
     response.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
     response.end(`
+      import { createCodexEmbedController, subscribeCodexEmbedEvents } from ${JSON.stringify(`${bridgeOrigin}/codex-embed.js`)};
       let streamedText = "";
       const yourUI = {
         reviewApproval: async () => false,
@@ -33,11 +35,34 @@ const hostHandler = (request, response) => {
       };
       const prompt = ${JSON.stringify(`Reply with exactly: ${marker}`)};
       ${recipe?.code ?? "throw new Error('Setup recipe was not ready')"}
-      window.__externalOriginResult = {
+      const externalOriginResult = {
         text: answer.text.trim(),
         streamed: streamedText.includes(${JSON.stringify(marker)}),
         threadId: answer.threadId,
       };
+      const iframe = document.querySelector("#controlled-chat");
+      const embedCompleted = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("External embed turn timed out")), 120000);
+        const unsubscribe = subscribeCodexEmbedEvents(iframe, (event) => {
+          if (event.event !== "turn" || event.phase !== "completed") return;
+          clearTimeout(timeout);
+          unsubscribe();
+          resolve(event);
+        });
+      });
+      const embedController = createCodexEmbedController(iframe);
+      const embedAccepted = await embedController.send(${JSON.stringify(`Reply with exactly: ${embedMarker}`)}, { cwd: "/tmp", newThread: true });
+      const embedTurn = await embedCompleted;
+      externalOriginResult.embed = {
+        accepted: embedAccepted.ok,
+        command: embedAccepted.command,
+        threadId: embedAccepted.threadId,
+        turnId: embedAccepted.turnId,
+        completedThreadId: embedTurn.threadId,
+      };
+      window.__externalOriginResult = externalOriginResult;
+      await codex.client.request("thread/delete", { threadId: embedAccepted.threadId });
+      embedController.dispose();
       detachRequests();
       await codex.close();
     `);
@@ -54,16 +79,41 @@ const hostHandler = (request, response) => {
         socket.addEventListener("open", () => { clearTimeout(timeout); socket.close(); resolve(false); }, { once: true });
         socket.addEventListener("error", () => { clearTimeout(timeout); resolve(true); }, { once: true });
       });
-      window.__evilOriginResult = { moduleRejected, websocketRejected };
+      const iframe = document.querySelector("#controlled-chat");
+      await new Promise((resolve) => {
+        iframe.addEventListener("load", resolve, { once: true });
+        setTimeout(resolve, 3000);
+      });
+      const requestId = "evil-command";
+      const commandRejected = await new Promise((resolve) => {
+        const listener = (event) => {
+          if (event.source !== iframe.contentWindow || event.data?.event !== "command" || event.data?.requestId !== requestId) return;
+          window.removeEventListener("message", listener);
+          resolve(false);
+        };
+        window.addEventListener("message", listener);
+        iframe.contentWindow.postMessage({
+          source: "t3-code-ultralight",
+          version: 1,
+          direction: "host-command",
+          requestId,
+          command: "newThread",
+        }, ${JSON.stringify(bridgeOrigin)});
+        setTimeout(() => {
+          window.removeEventListener("message", listener);
+          resolve(true);
+        }, 750);
+      });
+      window.__evilOriginResult = { moduleRejected, websocketRejected, commandRejected };
     `);
     return;
   }
   const isEvil = request.headers.host?.startsWith("evil.example.test:");
   response.writeHead(200, {
-    "content-security-policy": `default-src 'none'; script-src 'self' ${bridgeOrigin}; connect-src ${bridgeSocketOrigin};`,
+    "content-security-policy": `default-src 'none'; script-src 'self' ${bridgeOrigin}; connect-src ${bridgeSocketOrigin}; frame-src ${bridgeOrigin};`,
     "content-type": "text/html; charset=utf-8",
   });
-  response.end(`<!doctype html><meta charset="utf-8"><title>External origin QA</title><script type="module" src="${isEvil ? "/evil.js" : "/app.js"}"></script>`);
+  response.end(`<!doctype html><meta charset="utf-8"><title>External origin QA</title><iframe id="controlled-chat" src="${bridgeOrigin}/?embed=1" title="Controlled Codex"></iframe><script type="module" src="${isEvil ? "/evil.js" : "/app.js"}"></script>`);
 };
 const host = tls
   ? createHttpsServer({ key: tls.key, cert: tls.cert }, hostHandler)
@@ -116,7 +166,7 @@ try {
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("response", (response) => {
-    if ([recipe.hostedModules.client, recipe.hostedModules.requests].includes(response.url())) {
+    if ([recipe.hostedModules.client, recipe.hostedModules.requests, `${bridgeOrigin}/codex-embed.js`].includes(response.url())) {
       moduleResponses.set(response.url(), response);
     }
   });
@@ -128,11 +178,16 @@ try {
     && response.headers()["access-control-allow-origin"] === allowedOrigin
     && response.headers().vary === "Origin"
   );
-  assert.equal(moduleResponses.size, 2);
+  assert.equal(moduleResponses.size, 3);
   assert.equal(corsExact, true);
   assert.equal(allowed.text, marker);
   assert.equal(allowed.streamed, true);
   assert.equal(typeof allowed.threadId, "string");
+  assert.equal(allowed.embed.accepted, true);
+  assert.equal(allowed.embed.command, "send");
+  assert.equal(typeof allowed.embed.threadId, "string");
+  assert.equal(typeof allowed.embed.turnId, "string");
+  assert.equal(allowed.embed.completedThreadId, allowed.embed.threadId);
   assert.deepEqual(consoleErrors, []);
   assert.deepEqual(pageErrors, []);
 
@@ -140,7 +195,7 @@ try {
   await evilPage.goto(evilOrigin, { waitUntil: "domcontentloaded" });
   await evilPage.waitForFunction(() => window.__evilOriginResult, null, { timeout: 10_000 });
   const rejected = await evilPage.evaluate(() => window.__evilOriginResult);
-  assert.deepEqual(rejected, { moduleRejected: true, websocketRejected: true });
+  assert.deepEqual(rejected, { moduleRejected: true, websocketRejected: true, commandRejected: true });
 
   console.log(JSON.stringify({
     allowedOrigin,
@@ -151,9 +206,11 @@ try {
     response: allowed.text,
     streamed: allowed.streamed,
     disposed: true,
+    embedHostCommand: allowed.embed,
     rejectedOrigin: evilOrigin,
     rejectedModule: rejected.moduleRejected,
     rejectedWebSocket: rejected.websocketRejected,
+    rejectedEmbedCommand: rejected.commandRejected,
     consoleErrors,
     pageErrors,
   }, null, 2));

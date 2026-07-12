@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.37.0
+
+- Add a typed, imperative controller for the complete chat so canvas, voice, and other host controls can send prompts without rebuilding T3's response UI.
+- Expose `sendPrompt()`, `stop()`, and `newThread()` directly on `<codex-chat>` and through the React 18/19-compatible `CodexChatEmbedHandle` `controllerRef`.
+- Serve the dependency-free raw iframe controller at `/codex-embed.js` and include its runtime-correct URL and copyable code in iframe setup receipts.
+- Wait through iframe startup with a side-effect-free ping, cache the verified receiver until iframe reload, reject rapid concurrent sends synchronously, make acknowledged stop idempotent, and allow an immediate stop-to-new-thread sequence.
+- Accept commands only from the exact parent window and an origin allowed by the running bridge; ignore malformed, oversized, spoofed, or unconfigured opaque-origin commands without acknowledgement.
+- Allow `file:` frame ancestors only when the bridge was started with the explicit `null` origin grant, aligning CSP with the command and module policies.
+- Keep prompts and responses inside the isolated chat. Host command results contain only acknowledgement state, request ID, command name, and optional thread/turn IDs.
+- Keep the complete production chat at 93,880 decoded JavaScript plus CSS bytes after adding the controller, below the enforced 110 KB ceiling.
+- Add live Chromium coverage for pre-ready send, streamed rendering, stop, immediate new thread, command events, and spoofed-origin rejection while preserving desktop/mobile rendering and the 110 KB app ceiling.
+
 ## 0.36.0
 
 - Replace the ReactMarkdown, unified, micromark, mdast/hast, and remark-GFM runtime chain with a purpose-built safe React-node renderer for Codex responses.

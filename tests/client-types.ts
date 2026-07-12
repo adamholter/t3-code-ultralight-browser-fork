@@ -1,6 +1,7 @@
 import { createCodexSession, type CodexClient } from "../src/lib/codex-client";
 import { attachCodexSessionRequestHandlers } from "../src/lib/server-requests";
-import type { CodexChatEmbedProps } from "../src/embed";
+import type { CodexChatEmbedHandle, CodexChatEmbedProps } from "../src/embed";
+import type { CodexChatElementApi } from "../src/element";
 
 declare const client: CodexClient;
 
@@ -69,12 +70,20 @@ void detachVoiceRequests;
 
 const embedProps: CodexChatEmbedProps = {
   bridgeUrl: "http://127.0.0.1:4174",
+  controllerRef: { current: null },
   onConnectionChange: (event) => {
     const status: string = event.status;
     void status;
   },
 };
 void embedProps;
+
+declare const embedHandle: CodexChatEmbedHandle;
+declare const chatElement: CodexChatElementApi;
+void embedHandle.sendPrompt("Explain the canvas selection", { cwd: "/workspace", newThread: true });
+void embedHandle.newThread();
+void embedHandle.stop();
+void chatElement.sendPrompt("Transcribed voice prompt");
 
 async function typedCatalogs() {
   const models = await client.listModels();

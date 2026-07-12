@@ -8,7 +8,12 @@ const sourceMaps = libraryFiles.filter((file) => file.endsWith(".map"));
 const appJavaScript = distFiles.filter((file) => file.endsWith(".js"));
 const appStyles = distFiles.filter((file) => file.endsWith(".css"));
 const MAX_APP_BYTES = 110_000;
-const hostedModules = [resolve("dist-lib/element-auto.js"), resolve("dist-lib/client.js"), resolve("dist-lib/requests.js")];
+const hostedModules = [
+  resolve("dist-lib/element-auto.js"),
+  resolve("dist-lib/embed-events.js"),
+  resolve("dist-lib/client.js"),
+  resolve("dist-lib/requests.js"),
+];
 
 if (fontFiles.length) throw new Error(`Built app contains bundled fonts: ${fontFiles.join(", ")}`);
 if (sourceMaps.length) throw new Error(`Published library contains source maps: ${sourceMaps.join(", ")}`);

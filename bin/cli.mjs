@@ -169,8 +169,8 @@ async function main() {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package setup command with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use iframe unless the existing UI needs custom rendering.
-Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
+Run the package setup command with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
+Keep the bridge loopback-only. If a custom browser UI or imperative embed host is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
     return;

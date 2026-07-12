@@ -59,6 +59,22 @@ chat.addEventListener("codex-chat-turn", (event) => {
 });
 ```
 
+The element also exposes a small imperative controller. Calls made during iframe startup wait for the verified command receiver:
+
+```ts
+const chat = document.querySelector("codex-chat");
+const accepted = await chat.sendPrompt(transcript, {
+  cwd: projectPath,
+  newThread: true,
+});
+console.log(accepted.threadId, accepted.turnId);
+
+await chat.stop();       // idempotent if the turn already completed
+await chat.newThread();  // clears the embedded conversation
+```
+
+The acknowledgement never contains the prompt or response. Listen for `codex-chat-turn` to mirror busy state while rendered content remains isolated in the iframe.
+
 For explicit registration or a custom tag:
 
 ```ts
@@ -92,7 +108,21 @@ React hosts receive the same verified events as typed callbacks:
 />
 ```
 
-The complete lifecycle event set is `connection`, `ready`, `thread`, `turn`, and `error`. It intentionally excludes prompt text, response text, credentials, and tool payloads.
+Use an imperative ref when an existing canvas or voice control should send into the polished chat:
+
+```tsx
+const codex = useRef<CodexChatEmbedHandle>(null);
+
+<CodexChatEmbed controllerRef={codex} />
+
+await codex.current?.sendPrompt("Explain the selected nodes", {
+  cwd: projectPath,
+  newThread: true,
+});
+await codex.current?.stop();
+```
+
+The complete event set is `connection`, `ready`, `thread`, `turn`, `command`, and `error`. Command events contain only the command name, success state, request ID, and optional thread/turn IDs. Events intentionally exclude prompt text, response text, credentials, and tool payloads.
 
 The complete chat renders Markdown into React nodes without injecting response HTML. It supports the response structures Codex commonly emits—including fenced/inline code, lists and tasks, tables, quotes, links, images, and emphasis—while leaving HTML literal and rejecting unsafe URL protocols. The built-in renderer has no external Markdown runtime dependency; `npm run qa:markdown` verifies representative desktop/mobile output and the 110 KB application budget.
 
@@ -106,6 +136,18 @@ const unsubscribe = subscribeCodexEmbedEvents(iframe, (event) => {
 });
 ```
 
+Raw iframe hosts can use the framework-neutral controller from the package or the bridge-served zero-install module:
+
+```ts
+import { createCodexEmbedController } from "http://127.0.0.1:4174/codex-embed.js";
+
+const controller = createCodexEmbedController(iframe);
+await controller.send("Explain this selection", { cwd: projectPath });
+controller.dispose();
+```
+
+`ready()` uses a side-effect-free ping and retries during iframe startup. `send()`, `stop()`, and `newThread()` call it automatically. Dispose the raw controller when its iframe is removed; React and the Web Component do this automatically.
+
 ## Browser origins
 
 The bridge accepts browser connections from `localhost`, `127.0.0.1`, and `[::1]` by default. This covers normal local development regardless of port. A custom UI running on a non-loopback browser origin needs an explicit exact-origin allowlist entry:
@@ -118,13 +160,13 @@ npx t3-code-ultralight start \
 
 Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
 
-When `null` is explicitly configured, the recipe reports `originPolicy.opaqueOriginAllowed: true`. `npm run qa:file` opens the generated hosted recipe directly from a temporary file, verifies both module responses use `Access-Control-Allow-Origin: null`, streams a real browser WebSocket turn, and removes the file afterward. Never treat `null` as a wildcard: it represents every opaque-origin document, so grant it only when the local file or sandbox is trusted.
+When `null` is explicitly configured, the recipe reports `originPolicy.opaqueOriginAllowed: true` and the complete chat adds `file:` to its `frame-ancestors` policy. Without that explicit grant, `file://` framing remains blocked. `npm run qa:file` opens the generated hosted recipe directly from a temporary file, verifies module responses use `Access-Control-Allow-Origin: null`, drives both a headless and complete-chat turn, and removes the file afterward. Never treat `null` as a wildcard: it represents every opaque-origin document, so grant it only when the local file or sandbox is trusted.
 
 The setup recipe repeats the effective policy under `originPolicy`: `loopbackAutomatic`, deduplicated `additionalAllowedOrigins`, and `nonLoopbackRequiresExactFlag`. This keeps extracted integration recipes self-contained. `npm run qa:origin` exercises the generated hosted recipe from a temporary HTTPS non-loopback hostname, verifies exact CORS and WebSocket acceptance, and confirms an unlisted sibling hostname is denied by both transports.
 
 Origin sets are compared exactly during normal process reuse. For example, running `start` without `--allow-origin` refuses to reuse a bridge that already allows `https://canvas.example.com`, even though the requested empty set is technically a subset. This prevents a new tool from unknowingly inheriting another tool's broader browser access.
 
-The isolated chat iframe connects from its own loopback origin, so its parent page does not normally need an entry. A headless client runs in the parent page and does.
+The isolated chat iframe connects from its own loopback origin, so a view-only parent page does not need an entry. A parent that sends imperative embed commands is checked against the same browser-origin policy as a headless client: loopback works automatically, while non-loopback and opaque parents require their exact `--allow-origin` entry. Each command must also come from the iframe's actual parent window. Invalid sources, spoofed origins, malformed payloads, empty or oversized prompts, and commands from an unconfigured `file://` page are ignored without acknowledgement.
 
 ## Mode 2: headless client
 

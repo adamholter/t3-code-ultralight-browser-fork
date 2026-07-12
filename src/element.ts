@@ -1,9 +1,21 @@
 import { buildEmbedUrl } from "./embed-url";
-import { subscribeCodexEmbedEvents } from "./embed-events";
+import {
+  createCodexEmbedController,
+  subscribeCodexEmbedEvents,
+  type CodexEmbedCommandResult,
+  type CodexEmbedController,
+  type CodexEmbedSendOptions,
+} from "./embed-events";
 
 export interface DefineCodexChatElementOptions {
   tagName?: string;
   defaultBridgeUrl?: string;
+}
+
+export interface CodexChatElementApi extends HTMLElement {
+  sendPrompt(text: string, options?: CodexEmbedSendOptions): Promise<CodexEmbedCommandResult>;
+  newThread(): Promise<CodexEmbedCommandResult>;
+  stop(): Promise<CodexEmbedCommandResult>;
 }
 
 /**
@@ -19,6 +31,7 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
   class CodexChatElement extends HTMLElement {
     static observedAttributes = ["bridge-url", "title", "min-height", "loading"];
     private unsubscribeEvents: (() => void) | null = null;
+    private controller: CodexEmbedController | null = null;
 
     connectedCallback() {
       this.render();
@@ -31,11 +44,30 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
     disconnectedCallback() {
       this.unsubscribeEvents?.();
       this.unsubscribeEvents = null;
+      this.controller?.dispose();
+      this.controller = null;
+    }
+
+    sendPrompt(text: string, sendOptions?: CodexEmbedSendOptions) {
+      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
+      return this.controller.send(text, sendOptions);
+    }
+
+    newThread() {
+      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
+      return this.controller.newThread();
+    }
+
+    stop() {
+      if (!this.controller) return Promise.reject(new Error("Embedded Codex chat is not connected"));
+      return this.controller.stop();
     }
 
     private render() {
       this.unsubscribeEvents?.();
       this.unsubscribeEvents = null;
+      this.controller?.dispose();
+      this.controller = null;
       const root = this.shadowRoot ?? this.attachShadow({ mode: "open" });
       root.replaceChildren();
       this.style.setProperty("--codex-chat-min-height", this.getAttribute("min-height") ?? "420px");
@@ -54,7 +86,9 @@ export function defineCodexChatElement(options: DefineCodexChatElementOptions = 
         this.dispatchEvent(new CustomEvent("codex-chat-load", { bubbles: true, composed: true }));
       }, { once: true });
       root.append(style, iframe);
+      this.controller = createCodexEmbedController(iframe);
       this.unsubscribeEvents = subscribeCodexEmbedEvents(iframe, (detail) => {
+        if (detail.event === "command" && detail.command === "ping") return;
         const options = { detail, bubbles: true, composed: true };
         this.dispatchEvent(new CustomEvent("codex-chat-event", options));
         this.dispatchEvent(new CustomEvent(`codex-chat-${detail.event}`, options));

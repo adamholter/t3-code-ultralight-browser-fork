@@ -88,10 +88,15 @@ await elementPage.evaluate(() => {
 });
 await elementPage.addScriptTag({ url: `${baseUrl}/codex-chat.js`, type: "module" });
 await elementPage.waitForFunction(() => document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe"));
+const elementSmoke = `ELEMENT_EVENT_SMOKE_${Date.now()}`;
+cleanupTexts.push(elementSmoke);
+const hostCommandResult = await elementPage.locator("codex-chat").evaluate((element, text) => (
+  element.sendPrompt(`Reply with exactly: ${text}`, { cwd: "/tmp", newThread: true })
+), elementSmoke);
 await elementPage.waitForFunction(() => {
   const frame = document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe");
   return (frame?.contentDocument?.querySelectorAll('select[aria-label="Model"] option').length ?? 0) > 0
-    && frame?.contentDocument?.querySelector(".empty-state h1")?.textContent?.includes("local Codex");
+    && (frame?.contentDocument?.querySelectorAll(".user-message").length ?? 0) === 1;
 });
 await elementPage.waitForFunction(() => window.__codexEmbedEvents?.some((event) => event.event === "ready"));
 const spoofRejected = await elementPage.evaluate(() => {
@@ -104,18 +109,57 @@ const spoofRejected = await elementPage.evaluate(() => {
   }));
   return window.__codexEmbedEvents.length === before;
 });
-const elementSmoke = `ELEMENT_EVENT_SMOKE_${Date.now()}`;
-cleanupTexts.push(elementSmoke);
 const elementFrame = elementPage.frameLocator("codex-chat iframe");
-await elementFrame.getByLabel("Message Codex").fill(`Reply with exactly: ${elementSmoke}`);
-await elementFrame.getByRole("button", { name: "Send", exact: true }).click();
 await elementFrame.locator(".assistant-message").getByText(elementSmoke, { exact: false }).waitFor({ timeout: 120_000 });
 await elementPage.waitForFunction(() => {
   const events = window.__codexEmbedEvents ?? [];
   return events.some((event) => event.event === "thread" && event.threadId)
+    && events.some((event) => event.event === "command" && event.command === "send" && event.ok)
     && events.some((event) => event.event === "turn" && event.phase === "started")
     && events.some((event) => event.event === "turn" && event.phase === "completed");
 });
+const rejectedHostCommand = await elementPage.evaluate(async (requestId) => {
+  const element = document.querySelector("codex-chat");
+  const frame = element?.shadowRoot?.querySelector("iframe");
+  const headingBefore = frame?.contentDocument?.querySelector(".thread-heading strong")?.textContent;
+  const threadEventsBefore = window.__codexEmbedEvents.filter((event) => event.event === "thread").length;
+  frame?.contentWindow?.dispatchEvent(new MessageEvent("message", {
+    source: window,
+    origin: "https://untrusted.example",
+    data: { source: "t3-code-ultralight", version: 1, direction: "host-command", requestId, command: "newThread" },
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const headingAfter = frame?.contentDocument?.querySelector(".thread-heading strong")?.textContent;
+  const events = window.__codexEmbedEvents;
+  return headingBefore === headingAfter
+    && events.filter((event) => event.event === "thread").length === threadEventsBefore
+    && !events.some((event) => event.event === "command" && event.requestId === requestId);
+}, `spoof-${Date.now()}`);
+const stopSmoke = `ELEMENT_STOP_SMOKE_${Date.now()}`;
+cleanupTexts.push(stopSmoke);
+const { stopCommand, stopResult, rapidSend } = await elementPage.locator("codex-chat").evaluate(async (element, text) => {
+  const attempts = await Promise.allSettled([
+    element.sendPrompt(`${text}: Write the integers from one to one thousand, one per line.`),
+    element.sendPrompt(`${text}: duplicate command that must not start another turn.`),
+  ]);
+  const accepted = attempts.find((result) => result.status === "fulfilled");
+  const rejected = attempts.find((result) => result.status === "rejected");
+  if (!accepted) throw new Error("Neither rapid embed send was accepted");
+  const stopCommand = accepted.value;
+  const stopResult = await element.stop();
+  return {
+    stopCommand,
+    stopResult,
+    rapidSend: {
+      accepted: attempts.filter((result) => result.status === "fulfilled").length,
+      rejected: attempts.filter((result) => result.status === "rejected").length,
+      error: rejected?.reason instanceof Error ? rejected.reason.message : String(rejected?.reason ?? ""),
+    },
+  };
+}, stopSmoke);
+await elementFrame.locator(".working").waitFor({ state: "detached", timeout: 30_000 });
+const newThreadResult = await elementPage.locator("codex-chat").evaluate((element) => element.newThread());
+await elementFrame.locator(".empty-state h1").waitFor({ timeout: 10_000 });
 const elementState = await elementPage.locator("codex-chat").evaluate((element) => {
   const iframe = element.shadowRoot?.querySelector("iframe");
   return {
@@ -125,6 +169,7 @@ const elementState = await elementPage.locator("codex-chat").evaluate((element) 
     modelOptions: iframe?.contentDocument?.querySelectorAll('select[aria-label="Model"] option').length ?? 0,
     eventNames: window.__codexEmbedEvents.map((event) => event.event),
     turnPhases: window.__codexEmbedEvents.filter((event) => event.event === "turn").map((event) => event.phase),
+    commandNames: window.__codexEmbedEvents.filter((event) => event.event === "command").map((event) => event.command),
     lifecycleOnly: window.__codexEmbedEvents.every((event) => !["text", "content", "prompt", "response", "token", "credentials"].some((key) => key in event)),
   };
 });
@@ -137,11 +182,18 @@ const elementReady = elementState.frameUrl?.includes("embed=1")
   && elementState.modelOptions > 0
   && elementState.eventNames.includes("ready")
   && elementState.eventNames.includes("thread")
+  && elementState.commandNames.includes("send")
+  && elementState.commandNames.includes("stop")
+  && elementState.commandNames.includes("newThread")
   && elementState.turnPhases.includes("started")
   && elementState.turnPhases.includes("completed")
   && elementState.lifecycleOnly
+  && hostCommandResult.ok && hostCommandResult.command === "send" && hostCommandResult.threadId && hostCommandResult.turnId
+  && stopCommand.ok && stopResult.ok && newThreadResult.ok
+  && rapidSend.accepted === 1 && rapidSend.rejected === 1 && rapidSend.error.includes("already running a turn")
+  && rejectedHostCommand
   && spoofRejected;
-console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, embedEventNames: elementState.eventNames, embedTurnPhases: elementState.turnPhases, lifecycleOnly: elementState.lifecycleOnly, spoofRejected, overflow, questionOverflow, questionAttempts, consoleErrors }, null, 2));
+console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, embedEventNames: elementState.eventNames, embedTurnPhases: elementState.turnPhases, embedCommands: elementState.commandNames, lifecycleOnly: elementState.lifecycleOnly, hostCommandResult, rapidSend, stopResult, newThreadResult, rejectedHostCommand, spoofRejected, overflow, questionOverflow, questionAttempts, consoleErrors }, null, 2));
 
 if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || questionOverflow || consoleErrors.length) {
   throw new Error("Browser QA assertions failed");

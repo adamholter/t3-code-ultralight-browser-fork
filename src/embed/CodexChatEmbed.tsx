@@ -1,6 +1,13 @@
-import type { CSSProperties, IframeHTMLAttributes } from "react";
-import { useEffect, useRef } from "react";
-import { subscribeCodexEmbedEvents, type CodexEmbedEvent } from "../embed-events";
+import type { CSSProperties, IframeHTMLAttributes, Ref } from "react";
+import { useEffect, useImperativeHandle, useRef } from "react";
+import {
+  createCodexEmbedController,
+  subscribeCodexEmbedEvents,
+  type CodexEmbedCommandResult,
+  type CodexEmbedController,
+  type CodexEmbedEvent,
+  type CodexEmbedSendOptions,
+} from "../embed-events";
 import { buildEmbedUrl } from "../embed-url";
 
 export interface CodexChatEmbedProps extends Omit<IframeHTMLAttributes<HTMLIFrameElement>, "src"> {
@@ -12,6 +19,14 @@ export interface CodexChatEmbedProps extends Omit<IframeHTMLAttributes<HTMLIFram
   onThreadChange?: (event: Extract<CodexEmbedEvent, { event: "thread" }>) => void;
   onTurnChange?: (event: Extract<CodexEmbedEvent, { event: "turn" }>) => void;
   onCodexError?: (event: Extract<CodexEmbedEvent, { event: "error" }>) => void;
+  /** Imperative send/stop/new-thread handle, compatible with React 18 and 19. */
+  controllerRef?: Ref<CodexChatEmbedHandle>;
+}
+
+export interface CodexChatEmbedHandle {
+  sendPrompt(text: string, options?: CodexEmbedSendOptions): Promise<CodexEmbedCommandResult>;
+  newThread(): Promise<CodexEmbedCommandResult>;
+  stop(): Promise<CodexEmbedCommandResult>;
 }
 
 const defaultStyle: CSSProperties = {
@@ -37,10 +52,29 @@ export function CodexChatEmbed({
   onThreadChange,
   onTurnChange,
   onCodexError,
+  controllerRef: handleRef,
   ...props
 }: CodexChatEmbedProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const controllerRef = useRef<CodexEmbedController | null>(null);
   const src = buildEmbedUrl(bridgeUrl);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const controller = createCodexEmbedController(iframe);
+    controllerRef.current = controller;
+    return () => {
+      controller.dispose();
+      if (controllerRef.current === controller) controllerRef.current = null;
+    };
+  }, [src]);
+
+  useImperativeHandle(handleRef, () => ({
+    sendPrompt: async (text, options) => requireController(controllerRef).send(text, options),
+    newThread: async () => requireController(controllerRef).newThread(),
+    stop: async () => requireController(controllerRef).stop(),
+  }), []);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -65,4 +99,9 @@ export function CodexChatEmbed({
       allow="clipboard-read; clipboard-write"
     />
   );
+}
+
+function requireController(ref: { current: CodexEmbedController | null }) {
+  if (!ref.current) throw new Error("Embedded Codex chat is not connected");
+  return ref.current;
 }
