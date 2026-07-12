@@ -1,4 +1,5 @@
-import type { Server } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
+import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
 import { CodexBridge, type CodexBridgeOptions } from "./codex-bridge.js";
 import { parseBrowserBridgeMessage } from "./browser-protocol.js";
@@ -40,17 +41,30 @@ export function attachCodexBridge(
 ): CodexBridgeController {
   const bridge = options.bridge ?? new CodexBridge(options);
   const allowedOrigins = normalizeAllowedOrigins(options.allowedOrigins);
+  const socketPath = normalizeWebSocketPath(options.path);
   const maxPayloadBytes = positiveInteger(options.maxPayloadBytes, DEFAULT_MAX_PAYLOAD_BYTES, "maxPayloadBytes");
   const maxPendingRequestsPerClient = positiveInteger(options.maxPendingRequestsPerClient, DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT, "maxPendingRequestsPerClient");
   const sockets = new Set<WebSocket>();
   const threadOwners = new Map<string, WebSocket>();
   const requestOwners = new Map<string | number, WebSocket>();
   const webSocketServer = new WebSocketServer({
-    server,
-    path: options.path ?? "/codex-ws",
+    noServer: true,
     maxPayload: maxPayloadBytes,
     verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, allowedOrigins), 403, "Browser origin is not allowed"),
   });
+  const handleUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    let pathname: string;
+    try {
+      pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    } catch {
+      return;
+    }
+    if (pathname !== socketPath) return;
+    webSocketServer.handleUpgrade(request, socket, head, (webSocket) => {
+      webSocketServer.emit("connection", webSocket, request);
+    });
+  };
+  server.on("upgrade", handleUpgrade);
   webSocketServer.on("error", (error) => {
     bridge.emit("log", { level: "debug", message: `Browser WebSocket server error: ${error.message}` });
   });
@@ -62,7 +76,7 @@ export function attachCodexBridge(
     for (const socket of sockets) send(socket, payload);
   };
 
-  bridge.on("notification", (notification) => {
+  const handleNotification = (notification: { method: string; params?: unknown }) => {
     const payload = { type: "notification", ...notification };
     const threadId = readThreadId(notification.params);
     if (!threadId) {
@@ -71,8 +85,8 @@ export function attachCodexBridge(
     }
     const owner = threadOwners.get(threadId);
     if (owner?.readyState === WebSocket.OPEN) send(owner, payload);
-  });
-  bridge.on("request", (request) => {
+  };
+  const handleRequest = (request: { id: string | number; method: string; params?: unknown }) => {
     const threadId = readThreadId(request.params);
     const owner = threadId ? threadOwners.get(threadId) : undefined;
     if (owner?.readyState === WebSocket.OPEN) {
@@ -84,9 +98,13 @@ export function attachCodexBridge(
         threadId ? `No browser client owns thread ${threadId}` : `Cannot safely route unscoped server request ${request.method}`,
       );
     }
-  });
-  bridge.on("ready", () => broadcast({ type: "status", status: "ready" }));
-  bridge.on("exit", () => broadcast({ type: "status", status: "reconnecting" }));
+  };
+  const handleReady = () => broadcast({ type: "status", status: "ready" });
+  const handleExit = () => broadcast({ type: "status", status: "reconnecting" });
+  bridge.on("notification", handleNotification);
+  bridge.on("request", handleRequest);
+  bridge.on("ready", handleReady);
+  bridge.on("exit", handleExit);
 
   webSocketServer.on("connection", (socket) => {
     let pendingRpcCount = 0;
@@ -166,18 +184,40 @@ export function attachCodexBridge(
     });
   });
 
+  let stopped = false;
+  let stopPromise: Promise<void> | null = null;
   const controller: CodexBridgeController = {
     bridge,
     webSocketServer,
-    start: () => bridge.start(),
-    stop: async () => {
-      await bridge.stop();
-      for (const socket of sockets) socket.close();
-      await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
+    start: () => stopped ? Promise.reject(new Error("Codex bridge controller has been stopped")) : bridge.start(),
+    stop: () => {
+      if (stopPromise) return stopPromise;
+      stopped = true;
+      bridge.off("notification", handleNotification);
+      bridge.off("request", handleRequest);
+      bridge.off("ready", handleReady);
+      bridge.off("exit", handleExit);
+      server.off("upgrade", handleUpgrade);
+      stopPromise = (async () => {
+        let bridgeError: unknown;
+        try {
+          await bridge.stop();
+        } catch (error) {
+          bridgeError = error;
+        }
+        for (const socket of sockets) socket.close();
+        await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
+        if (bridgeError) throw bridgeError;
+      })();
+      return stopPromise;
     },
   };
 
-  if (options.autoStart !== false) void controller.start();
+  if (options.autoStart !== false) {
+    void controller.start().catch((error) => {
+      bridge.emit("log", { level: "error", message: `Unable to start Codex bridge: ${error instanceof Error ? error.message : String(error)}` });
+    });
+  }
   return controller;
 }
 
@@ -206,6 +246,13 @@ function positiveInteger(value: number | undefined, fallback: number, name: stri
   if (value === undefined) return fallback;
   if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be a positive integer`);
   return value;
+}
+
+function normalizeWebSocketPath(value = "/codex-ws") {
+  if (!value.startsWith("/") || value.startsWith("//")) throw new Error("path must be an absolute URL pathname");
+  const parsed = new URL(value, "http://127.0.0.1");
+  if (parsed.pathname !== value || parsed.search || parsed.hash) throw new Error("path must contain only an absolute URL pathname");
+  return parsed.pathname;
 }
 
 export { CodexBridge } from "./codex-bridge.js";

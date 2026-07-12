@@ -37,6 +37,14 @@ describe("live integration contract", () => {
       browserModule: "http://127.0.0.1:49123/codex-client.js",
       requestModule: "http://127.0.0.1:49123/codex-requests.js",
     });
+    expect(runtime.modes.attachedServer).toMatchObject({
+      exactPathIsolation: true,
+      hostWebSocketCoexistenceVerified: true,
+      idempotentStop: true,
+      listenersReleasedOnStop: true,
+      hostServerPreservedOnStop: true,
+      restartAfterStop: false,
+    });
     expect(runtime.runtime).toEqual({
       live: true,
       port: 49123,

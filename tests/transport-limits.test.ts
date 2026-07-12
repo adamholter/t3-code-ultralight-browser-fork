@@ -45,6 +45,8 @@ describe("browser transport limits", () => {
     const server = createServer();
     expect(() => attachCodexBridge(server, { maxPayloadBytes: 0 })).toThrow("maxPayloadBytes must be a positive integer");
     expect(() => attachCodexBridge(server, { maxPendingRequestsPerClient: 1.5 })).toThrow("maxPendingRequestsPerClient must be a positive integer");
+    expect(() => attachCodexBridge(server, { path: "codex" })).toThrow("path must be an absolute URL pathname");
+    expect(() => attachCodexBridge(server, { path: "/codex?token=unsafe" })).toThrow("path must contain only an absolute URL pathname");
   });
 });
 

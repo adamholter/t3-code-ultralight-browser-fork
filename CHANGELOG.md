@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.41.0
+
+- Replace the attached bridge's automatic `ws` server takeover with an exact-path `noServer` upgrade handler so unrelated host WebSocket routes are never touched.
+- Remove bridge notification, request, ready, exit, and HTTP upgrade listeners during attached-controller teardown instead of retaining stale controllers in long-lived or hot-reloaded hosts.
+- Make attached `stop()` idempotent, keep the host HTTP server and its own WebSockets alive, and reject restart attempts after final detach.
+- Validate attached WebSocket paths as pathname-only values before registering any listener.
+- Contain fire-and-forget auto-start failures as bridge log events rather than risking an unhandled rejection.
+- Install the exact packed package into a temporary existing Node server that owns ordinary HTTP and WebSocket routes, then stream a real browser Codex turn through a custom nested socket path.
+- Verify thread cleanup, workspace inheritance, protocol capabilities, listener release, repeated stop, restart rejection, route coexistence, and desktop/mobile output with no browser errors.
+
 ## 0.40.0
 
 - Install the exact packed package into clean React 18.3.1 and React 19.2.0 Vite hosts instead of relying on type checks or source imports.

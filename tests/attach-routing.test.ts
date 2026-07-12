@@ -24,6 +24,36 @@ class FakeBridge extends CodexBridge {
 }
 
 describe("attachCodexBridge routing", () => {
+  it("contains automatic startup failures as bridge log events", async () => {
+    const server = createServer();
+    const bridge = new class extends FakeBridge {
+      override async start() { throw new Error("startup failed safely"); }
+    }();
+    const logged = new Promise<any>((resolve) => bridge.once("log", resolve));
+    const controller = attachCodexBridge(server, { bridge });
+    await expect(logged).resolves.toMatchObject({ level: "error", message: "Unable to start Codex bridge: startup failed safely" });
+    await controller.stop();
+  });
+
+  it("removes host listeners on idempotent stop and cannot restart a detached controller", async () => {
+    const server = createServer();
+    const bridge = new FakeBridge();
+    const baselineUpgradeListeners = server.listenerCount("upgrade");
+    const controller = attachCodexBridge(server, { path: "/codex", autoStart: false, bridge });
+
+    expect(server.listenerCount("upgrade")).toBe(baselineUpgradeListeners + 1);
+    for (const event of ["notification", "request", "ready", "exit"]) expect(bridge.listenerCount(event)).toBe(1);
+
+    const firstStop = controller.stop();
+    const secondStop = controller.stop();
+    expect(secondStop).toBe(firstStop);
+    await firstStop;
+
+    expect(server.listenerCount("upgrade")).toBe(baselineUpgradeListeners);
+    for (const event of ["notification", "request", "ready", "exit"]) expect(bridge.listenerCount(event)).toBe(0);
+    await expect(controller.start()).rejects.toThrow("Codex bridge controller has been stopped");
+  });
+
   it("routes approvals only to the browser that started the thread", async () => {
     const server = createServer();
     const bridge = new FakeBridge();

@@ -71,6 +71,7 @@ try {
         && integrationContract.runtime?.workspace?.pathDisclosed === false,
       pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,
       reactCompatibility: integrationContract.modes?.completeChat?.reactCompatibility,
+      attachedServerCompatibility: integrationContract.modes?.attachedServer,
     },
     httpSurface,
     consoleErrors,
@@ -97,6 +98,12 @@ try {
     || result.integrationContract.reactCompatibility?.hydrationVerified !== true
     || result.integrationContract.reactCompatibility?.controllerRefVerified !== true
     || result.integrationContract.reactCompatibility?.remountVerified !== true
+    || result.integrationContract.attachedServerCompatibility?.exactPathIsolation !== true
+    || result.integrationContract.attachedServerCompatibility?.hostWebSocketCoexistenceVerified !== true
+    || result.integrationContract.attachedServerCompatibility?.idempotentStop !== true
+    || result.integrationContract.attachedServerCompatibility?.listenersReleasedOnStop !== true
+    || result.integrationContract.attachedServerCompatibility?.hostServerPreservedOnStop !== true
+    || result.integrationContract.attachedServerCompatibility?.restartAfterStop !== false
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length
