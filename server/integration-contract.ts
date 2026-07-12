@@ -22,6 +22,10 @@ interface IntegrationRecipeBase {
   bridgeUrl: string;
   statusUrl: string;
   integrationUrl: string;
+  workspace: {
+    default: "bridge";
+    overrideEmbedded: boolean;
+  };
   verify: string;
   code: string;
   codeLanguage: "html" | "js" | "ts" | "tsx";
@@ -158,6 +162,10 @@ export function createIntegrationRecipe(
     bridgeUrl,
     statusUrl: `${bridgeUrl}${runtime.bridge.statusPath}`,
     integrationUrl: `${bridgeUrl}${runtime.bridge.integrationPath}`,
+    workspace: {
+      default: "bridge" as const,
+      overrideEmbedded: Boolean(workingDirectory),
+    },
     verify: "Send one real turn through the final user-facing UI and confirm streamed output plus stop behavior.",
     originPolicy: {
       loopbackAutomatic: true as const,

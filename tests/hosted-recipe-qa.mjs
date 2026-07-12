@@ -18,11 +18,12 @@ const recipe = createIntegrationRecipe(contract, {
   mode: "custom",
   delivery: "hosted",
   port: bridgePort,
-  cwd: "/tmp",
 });
 
 assert.equal(recipe.requiresPackageInstall, false);
 assert.equal(recipe.codeLanguage, "js");
+assert.deepEqual(recipe.workspace, { default: "bridge", overrideEmbedded: false });
+assert.equal(recipe.code.includes("cwd:"), false);
 assert.deepEqual(recipe.csp, {
   "script-src": [bridgeOrigin],
   "connect-src": [bridgeSocketOrigin],

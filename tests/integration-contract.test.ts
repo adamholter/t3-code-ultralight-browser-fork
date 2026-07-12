@@ -51,6 +51,7 @@ describe("live integration contract", () => {
     expect(iframe.controllerCode).toContain("createCodexEmbedController");
     expect(iframe.controllerCode).not.toContain("cwd:");
     expect(iframe.controllerCode).not.toContain("undefined");
+    expect(iframe.workspace).toEqual({ default: "bridge", overrideEmbedded: false });
     expect(iframe.controllerCodeLanguage).toBe("js");
     expect(iframe.controllerDispose).toBe("codex.dispose()");
     expect(iframe.csp).toEqual({ "script-src": ["http://127.0.0.1:4174"], "frame-src": ["http://127.0.0.1:4174"] });
@@ -72,12 +73,14 @@ describe("live integration contract", () => {
     expect(custom).toMatchObject({ mode: "custom", dispose: "detachRequests(); await codex.close();" });
     expect(custom.code).toContain('bridgeUrl: "http://127.0.0.1:49123"');
     expect(custom.code).toContain('cwd: "/repo"');
+    expect(custom.workspace).toEqual({ default: "bridge", overrideEmbedded: true });
     expect(custom.hostedModules.client).toBe("http://127.0.0.1:49123/codex-client.js");
 
     const portableCustom = createIntegrationRecipe(integration, { mode: "custom", port: 49123 });
     expect(portableCustom.code).toContain('createCodexSession({ bridgeUrl: "http://127.0.0.1:49123" })');
     expect(portableCustom.code).not.toContain("/absolute/project/path");
     expect(portableCustom.code).not.toContain("undefined");
+    expect(portableCustom.workspace).toEqual({ default: "bridge", overrideEmbedded: false });
 
     const hostedCustom = createIntegrationRecipe(integration, { mode: "custom", delivery: "hosted", port: 49123, cwd: "/repo" });
     expect(hostedCustom).toMatchObject({ delivery: "hosted", requiresPackageInstall: false, codeLanguage: "js" });

@@ -69,6 +69,7 @@ try {
         && integrationContract.modes?.customUi?.browserModule === `${baseOrigin}/codex-client.js`,
       workspacePortable: integrationContract.runtime?.workspace?.default === "bridge"
         && integrationContract.runtime?.workspace?.pathDisclosed === false,
+      pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,
     },
     httpSurface,
     consoleErrors,
@@ -87,6 +88,7 @@ try {
     || result.integrationContract.markdownRuntimeDependencies !== 0
     || !result.integrationContract.runtimeAware
     || !result.integrationContract.workspacePortable
+    || !result.integrationContract.pathFreeSetupRecipes
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length

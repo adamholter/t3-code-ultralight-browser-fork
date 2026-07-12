@@ -79,7 +79,6 @@ async function main() {
       mode,
       delivery,
       port,
-      cwd: workspaceCwd,
       allowedOrigins,
     });
     const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd);

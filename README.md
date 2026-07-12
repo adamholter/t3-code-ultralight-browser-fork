@@ -23,15 +23,15 @@ The complete chat ships in about 94 KB of decoded JavaScript plus CSS. Its respo
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.39.0' setup --mode iframe --json
 ```
 
-Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. Add `--port` or `--allow-origin` when needed. The JSON receipt contains the resolved workspace, diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. Add `--port` or `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
 
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' setup --mode custom --delivery hosted --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.39.0' setup --mode custom --delivery hosted --json
 ```
 
 ## One-command chat
@@ -39,7 +39,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.39.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
@@ -47,7 +47,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.39.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```

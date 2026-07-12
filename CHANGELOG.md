@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.39.0
+
+- Keep the resolved project directory in the trusted CLI bridge receipt while removing it from every setup-generated browser snippet.
+- Make iframe controller and custom canvas/voice recipes inherit the already-verified bridge workspace instead of duplicating a machine-specific absolute path.
+- Add typed `workspace` metadata to every integration recipe so agents can distinguish bridge inheritance from an intentional programmatic `cwd` override.
+- Extend fresh-project live QA to execute the exact hosted custom recipe returned by `setup`, stream a real Codex turn, and prove the resulting thread still uses the correct project directory.
+- Assert that the full generated integration object is path-free even when setup is invoked with a resolved workspace or explicit `--cwd` bridge override.
+
 ## 0.38.0
 
 - Remove the developer-specific `/Users/adam` browser workspace default so a fresh clone or release works on any machine.

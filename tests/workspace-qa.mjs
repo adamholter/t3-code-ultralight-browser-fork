@@ -11,14 +11,17 @@ import { chromium } from "playwright";
 import { createCodexClient } from "../dist-lib/client.js";
 
 const cli = fileURLToPath(new URL("../bin/cli.mjs", import.meta.url));
+const cliPackage = process.env.QA_PACKAGE ? resolve(process.env.QA_PACKAGE) : null;
 const directory = await realpath(await mkdtemp(resolve(tmpdir(), "t3-fresh-project-")));
 const otherDirectory = await realpath(await mkdtemp(resolve(tmpdir(), "t3-other-project-")));
 const port = await reservePort();
 const bridgeOrigin = `http://127.0.0.1:${port}`;
 const marker = `FRESH_WORKSPACE_${Date.now()}`;
+const customMarker = `FRESH_RECIPE_${Date.now()}`;
 let bridgeStarted = false;
 let browser;
 let client;
+let recipeHost;
 
 try {
   const setup = runCli(["setup", "--mode", "iframe", "--port", String(port), "--json"], directory);
@@ -30,7 +33,30 @@ try {
   assert.equal(report.bridge.started, true);
   assert.equal(report.integration.mode, "iframe");
   assert.equal(report.integration.requiresPackageInstall, false);
-  assert.ok(report.integration.controllerCode.includes(JSON.stringify(directory)));
+  assert.deepEqual(report.integration.workspace, { default: "bridge", overrideEmbedded: false });
+  assert.equal(report.integration.controllerCode.includes(directory), false);
+  assert.equal(report.integration.code.includes(directory), false);
+  assert.equal(JSON.stringify(report.integration).includes(directory), false);
+
+  const customSetup = runCli([
+    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--json",
+  ], directory);
+  if (customSetup.status !== 0) throw new Error(customSetup.stderr || customSetup.stdout);
+  const customReport = JSON.parse(customSetup.stdout);
+  assert.equal(customReport.bridge.reused, true);
+  assert.deepEqual(customReport.integration.workspace, { default: "bridge", overrideEmbedded: false });
+  assert.equal(customReport.integration.code.includes(directory), false);
+  assert.equal(JSON.stringify(customReport.integration).includes(directory), false);
+
+  const explicitSetup = runCli([
+    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--cwd", directory, "--json",
+  ], otherDirectory);
+  if (explicitSetup.status !== 0) throw new Error(explicitSetup.stderr || explicitSetup.stdout);
+  const explicitReport = JSON.parse(explicitSetup.stdout);
+  assert.equal(explicitReport.bridge.cwd, directory);
+  assert.equal(explicitReport.bridge.reused, true);
+  assert.deepEqual(explicitReport.integration.workspace, { default: "bridge", overrideEmbedded: false });
+  assert.equal(JSON.stringify(explicitReport.integration).includes(directory), false);
 
   const status = await fetch(`${bridgeOrigin}/api/status`).then((response) => response.json());
   assert.equal(status.workspaceFingerprint, fingerprint(directory));
@@ -42,6 +68,41 @@ try {
   assert.match(mismatched.stderr, /different default workspace/);
 
   browser = await chromium.launch({ headless: true });
+  recipeHost = createServer((request, response) => {
+    if (request.url === "/app.js") {
+      response.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
+      response.end(`
+        let streamedText = "";
+        const yourUI = {
+          reviewApproval: async () => false,
+          ask: async () => ({}),
+          renderStreamingText: (text) => { streamedText = text; },
+        };
+        const prompt = ${JSON.stringify(`Reply with exactly: ${customMarker}`)};
+        ${customReport.integration.code}
+        window.__recipeResult = { text: answer.text.trim(), streamedText, threadId: answer.threadId };
+        detachRequests();
+        await codex.close();
+      `);
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end('<!doctype html><meta charset="utf-8"><script type="module" src="/app.js"></script>');
+  });
+  recipeHost.listen(0, "127.0.0.1");
+  await once(recipeHost, "listening");
+  const recipePage = await browser.newPage();
+  const recipeErrors = [];
+  recipePage.on("console", (message) => { if (message.type() === "error") recipeErrors.push(message.text()); });
+  recipePage.on("pageerror", (error) => recipeErrors.push(error.message));
+  await recipePage.goto(`http://127.0.0.1:${recipeHost.address().port}`, { waitUntil: "domcontentloaded" });
+  await recipePage.waitForFunction(() => window.__recipeResult, null, { timeout: 120_000 });
+  const recipeResult = await recipePage.evaluate(() => window.__recipeResult);
+  assert.equal(recipeResult.text, customMarker);
+  assert.ok(recipeResult.streamedText.includes(customMarker));
+  assert.deepEqual(recipeErrors, []);
+  await recipePage.close();
+
   const page = await browser.newPage({ viewport: { width: 900, height: 760 } });
   const consoleErrors = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
@@ -96,18 +157,27 @@ try {
   await client.connect();
   const threadPage = await client.request("thread/list", { limit: 20, sortKey: "recency_at", sortDirection: "desc" });
   const thread = threadPage.data.find((entry) => entry.preview?.includes(marker));
+  const recipeThread = threadPage.data.find((entry) => entry.preview?.includes(customMarker));
   assert.ok(thread?.id);
+  assert.ok(recipeThread?.id);
   const resumed = await client.request("thread/resume", { threadId: thread.id });
+  const resumedRecipe = await client.request("thread/resume", { threadId: recipeThread.id });
   assert.equal(resumed.cwd, directory);
+  assert.equal(resumedRecipe.cwd, directory);
   await client.request("thread/delete", { threadId: thread.id });
+  await client.request("thread/delete", { threadId: recipeThread.id });
 
   console.log(JSON.stringify({
     setupCwd: report.bridge.cwd,
     explicitCwdFlag: false,
+    cliSource: cliPackage ? "packed release" : "workspace source",
     initialBrowserWorkspace: initial.subtitle,
     firstTurnWorkspace: resumed.cwd,
     workspaceFingerprintOnly: true,
-    controllerRecipeUsesWorkspace: true,
+    generatedRecipeHidesWorkspacePath: true,
+    generatedRecipeInheritedWorkspace: resumedRecipe.cwd,
+    generatedRecipeStreamed: true,
+    explicitBridgeOverrideRemainsPathFree: true,
     mismatchedWorkspaceRejected: true,
     response: marker,
     mobileOverflow,
@@ -118,6 +188,7 @@ try {
 } finally {
   client?.close();
   await browser?.close();
+  if (recipeHost?.listening) await new Promise((resolveClose) => recipeHost.close(resolveClose));
   if (bridgeStarted) {
     const stopped = runCli(["stop", "--port", String(port), "--json"], directory);
     if (stopped.status !== 0) process.stderr.write(stopped.stderr || stopped.stdout);
@@ -127,6 +198,9 @@ try {
 }
 
 function runCli(args, cwd) {
+  if (cliPackage) {
+    return spawnSync("npx", ["--yes", "--package", cliPackage, "t3-code-ultralight", ...args], { cwd, encoding: "utf8" });
+  }
   return spawnSync(process.execPath, [cli, ...args], { cwd, encoding: "utf8" });
 }
 
