@@ -13,4 +13,9 @@ describe("package version", () => {
     expect(readFileSync(new URL("../README.md", import.meta.url), "utf8")).toContain(cacheKey);
     expect(readFileSync(new URL("../docs/AGENT_INTEGRATION.md", import.meta.url), "utf8")).toContain(cacheKey);
   });
+
+  it("keeps React optional for headless installs while declaring the wrapper peer", () => {
+    expect(packageJson.peerDependencies).toMatchObject({ react: "^18.0.0 || ^19.0.0" });
+    expect(packageJson.peerDependenciesMeta).toMatchObject({ react: { optional: true } });
+  });
 });

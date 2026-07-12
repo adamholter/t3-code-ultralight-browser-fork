@@ -9,6 +9,7 @@
 - Reject ambiguous bridge paths, credentials, queries, fragments, and non-HTTP protocols before opening a socket.
 - Add live zero-config Node/SSR and cross-port browser verification, including DOM-free React and Web Component imports.
 - Remove manual WebSocket URLs from the canvas, voice, shared-client, and integration examples.
+- Declare React 18/19 as an optional peer so headless installs stay minimal and wrapper consumers receive an explicit runtime contract.
 
 ## 0.22.0
 

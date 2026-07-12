@@ -113,6 +113,8 @@ export function AssistantPanel() {
 }
 ```
 
+The React export supports host-provided React 18 or 19. React is an optional peer, so headless, Web Component, and server-only installs do not pull it in.
+
 The iframe is intentional: T3's polished chat CSS stays isolated from the host app, making this the safest one-line integration.
 
 ## Custom canvas or voice UI
