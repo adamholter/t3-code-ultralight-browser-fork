@@ -4,8 +4,9 @@ import {
   parseCodexBridgeHello,
   type CodexBridgeInfo,
 } from "../browser-contract.js";
+import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "../types.js";
 
-type Handler = (payload: any) => void;
+type Handler<T = any> = (payload: T) => void;
 
 interface PendingRequest {
   resolve: (value: any) => void;
@@ -55,7 +56,55 @@ export interface RunTurnResult {
   threadId: string;
   turnId: string;
   text: string;
-  turn: unknown;
+  turn: CodexTurnEventPayload["turn"];
+}
+
+export interface CodexTurnEventPayload {
+  threadId: string;
+  turn: {
+    id: string;
+    status?: string;
+    error?: { message?: string } | null;
+    [key: string]: unknown;
+  };
+}
+
+export interface CodexItemEventPayload {
+  threadId: string;
+  turnId?: string;
+  item: ThreadItem;
+  [key: string]: unknown;
+}
+
+export interface CodexDeltaEventPayload {
+  threadId: string;
+  turnId: string;
+  itemId: string;
+  delta: string;
+  [key: string]: unknown;
+}
+
+export interface CodexClientEventMap {
+  hello: CodexBridgeInfo;
+  connection: Extract<ConnectionStatus, "ready" | "offline">;
+  socket: "open";
+  status: { type: "status"; status: ConnectionStatus };
+  notification: { type: "notification"; method: string; params: any };
+  serverRequest: PendingServerRequest;
+  "serverRequest/resolved": { requestId: string | number; threadId?: string; [key: string]: unknown };
+  "turn/started": CodexTurnEventPayload;
+  "turn/completed": CodexTurnEventPayload;
+  "item/started": CodexItemEventPayload;
+  "item/completed": CodexItemEventPayload;
+  "item/agentMessage/delta": CodexDeltaEventPayload;
+  "item/reasoning/summaryTextDelta": CodexDeltaEventPayload;
+  "item/reasoning/textDelta": CodexDeltaEventPayload;
+  "item/commandExecution/outputDelta": CodexDeltaEventPayload;
+  "thread/name/updated": { threadId?: string; [key: string]: unknown };
+  error: { threadId?: string; error?: { message?: string }; [key: string]: unknown };
+  bridgeError: { type: "bridgeError"; error: string };
+  protocolError: Error;
+  reconnectError: Error;
 }
 
 export interface ChatOptions extends RunTurnOptions {
@@ -279,6 +328,8 @@ export class CodexClient {
     this.send({ type: "respondError", id, error });
   }
 
+  on<K extends keyof CodexClientEventMap>(event: K, handler: Handler<CodexClientEventMap[K]>): () => void;
+  on<K extends string>(event: K extends keyof CodexClientEventMap ? never : K, handler: Handler): () => void;
   on(event: string, handler: Handler) {
     const set = this.handlers.get(event) ?? new Set();
     set.add(handler);
@@ -287,7 +338,7 @@ export class CodexClient {
   }
 
   listThreads(params: Record<string, unknown> = {}) {
-    return this.request<{ data: unknown[]; nextCursor: string | null }>("thread/list", {
+    return this.request<{ data: CodexThread[]; nextCursor: string | null }>("thread/list", {
       limit: 100,
       sortKey: "recency_at",
       sortDirection: "desc",
@@ -296,7 +347,7 @@ export class CodexClient {
   }
 
   listModels(params: Record<string, unknown> = {}) {
-    return this.request<{ data: unknown[]; nextCursor: string | null }>("model/list", {
+    return this.request<{ data: CodexModel[]; nextCursor: string | null }>("model/list", {
       limit: 100,
       ...params,
     });
@@ -370,9 +421,9 @@ export class CodexClient {
     let startedReported = false;
     let interruptPromise: Promise<unknown> | null = null;
     let output = "";
-    let resolveCompleted!: (value: { turn: unknown }) => void;
+    let resolveCompleted!: (value: { turn: CodexTurnEventPayload["turn"] }) => void;
     let rejectCompleted!: (error: Error) => void;
-    const completed = new Promise<{ turn: unknown }>((resolve, reject) => {
+    const completed = new Promise<{ turn: CodexTurnEventPayload["turn"] }>((resolve, reject) => {
       resolveCompleted = resolve;
       rejectCompleted = reject;
     });

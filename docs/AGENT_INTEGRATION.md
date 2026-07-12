@@ -5,7 +5,7 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.29.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
+2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
    Before modifying the host, append `doctor --json` to that direct command, or run `npx t3-code-ultralight doctor --json` when the package is installed.
 3. Resolve every failed doctor check or report its exact recommendation.
    Treat any CLI parse error as a failed setup step; do not retry by dropping an unrecognized security or lifecycle flag.
@@ -21,6 +21,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Dispose with `await session.close()` (or `void session.close()` in a synchronous unmount hook) so active turns are interrupted before an owned socket closes.
    Attach `attachCodexRequestHandlers()` once instead of recreating approval, question, permission, MCP, time, and unsupported-request switching in every host.
    If multiple sessions share one client but render prompts in separate surfaces, attach `attachCodexSessionRequestHandlers()` once per session so siblings never race the same request.
+   Use the exported `CodexClientEventMap` and inferred callbacks instead of recreating stable event payload interfaces; retain the unknown-event escape hatch only for protocol events the package does not yet type.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.
 8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.

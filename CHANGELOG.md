@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0
+
+- Export `CodexClientEventMap` with inferred payloads for stable connection, bridge, request, turn, item, delta, lifecycle, and error events.
+- Reject incompatible handlers for known literal event names at TypeScript compile time.
+- Preserve a string-event `any` escape hatch for newly introduced Codex protocol notifications.
+- Type model and thread catalogs returned by `listModels()` and `listThreads()`.
+- Type the stable final turn envelope returned by chat, input, turn, and session calls.
+- Add compile-only consumer contracts covering known events, future events, catalogs, requests, and invalid callbacks.
+
 ## 0.29.0
 
 - Reject unknown CLI commands instead of printing successful help output.

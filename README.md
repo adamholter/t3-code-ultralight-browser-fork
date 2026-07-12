@@ -21,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.29.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -29,7 +29,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.29.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -184,6 +184,8 @@ client.on("item/agentMessage/delta", ({ delta }) => renderToken(delta));
 client.on("item/started", ({ item }) => renderToolActivity(item));
 client.on("turn/completed", ({ turn }) => markComplete(turn));
 ```
+
+TypeScript infers stable event payloads, model/thread catalogs, and final turn objects. Known events reject incompatible handlers at compile time; an unknown string event retains an `any` payload as a forward-compatible escape hatch for new Codex notifications.
 
 See [Integration guide](docs/INTEGRATION.md) for canvas, voice, and existing-server recipes.
 

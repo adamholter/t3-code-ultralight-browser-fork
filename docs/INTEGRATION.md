@@ -188,7 +188,11 @@ Useful lower-level client events:
 | `turn/completed` | Resolve UI state and surface errors |
 | `serverRequest` | Render approval or user-input requests |
 
-The generic `request(method, params)` method exposes the complete app-server RPC surface without growing this SDK. `runTurn()` and `runInput()` are available when the host manages thread lifecycle itself.
+These event names are keys of the exported `CodexClientEventMap`, so callback payloads infer automatically in TypeScript. Stable turn, item, delta, status, bridge, error, and request shapes are exported individually for host state models. Literal unknown event names remain accepted with an `any` payload; this preserves access to newly introduced Codex notifications without weakening known-event checking.
+
+`listModels()` returns `CodexModel[]`, `listThreads()` returns `CodexThread[]`, and `RunTurnResult.turn` carries the typed stable turn envelope. The generic `request<T>()` remains available for app-server methods outside the convenience surface.
+
+The generic `request(method, params)` method exposes the complete app-server RPC surface without forcing this SDK to freeze the entire evolving protocol. `runTurn()` and `runInput()` are available when the host manages thread lifecycle itself.
 
 Connection state is emitted through `client.on("connection", status => ...)`. Failed automatic retries are contained and emitted through `client.on("reconnectError", error => ...)`; they do not create unhandled promise rejections in the host page.
 
