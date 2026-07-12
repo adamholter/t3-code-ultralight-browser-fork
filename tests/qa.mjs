@@ -35,6 +35,28 @@ await page.waitForTimeout(100);
 const userMessageCount = await page.locator(".user-message").count();
 await page.screenshot({ path: "/tmp/codex-web-live-turn.png", fullPage: true });
 
+const questionSmoke = `QUESTION_SMOKE_${Date.now()}`;
+const questionPage = await browser.newPage({ viewport: { width: 720, height: 760 } });
+questionPage.on("console", (message) => {
+  if (message.type() === "error") consoleErrors.push(message.text());
+});
+questionPage.on("pageerror", (error) => consoleErrors.push(error.message));
+await questionPage.goto(`${baseUrl}/?embed=1&mode=plan`, { waitUntil: "networkidle" });
+await questionPage.locator(".status-dot.ready, .composer").first().waitFor({ timeout: 20_000 });
+await questionPage.getByLabel("Message Codex").fill(`${questionSmoke}: Use request_user_input to ask exactly one question. Header: "Choice". Question: "Pick one". Options: "Alpha" and "Beta". After I answer, reply exactly USER_INPUT_BETA_OK if I chose Beta.`);
+await questionPage.getByRole("button", { name: "Send", exact: true }).click();
+await questionPage.locator(".user-input-panel").waitFor({ timeout: 120_000 });
+await questionPage.screenshot({ path: "/tmp/codex-web-user-input-prompt.png", fullPage: true });
+await questionPage.setViewportSize({ width: 390, height: 844 });
+const questionOverflow = await questionPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+await questionPage.screenshot({ path: "/tmp/codex-web-user-input-mobile.png", fullPage: true });
+await questionPage.getByRole("radio", { name: /Beta/ }).check();
+await questionPage.getByRole("button", { name: "Continue", exact: true }).click();
+await questionPage.locator(".assistant-message").getByText("USER_INPUT_BETA_OK", { exact: false }).waitFor({ timeout: 120_000 });
+await questionPage.locator(".working").waitFor({ state: "detached", timeout: 120_000 });
+await questionPage.screenshot({ path: "/tmp/codex-web-user-input.png", fullPage: true });
+await questionPage.close();
+
 await page.setViewportSize({ width: 390, height: 844 });
 await page.getByRole("button", { name: "Open sidebar" }).click();
 await page.locator(".sidebar-open").waitFor();
@@ -80,11 +102,12 @@ const elementReady = elementState.frameUrl?.includes("embed=1")
   && elementState.title === "Embedded Codex"
   && elementState.minHeight === "560px"
   && elementState.modelOptions > 0;
-console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, overflow, consoleErrors }, null, 2));
+console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, overflow, questionOverflow, consoleErrors }, null, 2));
 await browser.close();
 await deleteSmokeThread(smokeText);
+await deleteSmokeThread(questionSmoke);
 
-if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || consoleErrors.length) process.exit(1);
+if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || questionOverflow || consoleErrors.length) process.exit(1);
 
 async function deleteSmokeThread(text) {
   await new Promise((resolve, reject) => {

@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -45,6 +45,10 @@
     "./doctor": {
       "types": "./dist-lib/doctor.d.ts",
       "import": "./dist-lib/doctor.js"
+    },
+    "./requests": {
+      "types": "./dist-lib/requests.d.ts",
+      "import": "./dist-lib/requests.js"
     },
     "./types": {
       "types": "./dist-lib/types.d.ts",

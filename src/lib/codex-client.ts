@@ -153,6 +153,10 @@ export class CodexClient {
     this.send({ type: "respond", id, result });
   }
 
+  respondError(id: string | number, error = "Request declined") {
+    this.send({ type: "respondError", id, error });
+  }
+
   on(event: string, handler: Handler) {
     const set = this.handlers.get(event) ?? new Set();
     set.add(handler);

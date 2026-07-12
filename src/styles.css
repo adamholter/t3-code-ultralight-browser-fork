@@ -137,6 +137,27 @@ button { color: inherit; }
 .approval-bar span { overflow: hidden; font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
 .approval-bar button { border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; background: var(--panel); font-size: 11px; cursor: pointer; }
 .approval-bar .approval-primary { border-color: var(--text); background: var(--text); color: var(--bg); }
+.user-input-panel { width: min(calc(100% - 40px), 820px); max-height: min(52dvh, 520px); margin: 0 auto 10px; overflow-y: auto; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 11px; padding: 14px; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / 8%); }
+.request-heading { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.request-heading strong { font-size: 13px; }
+.request-heading span { color: var(--muted); font-size: 11px; }
+.request-questions { display: grid; gap: 14px; }
+.request-questions fieldset { display: grid; gap: 7px; min-width: 0; margin: 0; border: 0; padding: 0; }
+.request-questions legend { display: grid; gap: 3px; width: 100%; margin-bottom: 2px; padding: 0; font-size: 13px; line-height: 1.4; }
+.request-questions legend span { color: var(--accent); font-size: 10px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.request-option { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 8px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; background: var(--panel-soft); cursor: pointer; }
+.request-option:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.request-option input { margin: 2px 0 0; accent-color: var(--accent); }
+.request-option > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+.request-option strong { font-size: 12px; font-weight: 600; }
+.request-option small { color: var(--muted); font-size: 10.5px; line-height: 1.35; }
+.request-text { display: grid; gap: 5px; color: var(--muted); font-size: 10.5px; }
+.request-text input { width: 100%; border: 1px solid var(--line-strong); border-radius: 7px; outline: 0; padding: 8px 9px; background: var(--bg); color: var(--text); font-size: 12px; }
+.request-text input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent); }
+.request-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 13px; }
+.request-actions button { border: 1px solid var(--line-strong); border-radius: 7px; padding: 6px 10px; background: var(--panel); font-size: 11px; cursor: pointer; }
+.request-actions .request-primary { border-color: var(--text); background: var(--text); color: var(--bg); }
+.request-actions button:disabled { opacity: .35; cursor: default; }
 .error-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line)); padding: 8px 16px; background: color-mix(in srgb, var(--danger) 8%, var(--bg)); color: var(--danger); font-size: 11px; }
 .error-banner button { border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; }
 .sidebar-scrim { display: none; }
@@ -161,7 +182,8 @@ button { color: inherit; }
   .composer-hint { display: none; }
   .cwd-input { display: none; }
   .select-control select { max-width: 112px; }
-  .approval-bar { width: calc(100% - 20px); }
+  .approval-bar, .user-input-panel { width: calc(100% - 20px); }
+  .user-input-panel { max-height: 58dvh; padding: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

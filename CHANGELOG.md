@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- Render `request_user_input` as accessible option, free-text, secret, and multi-question forms.
+- Resume the same Codex turn with correctly serialized user answers.
+- Add opt-in Plan-mode chat through `?mode=plan`.
+- Export framework-neutral user-input and approval response helpers.
+- Map both current and legacy approval response protocols correctly.
+- Add `respondError()` for requests a custom host cannot safely handle.
+- Verify the complete Plan-mode question and answer flow against a real local Codex.
+
 ## 0.5.0
 
 - Add dependency-free `<codex-chat>` Web Component and auto-registration export.

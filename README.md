@@ -50,6 +50,8 @@ import "t3-code-ultralight-browser-fork/element/auto";
 
 It is safe to import during SSR and upgrades automatically once a browser DOM exists. Use `defineCodexChatElement()` when the host needs a custom tag name or explicit registration timing.
 
+Use `bridge-url="http://127.0.0.1:4174/?mode=plan"` when the embedded chat should run in Codex Plan mode and support interactive clarification questions.
+
 React projects can use the wrapper:
 
 ```tsx
@@ -113,6 +115,7 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - Fast streamed assistant text and reasoning
 - Commands, file changes, MCP calls, and tool activity
 - Approval and stop controls
+- Interactive Codex questions with options, free text, secret inputs, and multi-question forms
 - Model, reasoning effort, and working-directory selection
 - Markdown, code copy, desktop/mobile layouts, and themes
 - Automatic local bridge restart and browser reconnect
@@ -121,6 +124,7 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - One-call `chat()` plus lower-level text and multimodal turn APIs
 - Approval requests routed only to the browser client that owns the active turn
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
+- Exported request parsers and response builders for fully custom interfaces
 
 ## Deliberately excluded
 

@@ -84,6 +84,30 @@ Useful events:
 
 The generic `request(method, params)` method exposes the complete app-server RPC surface without growing this SDK. `runTurn()` and `runInput()` are available when the host manages thread lifecycle itself.
 
+## Interactive questions
+
+The complete chat renders `request_user_input` as an accessible options/free-text form. Add `mode=plan` to its bridge URL when the chat should use Codex Plan mode:
+
+```html
+<codex-chat bridge-url="http://127.0.0.1:4174/?mode=plan"></codex-chat>
+```
+
+Custom interfaces can use the framework-neutral response helpers:
+
+```ts
+import { buildUserInputResponse, getUserInputQuestions } from "t3-code-ultralight-browser-fork/requests";
+
+codex.on("serverRequest", async (request) => {
+  const questions = getUserInputQuestions(request);
+  if (!questions) return;
+
+  const values = await yourUI.ask(questions);
+  codex.respond(request.id, buildUserInputResponse(values));
+});
+```
+
+`values` is a record of question IDs to string arrays. Use `codex.respondError(id, message)` when the host cannot safely handle a server request.
+
 ## Mode 3: existing Node server
 
 Attach to an existing `node:http` server rather than launching a second service:
@@ -130,15 +154,20 @@ Subscribe to `item/agentMessage/delta` if the speech engine supports sentence-le
 The bridge forwards app-server requests as `serverRequest` messages. Respond with the request's JSON-RPC ID:
 
 ```ts
+import { buildApprovalResponse, isApprovalRequest } from "t3-code-ultralight-browser-fork/requests";
+
 codex.on("serverRequest", ({ id, method, params }) => {
+  if (!isApprovalRequest(method)) return;
   showApproval({
     method,
     params,
-    allow: () => codex.respond(id, { decision: "accept" }),
-    decline: () => codex.respond(id, { decision: "decline" }),
+    allow: () => codex.respond(id, buildApprovalResponse(method, "accept")),
+    decline: () => codex.respond(id, buildApprovalResponse(method, "decline")),
   });
 });
 ```
+
+The helper handles both current `accept/decline` requests and legacy `approved/denied` requests.
 
 Do not auto-approve requests in a reusable integration. Honor the user's existing Codex permission configuration and show prompts when the server asks. In multi-client use, the bridge routes an approval only to the client that started the active turn and rejects responses from other clients.
 

@@ -1,7 +1,7 @@
 import { FolderOpen, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApprovalBar } from "./components/ApprovalBar";
 import { Composer } from "./components/Composer";
+import { PendingRequestPanel } from "./components/PendingRequestPanel";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
 import { codex } from "./lib/codex-client";
@@ -9,7 +9,9 @@ import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thre
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
 
 export default function App() {
-  const embedded = new URLSearchParams(window.location.search).get("embed") === "1";
+  const searchParams = new URLSearchParams(window.location.search);
+  const embedded = searchParams.get("embed") === "1";
+  const collaborationMode = searchParams.get("mode") === "plan" ? "plan" : null;
   const [status, setStatus] = useState<ConnectionStatus>("starting");
   const [threads, setThreads] = useState<CodexThread[]>([]);
   const [models, setModels] = useState<CodexModel[]>([]);
@@ -101,6 +103,7 @@ export default function App() {
   }, [loadSidebar]);
 
   async function selectThread(thread: CodexThread) {
+    dismissPendingRequests("User switched Codex threads");
     setError(null);
     selectedThreadId.current = thread.id;
     setSelected(thread);
@@ -120,6 +123,7 @@ export default function App() {
   }
 
   function newThread() {
+    dismissPendingRequests("User started a new Codex thread");
     selectedThreadId.current = null;
     setSelected(null);
     setItems([]);
@@ -151,6 +155,7 @@ export default function App() {
         cwd,
         ...(model ? { model } : {}),
         ...(effort ? { effort } : {}),
+        ...(collaborationMode && model ? { collaborationMode: { mode: collaborationMode, settings: { model, reasoning_effort: effort || null, developer_instructions: null } } } : {}),
       });
       setTurnId(response.turn.id);
     } catch (cause) {
@@ -164,15 +169,23 @@ export default function App() {
     await codex.request("turn/interrupt", { threadId: selected.id, turnId });
   }
 
-  function answerApproval(decision: "accept" | "decline") {
+  function answerRequest(result: unknown) {
     const request = pendingRequests[0];
     if (!request) return;
-    if (request.method === "item/tool/requestUserInput") {
-      codex.respond(request.id, { answers: {} });
-    } else {
-      codex.respond(request.id, { decision });
-    }
+    codex.respond(request.id, result);
     setPendingRequests((current) => current.slice(1));
+  }
+
+  function rejectRequest(message?: string) {
+    const request = pendingRequests[0];
+    if (!request) return;
+    codex.respondError(request.id, message);
+    setPendingRequests((current) => current.slice(1));
+  }
+
+  function dismissPendingRequests(message: string) {
+    for (const request of pendingRequests) codex.respondError(request.id, message);
+    setPendingRequests([]);
   }
 
   const title = selected?.name || selected?.preview || "New thread";
@@ -195,7 +208,7 @@ export default function App() {
         <div className="conversation">
           {items.length ? <Timeline items={items} running={running} /> : <EmptyState status={status} onRefresh={loadSidebar} />}
         </div>
-        {pendingRequests[0] && <ApprovalBar request={pendingRequests[0]} onDecision={answerApproval} />}
+        {pendingRequests[0] && <PendingRequestPanel key={pendingRequests[0].id} request={pendingRequests[0]} onRespond={answerRequest} onReject={rejectRequest} />}
         <Composer value={draft} running={running} disabled={status !== "ready"} models={models} model={model} effort={effort} cwd={cwd} onChange={setDraft} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} />
       </section>
     </main>
