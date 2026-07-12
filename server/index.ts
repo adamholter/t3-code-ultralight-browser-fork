@@ -4,11 +4,13 @@ import { createServer, type ServerResponse } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { attachCodexBridge } from "./attach.js";
+import { readAllowedOrigins } from "./origins.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
 let bridgeReady = false;
+const allowedOrigins = readAllowedOrigins(process.env.CODEX_ALLOWED_ORIGINS);
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost");
@@ -17,6 +19,7 @@ const server = createServer(async (request, response) => {
       status: bridgeReady ? "ready" : "starting",
       cwd: process.env.HOME ?? process.cwd(),
       version: PACKAGE_VERSION,
+      allowedOrigins,
     });
   }
 
@@ -27,7 +30,7 @@ const server = createServer(async (request, response) => {
   response.writeHead(404).end("Not found");
 });
 
-const controller = attachCodexBridge(server, { path: "/ws", autoStart: false });
+const controller = attachCodexBridge(server, { path: "/ws", autoStart: false, allowedOrigins });
 controller.bridge.on("ready", () => { bridgeReady = true; });
 controller.bridge.on("exit", () => { bridgeReady = false; });
 
@@ -36,6 +39,7 @@ bridgeReady = true;
 const port = Number(process.env.PORT ?? 4174);
 server.listen(port, "127.0.0.1", () => {
   console.log(`Codex bridge listening at http://127.0.0.1:${port}`);
+  if (allowedOrigins.length) console.log(`Additional browser origins: ${allowedOrigins.join(", ")}`);
 });
 
 async function serveStatic(pathname: string, response: ServerResponse) {

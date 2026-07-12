@@ -34,6 +34,14 @@ The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 ></iframe>
 ```
 
+Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
+
+```bash
+npx t3-code-ultralight serve --allow-origin https://canvas.example.com
+```
+
+Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.
+
 Any framework with an ESM bundler can use the Web Component:
 
 ```ts
@@ -109,6 +117,8 @@ server.listen(3000, "127.0.0.1");
 
 Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 
+For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["https://canvas.example.com"]`.
+
 ## Included behavior
 
 - Existing and new local Codex threads
@@ -123,6 +133,7 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - Framework-free WebSocket client plus typed React and server exports
 - One-call `chat()` plus lower-level text and multimodal turn APIs
 - Approval requests routed only to the browser client that owns the active turn
+- Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - Exported request parsers and response builders for fully custom interfaces
 

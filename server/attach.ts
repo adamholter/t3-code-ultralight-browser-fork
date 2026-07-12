@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { CodexBridge, type CodexBridgeOptions } from "./codex-bridge.js";
+import { isAllowedOrigin, normalizeAllowedOrigins } from "./origins.js";
 
 export interface AttachCodexBridgeOptions extends CodexBridgeOptions {
   path?: string;
@@ -28,13 +29,14 @@ export function attachCodexBridge(
   options: AttachCodexBridgeOptions = {},
 ): CodexBridgeController {
   const bridge = options.bridge ?? new CodexBridge(options);
+  const allowedOrigins = normalizeAllowedOrigins(options.allowedOrigins);
   const sockets = new Set<WebSocket>();
   const threadOwners = new Map<string, WebSocket>();
   const requestOwners = new Map<string | number, WebSocket>();
   const webSocketServer = new WebSocketServer({
     server,
     path: options.path ?? "/codex-ws",
-    verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, options.allowedOrigins)),
+    verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, allowedOrigins), 403, "Browser origin is not allowed"),
   });
 
   const send = (socket: WebSocket, payload: unknown) => {
@@ -162,16 +164,6 @@ function mayRespond(
   return !owner || owner === socket;
 }
 
-function isAllowedOrigin(origin: string | undefined, additional: string[] = []) {
-  if (!origin) return true;
-  if (additional.includes(origin)) return true;
-  try {
-    const hostname = new URL(origin).hostname;
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  } catch {
-    return false;
-  }
-}
-
 export { CodexBridge } from "./codex-bridge.js";
 export type { CodexBridgeOptions } from "./codex-bridge.js";
+export { isAllowedOrigin, normalizeAllowedOrigins, readAllowedOrigins } from "./origins.js";

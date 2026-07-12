@@ -45,6 +45,20 @@ import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 
 Start the bridge with `npx t3-code-ultralight serve`.
 
+## Browser origins
+
+The bridge accepts browser connections from `localhost`, `127.0.0.1`, and `[::1]` by default. This covers normal local development regardless of port. A custom UI running on a non-loopback browser origin needs an explicit exact-origin allowlist entry:
+
+```bash
+npx t3-code-ultralight serve \
+  --allow-origin https://canvas.example.com \
+  --allow-origin http://192.168.1.20:3000
+```
+
+Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
+
+The isolated chat iframe connects from its own loopback origin, so its parent page does not normally need an entry. A headless client runs in the parent page and does.
+
 ## Mode 2: headless client
 
 Use this for canvas, voice, spatial, game, terminal, or product-specific interfaces.
@@ -118,6 +132,7 @@ import { attachCodexBridge } from "t3-code-ultralight-browser-fork/server";
 const controller = attachCodexBridge(httpServer, {
   path: "/codex-ws",
   cwd: process.cwd(),
+  allowedOrigins: ["https://canvas.example.com"],
 });
 
 await controller.start();
@@ -173,4 +188,4 @@ Do not auto-approve requests in a reusable integration. Honor the user's existin
 
 ## Deployment boundary
 
-This is a local application bridge, not a public hosted API. Bind the HTTP server to `127.0.0.1`. A remote deployment needs a separate authenticated transport design.
+This is a local application bridge, not a public hosted API. Bind the HTTP server to `127.0.0.1`. An allowed origin is not authentication and does not make exposing the port to a network safe. A remote deployment needs a separate authenticated transport design. Browsers may also apply mixed-content or local-network-access rules when an HTTPS site connects to a loopback service; those browser controls are outside this bridge's origin allowlist.

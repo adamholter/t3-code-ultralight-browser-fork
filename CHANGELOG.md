@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Add repeatable `serve --allow-origin` support for non-loopback browser hosts.
+- Keep the standalone server bound to `127.0.0.1` while allowing exact browser origins only.
+- Reject wildcard, malformed, credential-bearing, and path-bearing origin configuration.
+- Export origin normalization helpers for existing-server integrations.
+- Surface configured origins in `/api/status` and the startup receipt.
+- Add real WebSocket handshake coverage for allowed, local, and rejected origins.
+
 ## 0.6.0
 
 - Render `request_user_input` as accessible option, free-text, secret, and multi-question forms.

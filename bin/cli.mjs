@@ -7,9 +7,22 @@ function valueAfter(flag) {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+function valuesAfter(flag) {
+  const values = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    if (process.argv[index] !== flag) continue;
+    const value = process.argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value.`);
+    values.push(value);
+  }
+  return values;
+}
+
 if (command === "serve") {
   const port = valueAfter("--port");
   if (port) process.env.PORT = port;
+  const allowedOrigins = valuesAfter("--allow-origin");
+  if (allowedOrigins.length) process.env.CODEX_ALLOWED_ORIGINS = JSON.stringify(allowedOrigins);
   process.env.NODE_ENV = "production";
   await import("../dist-lib/standalone.js");
 } else if (command === "doctor") {
@@ -33,18 +46,19 @@ if (command === "serve") {
   console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
-Keep the bridge localhost-only, preserve approvals, and verify one live turn through the final UI.`);
+Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
+Preserve approvals and verify one live turn through the final UI.`);
 } else {
   console.log(`
 t3-code-ultralight
 
 Usage:
-  t3-code-ultralight serve [--port 4174]
+  t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]...
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
   t3-code-ultralight agent-prompt
 
 Commands:
-  serve         Start the localhost-only bridge and chat UI.
+  serve         Start the loopback bridge and chat UI. Extra browser origins must be explicit.
   doctor        Verify the CLI, app-server, login, models, and thread store.
   agent-prompt  Print a ready-to-paste integration prompt.
 `);
