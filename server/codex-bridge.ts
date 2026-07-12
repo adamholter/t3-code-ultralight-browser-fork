@@ -73,6 +73,7 @@ export class CodexBridge extends EventEmitter {
       env,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     });
 
     createInterface({ input: this.child.stdout }).on("line", (line) => {

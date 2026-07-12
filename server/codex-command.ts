@@ -4,6 +4,7 @@ import { delimiter, extname, resolve } from "node:path";
 export interface CodexCommandInvocation {
   command: string;
   args: string[];
+  windowsVerbatimArguments?: boolean;
 }
 
 export interface ResolveCodexCommandOptions {
@@ -41,6 +42,7 @@ export function resolveCodexCommand(
       quoteWindowsBatchArgument(executable, "path"),
       ...args.map((arg) => quoteWindowsBatchArgument(arg, "argument")),
     ],
+    windowsVerbatimArguments: true,
   };
 }
 

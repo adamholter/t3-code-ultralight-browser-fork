@@ -53,6 +53,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
       cwd: options.cwd,
       timeout: timeoutMs,
       windowsHide: true,
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     });
     checks.codexBinary = pass(stdout.trim(), startedAt);
   } catch (error) {
