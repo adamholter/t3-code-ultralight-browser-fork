@@ -10,12 +10,22 @@ permissions:
 
 jobs:
   check:
-    name: Check Node ${{ matrix.node }}
-    runs-on: ubuntu-latest
+    name: Check ${{ matrix.os }} Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24, 26]
+        include:
+          - os: ubuntu-latest
+            node: 22
+          - os: ubuntu-latest
+            node: 24
+          - os: ubuntu-latest
+            node: 26
+          - os: windows-latest
+            node: 22
+          - os: macos-latest
+            node: 22
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

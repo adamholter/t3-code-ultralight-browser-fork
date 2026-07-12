@@ -7,7 +7,7 @@ const root = process.cwd();
 const outputDirectory = await mkdtemp(resolve(tmpdir(), "t3-ultralight-pack-"));
 
 try {
-  const pack = spawnSync("npm", ["pack", "--ignore-scripts", "--pack-destination", outputDirectory], {
+  const pack = runNpm(["pack", "--ignore-scripts", "--pack-destination", outputDirectory], {
     cwd: root,
     encoding: "utf8",
   });
@@ -24,4 +24,11 @@ try {
   process.stdout.write(consumer.stdout);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+function runNpm(args, options) {
+  const npmCli = process.env.npm_execpath;
+  return npmCli
+    ? spawnSync(process.execPath, [npmCli, ...args], options)
+    : spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", args, { ...options, shell: process.platform === "win32" });
 }

@@ -14,7 +14,7 @@ try {
   if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(expectedExports)) {
     throw new Error(`Update packed export coverage for: ${Object.keys(packageJson.exports).join(", ")}`);
   }
-  const install = spawnSync("npm", [
+  const install = runNpm([
     "install",
     "--ignore-scripts",
     "--no-audit",
@@ -123,8 +123,8 @@ client.on("connection", (status: number) => void status);
     include: ["consumer.ts"],
   }, null, 2));
 
-  const compiler = resolve(process.cwd(), "node_modules/.bin/tsc");
-  const compile = spawnSync(compiler, ["--project", "tsconfig.json"], { cwd: fixture, encoding: "utf8" });
+  const compiler = resolve(process.cwd(), "node_modules/typescript/bin/tsc");
+  const compile = spawnSync(process.execPath, [compiler, "--project", "tsconfig.json"], { cwd: fixture, encoding: "utf8" });
   if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout);
   if (existsSync(resolve(fixture, "node_modules/@types/ws"))) throw new Error("Packed server types unexpectedly require @types/ws");
 
@@ -164,7 +164,7 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
   const headlessRuntime = spawnSync(process.execPath, ["runtime.mjs"], { cwd: fixture, encoding: "utf8" });
   if (headlessRuntime.status !== 0) throw new Error(headlessRuntime.stderr || headlessRuntime.stdout);
 
-  const installReact = spawnSync("npm", [
+  const installReact = runNpm([
     "install",
     "--ignore-scripts",
     "--no-audit",
@@ -179,10 +179,10 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
   });
   if (reactRuntime.status !== 0) throw new Error(reactRuntime.stderr || reactRuntime.stdout);
 
-  const cli = resolve(fixture, "node_modules/.bin/t3-code-ultralight");
-  const help = spawnSync(cli, ["--help"], { cwd: fixture, encoding: "utf8" });
+  const cli = resolve(fixture, "node_modules/t3-code-ultralight-browser-fork/bin/cli.mjs");
+  const help = spawnSync(process.execPath, [cli, "--help"], { cwd: fixture, encoding: "utf8" });
   if (help.status !== 0 || !help.stdout.includes("setup")) throw new Error(help.stderr || help.stdout || "Packed CLI help failed");
-  const integration = spawnSync(cli, ["integration"], { cwd: fixture, encoding: "utf8" });
+  const integration = spawnSync(process.execPath, [cli, "integration"], { cwd: fixture, encoding: "utf8" });
   if (integration.status !== 0 || JSON.parse(integration.stdout).version !== version) {
     throw new Error(integration.stderr || integration.stdout || "Packed CLI integration contract failed");
   }
@@ -201,4 +201,11 @@ console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true 
   }, null, 2));
 } finally {
   await rm(fixture, { recursive: true, force: true });
+}
+
+function runNpm(args, options) {
+  const npmCli = process.env.npm_execpath;
+  return npmCli
+    ? spawnSync(process.execPath, [npmCli, ...args], options)
+    : spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", args, { ...options, shell: process.platform === "win32" });
 }

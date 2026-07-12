@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.52.0
+
+- Add authoritative source, package, type, CLI, audit, and npm-pack CI gates on Ubuntu, macOS, and Windows at the Node 22 support floor.
+- Retain Node 24 and 26 Ubuntu jobs, producing a five-job OS/runtime compatibility matrix without weakening the secure runtime minimum.
+- Remove POSIX-only package-check assumptions by invoking npm through its active JavaScript entrypoint and package CLIs through Node directly.
+- Advertise the verified desktop operating-system matrix in the machine-readable integration contract.
+
 ## 0.51.0
 
 - Prove the full source and packed-consumer contract independently on every currently supported Node.js major: 22, 24, and 26.

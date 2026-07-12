@@ -27,6 +27,7 @@ describe("package version", () => {
       node: ">=22",
       supportedNodeMajors: [22, 24, 26],
       runtimePolicy: "currently supported Node.js releases",
+      operatingSystems: ["linux", "macos", "windows"],
     });
     expect(Object.keys(integration.modes)).toEqual(["completeChat", "customUi", "attachedServer"]);
     expect(integration.bridge).toMatchObject({ bind: "127.0.0.1", port: 4174, integrationPath: "/api/integration" });
@@ -113,12 +114,15 @@ describe("package version", () => {
     expect(workflow).toContain("if: ${{ vars.NPM_PUBLISH_ENABLED == 'true' && env.NODE_AUTH_TOKEN != '' }}");
   });
 
-  it("checks every currently supported Node major", () => {
+  it("checks every supported Node major and desktop OS", () => {
     const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
-    expect(workflow).toContain("node: [22, 24, 26]");
+    expect(workflow).toContain("os: ubuntu-latest");
+    expect(workflow).toContain("os: macos-latest");
+    expect(workflow).toContain("os: windows-latest");
     expect(workflow).toContain("node-version: ${{ matrix.node }}");
     expect(integration.release.verification).toMatchObject({
       nodeMatrix: [22, 24, 26],
+      operatingSystemMatrix: ["ubuntu-latest", "macos-latest", "windows-latest"],
       packedConsumerPerRuntime: true,
     });
   });

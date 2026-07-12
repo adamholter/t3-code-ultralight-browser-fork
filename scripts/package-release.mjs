@@ -7,7 +7,13 @@ const releaseDirectory = resolve("release");
 await rm(releaseDirectory, { recursive: true, force: true });
 await mkdir(releaseDirectory, { recursive: true });
 
-const output = execFileSync("npm", ["pack", "--pack-destination", releaseDirectory], {
+const npmCli = process.env.npm_execpath;
+const output = execFileSync(npmCli ? process.execPath : "npm", [
+  ...(npmCli ? [npmCli] : []),
+  "pack",
+  "--pack-destination",
+  releaseDirectory,
+], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "inherit"],
 });
