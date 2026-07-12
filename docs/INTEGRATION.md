@@ -122,7 +122,6 @@ Request adapters are available at `http://127.0.0.1:4174/codex-requests.js`. Bot
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
 const codex = createCodexSession({
-  url: "ws://127.0.0.1:4174/ws",
   cwd: projectPath,
   model: selectedModel,
   effort: "low",
@@ -143,6 +142,13 @@ await codex.send([
 ```
 
 Use `createCodexClient()` when several sessions share one socket or the host manages thread IDs itself. Its `chat()`, `runTurn()`, and `runInput()` methods accept the same `signal`, `onDelta`, `onEvent`, and `onTurnStarted` options.
+
+The headless client defaults to the standard standalone bridge at `http://127.0.0.1:4174`. Set `bridgeUrl` to another standalone HTTP(S) origin and the client derives its `/ws` endpoint safely. Set the lower-level `url` only for an attached server or another custom WebSocket path:
+
+```ts
+createCodexClient({ bridgeUrl: "http://127.0.0.1:5000" });
+createCodexClient({ url: "ws://127.0.0.1:3000/codex-ws" });
+```
 
 `turnTimeoutMs` and `AbortSignal` cancellation both send `turn/interrupt` to Codex before rejecting locally, so abandoning a host-side promise does not leave an invisible turn running.
 
@@ -165,7 +171,6 @@ Connection state is emitted through `client.on("connection", status => ...)`. Fa
 
 ```ts
 const client = createCodexClient({
-  url: "ws://127.0.0.1:4174/ws",
   requiredCapabilities: ["requestOwnership", "threadIsolation"],
 });
 await client.connect();

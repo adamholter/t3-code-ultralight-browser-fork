@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0
+
+- Make the headless client connect to the standard port-4174 standalone bridge with no URL configuration.
+- Add `bridgeUrl` for alternate standalone HTTP(S) origins and derive the secure `/ws` endpoint automatically.
+- Preserve exact raw `url` control for attached servers and custom WebSocket paths.
+- Export `DEFAULT_CODEX_BRIDGE_URL` and `codexBridgeWebSocketUrl()` for host coordination.
+- Reject ambiguous bridge paths, credentials, queries, fragments, and non-HTTP protocols before opening a socket.
+- Add live zero-config Node/SSR and cross-port browser verification, including DOM-free React and Web Component imports.
+- Remove manual WebSocket URLs from the canvas, voice, shared-client, and integration examples.
+
 ## 0.22.0
 
 - Add `start` for background bridge startup with deterministic Codex readiness.

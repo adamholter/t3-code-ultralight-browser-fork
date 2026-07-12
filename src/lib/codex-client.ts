@@ -13,6 +13,8 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+export const DEFAULT_CODEX_BRIDGE_URL = "http://127.0.0.1:4174";
+
 export interface StartThreadOptions {
   cwd?: string;
   model?: string;
@@ -68,8 +70,10 @@ export interface ChatOptions extends RunTurnOptions {
 }
 
 export interface CodexClientOptions {
-  /** WebSocket URL for the localhost bridge. Defaults to /ws on the current host. */
+  /** Exact WebSocket URL. Use this for attached servers or custom socket paths. */
   url?: string | (() => string);
+  /** HTTP(S) origin of a standalone bridge. Defaults to http://127.0.0.1:4174. */
+  bridgeUrl?: string | (() => string);
   /** Reconnect delay after a dropped bridge connection. Set false to disable. */
   reconnectMs?: number | false;
   /** Injectable WebSocket implementation for tests and non-browser runtimes. */
@@ -524,9 +528,30 @@ export class CodexClient {
   private resolveUrl() {
     if (typeof this.options.url === "function") return this.options.url();
     if (this.options.url) return this.options.url;
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${location.host}/ws`;
+    const bridgeUrl = typeof this.options.bridgeUrl === "function"
+      ? this.options.bridgeUrl()
+      : this.options.bridgeUrl ?? DEFAULT_CODEX_BRIDGE_URL;
+    return codexBridgeWebSocketUrl(bridgeUrl);
   }
+}
+
+/** Convert a standalone HTTP(S) bridge origin to its WebSocket endpoint. */
+export function codexBridgeWebSocketUrl(bridgeUrl = DEFAULT_CODEX_BRIDGE_URL) {
+  let parsed: URL;
+  try {
+    parsed = typeof location === "undefined" ? new URL(bridgeUrl) : new URL(bridgeUrl, location.href);
+  } catch {
+    throw new Error(`Invalid Codex bridge URL: ${bridgeUrl}`);
+  }
+  if (!(parsed.protocol === "http:" || parsed.protocol === "https:")) {
+    throw new Error(`Invalid Codex bridge URL protocol: ${parsed.protocol || bridgeUrl}`);
+  }
+  if (parsed.username || parsed.password || (parsed.pathname !== "/" && parsed.pathname !== "") || parsed.search || parsed.hash) {
+    throw new Error("Codex bridgeUrl must contain only an HTTP(S) scheme, host, and optional port");
+  }
+  parsed.protocol = parsed.protocol === "https:" ? "wss:" : "ws:";
+  parsed.pathname = "/ws";
+  return parsed.toString();
 }
 
 /**

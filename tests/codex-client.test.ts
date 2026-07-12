@@ -15,12 +15,14 @@ class FakeWebSocket {
     limits: { maxPayloadBytes: 1024, maxPendingRequestsPerClient: 4 },
   });
   static latest: FakeWebSocket | null = null;
+  static latestUrl: string | null = null;
   readyState = 0;
   private listeners = new Map<string, Set<(event: any) => void>>();
 
-  constructor(_url: string | URL) {
+  constructor(url: string | URL) {
     const SocketClass = this.constructor as typeof FakeWebSocket;
     FakeWebSocket.latest = this;
+    FakeWebSocket.latestUrl = String(url);
     if (SocketClass.shouldOpen()) {
       queueMicrotask(() => {
         this.readyState = FakeWebSocket.OPEN;
@@ -76,6 +78,23 @@ class ReconnectWebSocket extends FakeWebSocket {
 }
 
 describe("CodexClient", () => {
+  it("connects to the standard standalone bridge without host configuration", async () => {
+    const client = createCodexClient({ WebSocketImpl, reconnectMs: false });
+    await client.connect();
+    expect(FakeWebSocket.latestUrl).toBe("ws://127.0.0.1:4174/ws");
+    client.close();
+  });
+
+  it("derives secure sockets from an HTTP bridge origin and rejects ambiguous paths", async () => {
+    const client = createCodexClient({ bridgeUrl: "https://localhost:7443", WebSocketImpl, reconnectMs: false });
+    await client.connect();
+    expect(FakeWebSocket.latestUrl).toBe("wss://localhost:7443/ws");
+    client.close();
+
+    const invalid = createCodexClient({ bridgeUrl: "http://localhost:4174/custom", WebSocketImpl, reconnectMs: false });
+    await expect(invalid.connect()).rejects.toThrow("bridgeUrl must contain only");
+  });
+
   it("negotiates protocol metadata and required capabilities before connecting", async () => {
     const client = createCodexClient({
       url: "ws://localhost/codex",

@@ -19,7 +19,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.22.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.23.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
@@ -27,7 +27,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.22.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.23.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -123,7 +123,6 @@ Use the headless client when the host owns the interface:
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
 const codex = createCodexSession({
-  url: "ws://127.0.0.1:4174/ws",
   cwd: "/absolute/project/path",
 });
 
@@ -134,7 +133,7 @@ const answer = await codex.send("Explain the selected canvas nodes", {
 console.log(answer.text);
 ```
 
-The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
+No connection URL is required for the standard standalone bridge. Pass `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
 
 Custom interfaces can cover every interactive request with one fail-closed adapter:
 
@@ -157,7 +156,7 @@ For shared clients or lower-level control, use `createCodexClient()` and subscri
 ```ts
 import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
 
-const client = createCodexClient({ url: "ws://127.0.0.1:4174/ws" });
+const client = createCodexClient();
 client.on("item/agentMessage/delta", ({ delta }) => renderToken(delta));
 client.on("item/started", ({ item }) => renderToolActivity(item));
 client.on("turn/completed", ({ turn }) => markComplete(turn));

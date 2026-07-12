@@ -6,6 +6,7 @@ const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-r
 const { chromium } = require("playwright");
 const bridgeOrigin = new URL(process.env.QA_BASE_URL ?? "http://127.0.0.1:4174").origin;
 const bridgeSocketOrigin = bridgeOrigin.replace(/^http/, "ws");
+const useDefaultClientUrl = process.env.QA_USE_DEFAULT_CLIENT_URL === "1";
 let hostOrigin = "";
 
 const host = createServer((request, response) => {
@@ -18,7 +19,7 @@ const host = createServer((request, response) => {
       window.__embedReady = false;
       chat.addEventListener("codex-chat-ready", () => { window.__embedReady = true; });
       const client = createCodexClient({
-        url: ${JSON.stringify(`${bridgeSocketOrigin}/ws`)},
+        ${useDefaultClientUrl ? "" : `url: ${JSON.stringify(`${bridgeSocketOrigin}/ws`)},`}
         reconnectMs: false,
         requiredCapabilities: ["hostedModules", "threadIsolation"],
       });
