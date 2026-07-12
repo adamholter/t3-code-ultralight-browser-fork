@@ -1,12 +1,9 @@
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 
 const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
 const { chromium } = require("playwright");
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:4174";
 const wsUrl = process.env.QA_WS_URL ?? baseUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-const elementModule = process.env.QA_ELEMENT_MODULE
-  ?? fileURLToPath(new URL("../dist-lib/element-auto.js", import.meta.url));
 
 const browser = await chromium.launch({ headless: true });
 const cleanupTexts = [];
@@ -89,7 +86,7 @@ await elementPage.evaluate(() => {
   element.addEventListener("codex-chat-event", (event) => window.__codexEmbedEvents.push(event.detail));
   element.addEventListener("codex-chat-load", () => window.__codexEmbedEvents.push({ event: "load" }));
 });
-await elementPage.addScriptTag({ path: elementModule, type: "module" });
+await elementPage.addScriptTag({ url: `${baseUrl}/codex-chat.js`, type: "module" });
 await elementPage.waitForFunction(() => document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe"));
 await elementPage.waitForFunction(() => {
   const frame = document.querySelector("codex-chat")?.shadowRoot?.querySelector("iframe");

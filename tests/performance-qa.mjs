@@ -15,7 +15,7 @@ page.on("console", (message) => {
 page.on("pageerror", (error) => consoleErrors.push(error.message));
 
 try {
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  const indexResponse = await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.locator(".status-dot.ready").waitFor({ timeout: maxReadyMs });
   const contractResponse = await page.request.get(`${baseUrl}/api/integration`);
   const integrationContract = await contractResponse.json();
@@ -26,11 +26,30 @@ try {
       readyMs: Math.round(performance.now()),
       assetBytes: assets.reduce((total, entry) => total + entry.decodedBodySize, 0),
       assetCount: assets.length,
+      assetUrls: assets.map((entry) => entry.name),
       fontRequests: resources.filter((entry) => entry.initiatorType === "css" && /\.(?:woff2?|ttf|otf)(?:\?|$)/.test(entry.name)).length,
     };
   });
+  const assetResponses = await Promise.all(metrics.assetUrls.map((url) => page.request.get(url)));
+  const statusResponse = await page.request.get(`${baseUrl}/api/status`);
+  const statusBody = await statusResponse.json();
+  const staleAsset = await page.request.get(`${baseUrl}/assets/removed-release-asset.js`);
+  const indexHeaders = indexResponse?.headers() ?? {};
+  const httpSurface = {
+    indexNoStore: indexHeaders["cache-control"] === "no-store",
+    embedAllowed: !indexHeaders["x-frame-options"] && indexHeaders["content-security-policy"]?.includes("frame-ancestors *"),
+    csp: indexHeaders["content-security-policy"]?.includes("script-src 'self'") && indexHeaders["content-security-policy"]?.includes("object-src 'none'"),
+    noReferrer: indexHeaders["referrer-policy"] === "no-referrer",
+    nosniff: indexHeaders["x-content-type-options"] === "nosniff",
+    hashedAssetsImmutable: assetResponses.every((response) => response.headers()["cache-control"] === "public, max-age=31536000, immutable"),
+    hashedAssetsNosniff: assetResponses.every((response) => response.headers()["x-content-type-options"] === "nosniff"),
+    staleAssetStatus: staleAsset.status(),
+    statusNoStore: statusResponse.headers()["cache-control"] === "no-store",
+    statusHidesLocalPath: !("cwd" in statusBody) && !JSON.stringify(statusBody).includes(process.env.HOME ?? "__missing_home__"),
+  };
+  const { assetUrls: _assetUrls, ...publicMetrics } = metrics;
   const result = {
-    ...metrics,
+    ...publicMetrics,
     maxAssetBytes,
     maxReadyMs,
     integrationContract: {
@@ -40,6 +59,7 @@ try {
       modes: Object.keys(integrationContract.modes ?? {}),
       noStore: contractResponse.headers()["cache-control"] === "no-store",
     },
+    httpSurface,
     consoleErrors,
   };
   console.log(JSON.stringify(result, null, 2));
@@ -52,6 +72,8 @@ try {
     || result.integrationContract.schemaVersion !== 1
     || result.integrationContract.modes.join(",") !== "completeChat,customUi,attachedServer"
     || !result.integrationContract.noStore
+    || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
+    || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length
   ) throw new Error("Standalone performance QA assertions failed");
 } finally {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.27.0
+
+- Remove the user's home/working path from standalone status metadata.
+- Mark HTML and JSON metadata `no-store` so bridge upgrades cannot retain an old application shell.
+- Cache content-hashed JavaScript and CSS immutably for fast repeat loads.
+- Return an explicit 404 for missing or stale asset filenames instead of serving HTML as JavaScript.
+- Add nosniff, no-referrer, and restrictive content-security headers while preserving supported cross-origin iframe embedding.
+- Add browser assertions for CSP compatibility, cache behavior, stale assets, metadata privacy, and security headers.
+
 ## 0.26.0
 
 - Add `attachCodexSessionRequestHandlers()` for independent prompt surfaces sharing one client socket.

@@ -5,7 +5,7 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.26.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
+2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
    Before modifying the host, append `doctor --json` to that direct command, or run `npx t3-code-ultralight doctor --json` when the package is installed.
 3. Resolve every failed doctor check or report its exact recommendation.
    Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `start` will safely reuse a compatible one and returns only after readiness.

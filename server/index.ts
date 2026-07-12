@@ -33,7 +33,6 @@ const server = createServer(async (request, response) => {
       service: SERVICE_NAME,
       status: bridgeReady ? "ready" : "starting",
       pid: process.pid,
-      cwd: process.env.HOME ?? process.cwd(),
       version: PACKAGE_VERSION,
       websocketPath: "/ws",
       protocol: CODEX_BROWSER_PROTOCOL,
@@ -109,6 +108,7 @@ async function serveIntegrationContract(response: ServerResponse) {
   response.writeHead(200, {
     "cache-control": "no-store",
     "content-type": "application/json; charset=utf-8",
+    "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",
   });
   createReadStream(integrationContract).pipe(response);
@@ -120,8 +120,25 @@ async function serveStatic(pathname: string, response: ServerResponse) {
   const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   const candidate = resolve(dist, requested);
   const safePath = candidate.startsWith(`${dist}/`) ? candidate : resolve(dist, "index.html");
-  const filePath = await isFile(safePath) ? safePath : resolve(dist, "index.html");
-  response.writeHead(200, { "content-type": contentType(filePath) });
+  const exists = await isFile(safePath);
+  if (!exists && extname(requested)) {
+    response.writeHead(404, {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+    }).end("Static asset not found");
+    return;
+  }
+  const filePath = exists ? safePath : resolve(dist, "index.html");
+  const isHashedAsset = /^assets\/.+-[A-Za-z0-9_-]+\.(?:js|css)$/.test(requested);
+  response.writeHead(200, {
+    "cache-control": isHashedAsset ? "public, max-age=31536000, immutable" : "no-store",
+    "content-security-policy": "default-src 'self'; base-uri 'none'; connect-src 'self' ws: wss:; font-src 'self' data:; frame-ancestors *; img-src 'self' data: blob: https:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'none'",
+    "content-type": contentType(filePath),
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+  });
   createReadStream(filePath).pipe(response);
 }
 
@@ -133,6 +150,8 @@ function json(response: ServerResponse, value: unknown) {
   response.writeHead(200, {
     "cache-control": "no-store",
     "content-type": "application/json; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
   });
   response.end(JSON.stringify(value));
 }

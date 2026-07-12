@@ -21,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.26.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
@@ -29,7 +29,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.26.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.27.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -224,6 +224,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Strict browser envelopes, 16 MiB payload bounds, and 32 in-flight RPCs per client by default
 - Versioned browser handshake with early protocol and required-capability validation
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
+- No-store HTML/metadata, immutable hashed assets, stale-asset 404s, and an embed-compatible CSP
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
 - No-bundler chat and headless-client modules served directly by the local bridge
 - Origin-verified embed lifecycle events for host coordination without response-data leakage

@@ -358,3 +358,5 @@ Do not auto-approve requests in a reusable integration. Honor the user's existin
 ## Deployment boundary
 
 This is a local application bridge, not a public hosted API. Bind the HTTP server to `127.0.0.1`. An allowed origin is not authentication and does not make exposing the port to a network safe. A remote deployment needs a separate authenticated transport design. Browsers may also apply mixed-content or local-network-access rules when an HTTPS site connects to a loopback service; those browser controls are outside this bridge's origin allowlist.
+
+The standalone bridge does not expose the user's home or working path through status metadata. HTML and JSON metadata are `no-store`; content-hashed JavaScript/CSS are immutable; missing asset filenames return 404 instead of the SPA shell. Static UI responses add nosniff, no-referrer, and a restrictive CSP while intentionally allowing cross-origin framing for the supported embed route. Do not add `X-Frame-Options` or narrow `frame-ancestors` in a wrapper proxy unless embedding is intentionally disabled.
