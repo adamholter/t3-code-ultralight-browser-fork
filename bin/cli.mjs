@@ -20,11 +20,11 @@ async function main() {
     const existing = await readBridgeStatus(port);
     if (existing) {
       if (existing.version !== packageVersion) {
-        throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Stop the existing bridge before upgrading.`);
+        throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
       }
       const missingOrigins = allowedOrigins.filter((origin) => !existing.allowedOrigins.includes(origin));
       if (missingOrigins.length) {
-        throw new Error(`The existing Codex bridge does not allow: ${missingOrigins.join(", ")}. Stop it and restart with the requested --allow-origin values.`);
+        throw new Error(`The existing Codex bridge does not allow: ${missingOrigins.join(", ")}. Run ${stopCommand(port)}, then restart with the requested --allow-origin values.`);
       }
       console.log(`Codex bridge v${existing.version} is already ${existing.status} at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}.`);
       return;
@@ -56,6 +56,32 @@ async function main() {
     return;
   }
 
+  if (command === "stop") {
+    const port = parsePort(valueAfter("--port"));
+    const status = await readBridgeStatus(port);
+    if (!status) {
+      const report = { stopped: false, running: false, url: bridgeUrl(port), pid: null, version: null };
+      if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
+      else console.log(`No Codex bridge is running at ${bridgeUrl(port)}.`);
+      return;
+    }
+    if (!status.pid) {
+      throw new Error(`The Codex bridge at ${bridgeUrl(port)} did not report a process ID and cannot be stopped safely.`);
+    }
+    try {
+      process.kill(status.pid, "SIGTERM");
+    } catch (cause) {
+      if (cause?.code !== "ESRCH") throw cause;
+    }
+    if (!(await waitForBridgeStop(port, status.pid))) {
+      throw new Error(`Codex bridge PID ${status.pid} did not stop within 5 seconds. Check ${bridgeUrl(port)}/api/status before taking further action.`);
+    }
+    const report = { stopped: true, running: false, url: bridgeUrl(port), pid: status.pid, version: status.version };
+    if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
+    else console.log(`Stopped Codex bridge v${status.version} at ${bridgeUrl(port)} (PID ${status.pid}).`);
+    return;
+  }
+
   if (command === "doctor") {
     const { runDoctor } = await import("../dist-lib/doctor.js");
     const report = await runDoctor({
@@ -82,6 +108,7 @@ Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
 Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
+Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
     return;
   }
@@ -92,12 +119,14 @@ t3-code-ultralight
 Usage:
   t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]...
   t3-code-ultralight status [--port 4174] [--json]
+  t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
   t3-code-ultralight agent-prompt
 
 Commands:
   serve         Start the loopback bridge, or reuse an identical running bridge.
   status        Inspect a running standalone bridge without starting Codex.
+  stop          Stop a verified standalone bridge; safe to run repeatedly.
   doctor        Verify the CLI, app-server, login, models, and thread store.
   agent-prompt  Print a ready-to-paste integration prompt.
 `);
@@ -174,6 +203,20 @@ async function readBridgeStatus(port) {
   } catch {
     return null;
   }
+}
+
+async function waitForBridgeStop(port, pid) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const status = await readBridgeStatus(port);
+    if (!status || status.pid !== pid) return true;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return false;
+}
+
+function stopCommand(port) {
+  return `\`npx t3-code-ultralight stop --port ${port}\``;
 }
 
 function bridgeUrl(port) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.21.0
+
+- Add an idempotent `stop` command for clean upgrades and allowed-origin changes.
+- Validate the bridge service identity and reported PID before sending `SIGTERM`, then wait for confirmed shutdown.
+- Refuse to signal unrelated listeners and return stable human or JSON receipts when the bridge is already stopped.
+- Point version and origin conflicts at the exact recovery command.
+- Document the existing one-command, install-free chat path through the stable release tarball.
+- Add clean child-process shutdown, repeated-stop, unrelated-listener, and recovery-message coverage.
+
 ## 0.20.0
 
 - Remove the redundant `thread/resume` RPC from healthy `CodexSession` follow-up turns.

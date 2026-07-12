@@ -14,7 +14,17 @@ This project is the smallest practical bridge between a browser UI and a user's 
 
 It uses the user's existing Codex login, configuration, models, skills, MCP tools, workspace permissions, and thread history. API keys and Codex credentials never enter browser JavaScript.
 
-## Fastest path
+## One-command chat
+
+Run the stable prebuilt release directly—no clone, install, build, or API key:
+
+```bash
+npx --yes https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz
+```
+
+Then embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. The command is safe to repeat: it reuses an identical running bridge.
+
+## Install in a project
 
 ```bash
 npm install https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz
@@ -31,6 +41,14 @@ The stable release URL installs the prebuilt package directly: no repository clo
 ```bash
 npx t3-code-ultralight status --json
 ```
+
+Stop only a verified Ultralight bridge, including before an upgrade or origin change, with:
+
+```bash
+npx t3-code-ultralight stop
+```
+
+`stop` is idempotent and supports `--port` and `--json`; it will not signal an unrelated listener.
 
 The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 

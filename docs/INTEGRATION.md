@@ -12,7 +12,7 @@ npx t3-code-ultralight doctor
 
 For automation or agent parsing, use `doctor --json`. The command is read-only and does not create a thread.
 
-Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` is idempotent for an identical version and allowed-origin set, making repeated agent setup safe. A conflicting version, missing requested origin, invalid port, or unrelated listener fails with an actionable message rather than silently reusing the wrong process.
+Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` is idempotent for an identical version and allowed-origin set, making repeated agent setup safe. A conflicting version, missing requested origin, invalid port, or unrelated listener fails with an actionable message rather than silently reusing the wrong process. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat.
 
 ## Mode 0: framework-neutral Web Component
 

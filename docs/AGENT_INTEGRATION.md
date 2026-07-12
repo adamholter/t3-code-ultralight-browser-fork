@@ -3,9 +3,11 @@
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. Install the prebuilt package from `https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz` and run `npx t3-code-ultralight doctor --json` before modifying the host.
+2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz`; no clone or install is required. Install that same URL as a dependency only when the host imports package exports.
+   Before modifying the host, append `doctor --json` to that direct command, or run `npx t3-code-ultralight doctor --json` when the package is installed.
 3. Resolve every failed doctor check or report its exact recommendation.
    Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `serve` will safely reuse an identical one.
+   If a verified bridge must be replaced for an upgrade or origin change, use `npx t3-code-ultralight stop --json`; never kill an unverified listener by port alone.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
    For plain HTML without a bundler, load `/codex-chat.js` directly from the running bridge; do not copy generated files into the host.
