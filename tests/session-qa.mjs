@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { createCodexSession } from "../dist-lib/client.js";
+import { pathToFileURL } from "node:url";
+
+const clientModule = process.env.QA_CLIENT_MODULE
+  ? pathToFileURL(process.env.QA_CLIENT_MODULE).href
+  : new URL("../dist-lib/client.js", import.meta.url).href;
+const { createCodexSession } = await import(clientModule);
 
 const url = process.env.QA_WS_URL ?? "ws://127.0.0.1:4174/ws";
 const marker = `SESSION_SMOKE_${Date.now()}`;
