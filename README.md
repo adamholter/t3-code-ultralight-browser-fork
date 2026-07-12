@@ -1,25 +1,110 @@
-# Codex Web
+# T3 Code Ultralight Browser Fork
 
-A deliberately small, local-first web client for Codex. It keeps the interaction details that matter from T3 Code—fast streaming, readable tool activity, a strong composer, responsive threads, and polished message rendering—without the multi-provider and multi-platform architecture.
+[![CI](https://github.com/adamholter/t3-code-ultralight-browser-fork/actions/workflows/ci.yml/badge.svg)](https://github.com/adamholter/t3-code-ultralight-browser-fork/actions/workflows/ci.yml)
 
-## What it keeps
+Give this repository to an agent and say:
 
-- Local Codex authentication, config, models, skills, MCP tools, and thread history
-- New and existing threads
-- Streaming assistant, reasoning, command, file, and tool activity
-- Model and reasoning selection
-- Working-directory selection
-- Stop and approval controls
-- Desktop and mobile layouts, light and dark themes
+> Allow our web app to talk to my local Codex. Use the ultralight chat UI, or use the headless client if our interface is custom.
 
-## What it removes
+This project is the smallest practical bridge between a browser UI and a user's local Codex. It packages the best chat interaction details from T3 Code as three reusable pieces:
 
-- Claude Code, OpenCode, Cursor, and custom provider layers
-- Electron, Expo/mobile-native, marketing, auth, remote sync, SSH, and Tailscale
-- Collaboration, multi-environment orchestration, database projections, and provider registries
-- Settings surfaces unrelated to talking to local Codex
+1. A conflict-free embedded chat UI.
+2. A headless browser client for canvas, voice, spatial, game, and custom interfaces.
+3. A localhost-only Node bridge for `codex app-server`.
 
-## Run
+It uses the user's existing Codex login, configuration, models, skills, MCP tools, workspace permissions, and thread history. API keys and Codex credentials never enter browser JavaScript.
+
+## Fastest path
+
+```bash
+npm install github:adamholter/t3-code-ultralight-browser-fork
+npx t3-code-ultralight serve
+```
+
+The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
+
+```html
+<iframe
+  src="http://127.0.0.1:4174/?embed=1"
+  title="Local Codex chat"
+  style="width:100%;height:100%;min-height:420px;border:0"
+></iframe>
+```
+
+React projects can use the wrapper:
+
+```tsx
+import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
+
+export function AssistantPanel() {
+  return <CodexChatEmbed style={{ height: 640 }} />;
+}
+```
+
+The iframe is intentional: T3's polished chat CSS stays isolated from the host app, making this the safest one-line integration.
+
+## Custom canvas or voice UI
+
+Use the headless client when the host owns the interface:
+
+```ts
+import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+
+const codex = createCodexClient({
+  url: "ws://127.0.0.1:4174/ws",
+});
+
+await codex.connect();
+const { thread } = await codex.startThread({ cwd: "/absolute/project/path" });
+const answer = await codex.runTurn(thread.id, "Explain the selected canvas nodes");
+
+console.log(answer.text);
+```
+
+For token-by-token display, subscribe directly:
+
+```ts
+codex.on("item/agentMessage/delta", ({ delta }) => renderToken(delta));
+codex.on("item/started", ({ item }) => renderToolActivity(item));
+codex.on("turn/completed", ({ turn }) => markComplete(turn));
+```
+
+See [Integration guide](docs/INTEGRATION.md) for canvas, voice, and existing-server recipes.
+
+## Attach it to an existing Node server
+
+```ts
+import { createServer } from "node:http";
+import { attachCodexBridge } from "t3-code-ultralight-browser-fork/server";
+
+const server = createServer(yourApp);
+const codex = attachCodexBridge(server, { path: "/codex-ws" });
+
+await codex.start();
+server.listen(3000, "127.0.0.1");
+```
+
+Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
+
+## Included behavior
+
+- Existing and new local Codex threads
+- Fast streamed assistant text and reasoning
+- Commands, file changes, MCP calls, and tool activity
+- Approval and stop controls
+- Model, reasoning effort, and working-directory selection
+- Markdown, code copy, desktop/mobile layouts, and themes
+- Automatic local bridge restart and browser reconnect
+- Framework-free WebSocket client plus typed React and server exports
+
+## Deliberately excluded
+
+- Claude Code, OpenCode, Cursor, and provider registries
+- Cloud credentials or browser-side API keys
+- Electron, Expo, auth, remote sync, SSH, Tailscale, and marketing surfaces
+- Database projections and multi-environment orchestration
+
+## Develop
 
 Requirements: Node 22+ and a working `codex` CLI login.
 
@@ -28,23 +113,24 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173`.
+- Web UI: `http://127.0.0.1:4173`
+- Local bridge: `ws://127.0.0.1:4174/ws`
 
-For a production build:
+Validation:
 
 ```bash
-npm run build
-npm start
+npm run check
+node tests/qa.mjs
 ```
 
-Open `http://127.0.0.1:4174`.
+## Security boundary
 
-## Architecture
+Keep the bridge on loopback unless you add authentication, origin checks, TLS, and an explicit permission model. It gives the browser access to the same local Codex capabilities the user has configured.
 
-The browser never receives Codex credentials. A small Node bridge binds to localhost, launches `codex app-server --stdio`, and forwards a narrow JSON-RPC event stream over a local WebSocket. The React client renders that stream directly.
+## Agent integration
 
-The source is intentionally compact so this repository can serve as the baseline for future Codex-backed interfaces.
+Agents should read [AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md). It defines the shortest correct route and the security constraints that must survive integration.
 
 ## Attribution
 
-This project is derived from the MIT-licensed [T3 Code](https://github.com/pingdotgg/t3code) interface and retains its license.
+Derived from the MIT-licensed [T3 Code](https://github.com/pingdotgg/t3code). This fork retains the original license and focuses only on the local Codex browser path.

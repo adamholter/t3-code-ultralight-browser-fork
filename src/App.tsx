@@ -9,6 +9,7 @@ import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thre
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
 
 export default function App() {
+  const embedded = new URLSearchParams(window.location.search).get("embed") === "1";
   const [status, setStatus] = useState<ConnectionStatus>("starting");
   const [threads, setThreads] = useState<CodexThread[]>([]);
   const [models, setModels] = useState<CodexModel[]>([]);
@@ -145,11 +146,11 @@ export default function App() {
   function updateCwd(value: string) { setCwd(value); localStorage.setItem("codex-web:cwd", value); }
 
   return (
-    <main className="app-shell">
-      <Sidebar threads={threads} selectedId={selected?.id ?? null} open={sidebarOpen} status={status} search={search} dark={dark} onSearch={setSearch} onSelect={selectThread} onNew={newThread} onClose={() => setSidebarOpen(false)} onToggleTheme={() => setDark((value) => !value)} />
+    <main className={`app-shell ${embedded ? "embedded" : ""}`}>
+      {!embedded && <Sidebar threads={threads} selectedId={selected?.id ?? null} open={sidebarOpen} status={status} search={search} dark={dark} onSearch={setSearch} onSelect={selectThread} onNew={newThread} onClose={() => setSidebarOpen(false)} onToggleTheme={() => setDark((value) => !value)} />}
       <section className="workspace">
         <header className="topbar">
-          <MobileMenuButton onClick={() => setSidebarOpen(true)} />
+          {!embedded && <MobileMenuButton onClick={() => setSidebarOpen(true)} />}
           <div className="thread-heading"><strong>{title}</strong><span><FolderOpen size={12} />{subtitle}</span></div>
           <div className="model-readout">{activeModel?.displayName ?? "Codex"} · {effort}</div>
         </header>

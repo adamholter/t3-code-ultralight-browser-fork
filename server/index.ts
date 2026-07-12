@@ -1,89 +1,75 @@
-import express from "express";
-import { createServer } from "node:http";
-import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { createReadStream, existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
+import { createServer, type ServerResponse } from "node:http";
+import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { WebSocket, WebSocketServer } from "ws";
-import { CodexBridge } from "./codex-bridge.js";
+import { attachCodexBridge } from "./attach.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const app = express();
-const server = createServer(app);
-const bridge = new CodexBridge();
-const sockets = new Set<WebSocket>();
-
-function send(socket: WebSocket, payload: unknown) {
-  if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
-}
-
-function broadcast(payload: unknown) {
-  for (const socket of sockets) send(socket, payload);
-}
-
-bridge.on("notification", (notification) => broadcast({ type: "notification", ...notification }));
-bridge.on("request", (request) => broadcast({ type: "serverRequest", ...request }));
-bridge.on("ready", () => broadcast({ type: "status", status: "ready" }));
-bridge.on("exit", () => broadcast({ type: "status", status: "reconnecting" }));
-bridge.on("log", (entry) => {
-  if (entry.level === "error") console.error(entry.message);
-});
-
-app.get("/api/status", (_request, response) => {
-  response.json({
-    status: bridge.ready ? "ready" : "starting",
-    cwd: process.env.HOME ?? process.cwd(),
-    version: "0.1.0",
-  });
-});
-
 const dist = resolve(root, "dist");
-if (process.env.NODE_ENV === "production" && existsSync(dist)) {
-  app.use(express.static(dist));
-  app.get("/{*path}", (_request, response) => response.sendFile(resolve(dist, "index.html")));
-}
+let bridgeReady = false;
 
-const wss = new WebSocketServer({ server, path: "/ws" });
-wss.on("connection", (socket) => {
-  sockets.add(socket);
-  send(socket, { type: "status", status: bridge.ready ? "ready" : "starting" });
+const server = createServer(async (request, response) => {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  if (url.pathname === "/api/status") {
+    return json(response, {
+      status: bridgeReady ? "ready" : "starting",
+      cwd: process.env.HOME ?? process.cwd(),
+      version: "0.2.0",
+    });
+  }
 
-  socket.on("message", async (raw) => {
-    try {
-      const message = JSON.parse(raw.toString()) as {
-        type: "rpc" | "respond" | "respondError";
-        id: string | number;
-        method?: string;
-        params?: unknown;
-        result?: unknown;
-        error?: string;
-      };
-      if (message.type === "rpc" && message.method) {
-        const result = await bridge.request(message.method, message.params, 120_000);
-        send(socket, { type: "rpcResult", id: message.id, result });
-      } else if (message.type === "respond") {
-        bridge.respond(message.id, message.result);
-      } else if (message.type === "respondError") {
-        bridge.respondError(message.id, message.error ?? "Request declined");
-      }
-    } catch (error) {
-      const id = (() => {
-        try { return JSON.parse(raw.toString()).id; } catch { return null; }
-      })();
-      send(socket, { type: "rpcError", id, error: error instanceof Error ? error.message : String(error) });
-    }
-  });
-  socket.on("close", () => sockets.delete(socket));
+  if (process.env.NODE_ENV === "production" && existsSync(dist)) {
+    return serveStatic(url.pathname, response);
+  }
+
+  response.writeHead(404).end("Not found");
 });
 
-await bridge.start();
+const controller = attachCodexBridge(server, { path: "/ws", autoStart: false });
+controller.bridge.on("ready", () => { bridgeReady = true; });
+controller.bridge.on("exit", () => { bridgeReady = false; });
+
+await controller.start();
+bridgeReady = true;
 const port = Number(process.env.PORT ?? 4174);
 server.listen(port, "127.0.0.1", () => {
   console.log(`Codex bridge listening at http://127.0.0.1:${port}`);
 });
 
+async function serveStatic(pathname: string, response: ServerResponse) {
+  const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const candidate = resolve(dist, requested);
+  const safePath = candidate.startsWith(`${dist}/`) ? candidate : resolve(dist, "index.html");
+  const filePath = await isFile(safePath) ? safePath : resolve(dist, "index.html");
+  response.writeHead(200, { "content-type": contentType(filePath) });
+  createReadStream(filePath).pipe(response);
+}
+
+async function isFile(path: string) {
+  try { return (await stat(path)).isFile(); } catch { return false; }
+}
+
+function json(response: ServerResponse, value: unknown) {
+  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  response.end(JSON.stringify(value));
+}
+
+function contentType(path: string) {
+  return ({
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+  } as Record<string, string>)[extname(path)] ?? "application/octet-stream";
+}
+
 function shutdown() {
-  bridge.stop();
-  server.close(() => process.exit(0));
+  void controller.stop().finally(() => server.close(() => process.exit(0)));
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

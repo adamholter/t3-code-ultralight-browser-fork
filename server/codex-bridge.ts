@@ -19,12 +19,25 @@ export interface RpcServerRequest extends RpcNotification {
   id: RpcId;
 }
 
+export interface CodexBridgeOptions {
+  binary?: string;
+  args?: string[];
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  requestTimeoutMs?: number;
+  clientInfo?: { name: string; title: string; version: string };
+}
+
 export class CodexBridge extends EventEmitter {
   private child: ChildProcessWithoutNullStreams | null = null;
   private pending = new Map<RpcId, PendingRequest>();
   private nextId = 1;
   private readyPromise: Promise<void> | null = null;
   private stopped = false;
+
+  constructor(private readonly options: CodexBridgeOptions = {}) {
+    super();
+  }
 
   get ready() {
     return this.child !== null;
@@ -38,9 +51,9 @@ export class CodexBridge extends EventEmitter {
 
   private async boot() {
     this.stopped = false;
-    this.child = spawn("codex", ["app-server", "--stdio"], {
-      cwd: process.env.HOME,
-      env: process.env,
+    this.child = spawn(this.options.binary ?? "codex", this.options.args ?? ["app-server", "--stdio"], {
+      cwd: this.options.cwd ?? process.env.HOME,
+      env: this.options.env ?? process.env,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -71,7 +84,7 @@ export class CodexBridge extends EventEmitter {
     });
 
     await this.request("initialize", {
-      clientInfo: { name: "codex_web", title: "Codex Web", version: "0.1.0" },
+      clientInfo: this.options.clientInfo ?? { name: "t3_code_ultralight", title: "T3 Code Ultralight", version: "0.2.0" },
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,
@@ -82,7 +95,7 @@ export class CodexBridge extends EventEmitter {
     this.emit("ready");
   }
 
-  request(method: string, params?: unknown, timeoutMs = 30_000): Promise<unknown> {
+  request(method: string, params?: unknown, timeoutMs = this.options.requestTimeoutMs ?? 30_000): Promise<unknown> {
     if (!this.child) return Promise.reject(new Error("Codex app-server is not running"));
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

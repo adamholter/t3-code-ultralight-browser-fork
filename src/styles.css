@@ -42,6 +42,8 @@ body { background: var(--chrome); color: var(--text); overflow: hidden; }
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }
 .app-shell { display: grid; grid-template-columns: 272px minmax(0, 1fr); height: 100dvh; overflow: hidden; background: var(--chrome); }
+.app-shell.embedded { grid-template-columns: minmax(0, 1fr); height: 100%; min-height: 420px; }
+.app-shell.embedded .workspace { margin: 0; border-radius: 0; }
 .sidebar { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border-right: 1px solid var(--line); padding: 12px 10px 9px; background: var(--chrome); }
 .sidebar-header { display: flex; height: 38px; align-items: center; gap: 9px; padding: 0 7px 8px; }
 .sidebar-header strong { font-size: 14px; font-weight: 630; letter-spacing: -0.01em; }

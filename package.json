@@ -1,40 +1,88 @@
 {
-  "name": "codex-web",
-  "version": "0.1.0",
-  "private": true,
+  "name": "t3-code-ultralight-browser-fork",
+  "version": "0.2.0",
+  "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
+  "license": "MIT",
+  "private": false,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamholter/t3-code-ultralight-browser-fork.git"
+  },
+  "homepage": "https://github.com/adamholter/t3-code-ultralight-browser-fork#readme",
+  "bugs": "https://github.com/adamholter/t3-code-ultralight-browser-fork/issues",
+  "keywords": ["codex", "openai", "local", "chat", "react", "websocket", "agent-ui"],
+  "sideEffects": false,
+  "files": ["bin", "dist", "dist-lib", "docs", "examples", "LICENSE", "NOTICE", "README.md"],
+  "bin": {
+    "t3-code-ultralight": "./bin/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist-lib/client.d.ts",
+      "import": "./dist-lib/client.js"
+    },
+    "./client": {
+      "types": "./dist-lib/client.d.ts",
+      "import": "./dist-lib/client.js"
+    },
+    "./react": {
+      "types": "./dist-lib/react.d.ts",
+      "import": "./dist-lib/react.js"
+    },
+    "./server": {
+      "types": "./dist-lib/server.d.ts",
+      "import": "./dist-lib/server.js"
+    },
+    "./types": {
+      "types": "./dist-lib/types.d.ts",
+      "import": "./dist-lib/types.js"
+    }
+  },
   "scripts": {
     "dev": "concurrently -k -n bridge,web -c blue,green \"tsx watch server/index.ts\" \"vite\"",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run typecheck && npm run build:app && npm run build:lib",
+    "build:app": "vite build",
+    "build:lib": "tsup",
+    "typecheck": "tsc --noEmit",
     "start": "NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",
-    "check": "npm run test && npm run build"
+    "check": "npm run test && npm run build",
+    "prepare": "npm run build"
   },
   "dependencies": {
-    "@fontsource-variable/dm-sans": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
-    "express": "^5.1.0",
-    "lucide-react": "^0.545.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
+    "lucide-react": "^0.545.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tsx": "^4.20.6",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=22"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
   }
 }
