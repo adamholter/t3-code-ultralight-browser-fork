@@ -109,6 +109,10 @@ try {
     || result.integrationContract.reactCompatibility?.hydrationVerified !== true
     || result.integrationContract.reactCompatibility?.controllerRefVerified !== true
     || result.integrationContract.reactCompatibility?.remountVerified !== true
+    || result.integrationContract.reactCompatibility?.clientDirective !== true
+    || result.integrationContract.reactCompatibility?.nextAppRouterVerified?.join(",") !== "16.2.10"
+    || result.integrationContract.reactCompatibility?.serverComponentImportVerified !== true
+    || result.integrationContract.reactCompatibility?.productionBuildVerified !== true
     || result.integrationContract.webComponentCompatibility?.browserVerified?.vue?.join(",") !== "3.5.39"
     || result.integrationContract.webComponentCompatibility?.browserVerified?.svelte?.join(",") !== "5.56.4"
     || result.integrationContract.webComponentCompatibility?.packageInstallVerified !== true

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.44.0",
+  "version": "0.45.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -9,16 +9,16 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' start --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode iframe --port auto --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode react --port auto --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode element --port auto --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode element --delivery hosted --port auto --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode custom --port auto --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode custom --delivery hosted --port auto --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode iframe --port auto --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode react --port auto --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode element --port auto --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode element --delivery hosted --port auto --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode custom --port auto --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode custom --delivery hosted --port auto --json"
     }
   },
   "bridge": {
@@ -72,7 +72,11 @@
         "ssrVerified": true,
         "hydrationVerified": true,
         "controllerRefVerified": true,
-        "remountVerified": true
+        "remountVerified": true,
+        "clientDirective": true,
+        "nextAppRouterVerified": ["16.2.10"],
+        "serverComponentImportVerified": true,
+        "productionBuildVerified": true
       },
       "webComponentCompatibility": {
         "browserVerified": {
@@ -160,6 +164,7 @@
     "a bridge started for one workspace is not silently reused as another project's default",
     "setup-generated browser code inherits the bridge workspace without embedding an absolute local path",
     "the exact packed React export server-renders and streams in clean React 18 and React 19 hosts",
+    "the exact packed React export builds in Next.js 16 App Router, imports directly from a Server Component, and streams through the production host",
     "the exact packed Web Component streams in clean Vue 3 and Svelte 5 hosts with one mount initialization and pre-ready controller calls",
     "the exact packed attached-server export streams on its custom path without touching the host's HTTP or WebSocket routes",
     "attached shutdown rejects pending owned requests before process exit and terminates non-cooperative browser sockets within its configured bound",

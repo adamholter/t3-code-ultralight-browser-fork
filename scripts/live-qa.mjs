@@ -12,6 +12,7 @@ const suites = [
   ["deterministic multi-project auto ports", [resolve(root, "tests/auto-port-qa.mjs")]],
   ["zero-install modules", [resolve(root, "tests/no-bundler-qa.mjs")]],
   ["packed React 18 and 19 hosts", [resolve(root, "tests/react-host-qa.mjs")]],
+  ["packed Next.js 16 App Router host", [resolve(root, "tests/next-host-qa.mjs")]],
   ["packed Vue 3 and Svelte 5 hosts", [resolve(root, "tests/framework-host-qa.mjs")]],
   ["packed existing Node server", [resolve(root, "tests/attached-server-qa.mjs")]],
   ["complete browser story", [resolve(root, "tests/qa.mjs")]],

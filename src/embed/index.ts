@@ -1,3 +1,5 @@
+"use client";
+
 export { CodexChatEmbed } from "./CodexChatEmbed";
 export type { CodexChatEmbedHandle, CodexChatEmbedProps } from "./CodexChatEmbed";
 export type {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.45.0
+
+- Mark the published React entry with `"use client"` so server-first frameworks recognize its hook-using implementation as a client boundary.
+- Add the same directive to every setup-generated React panel, making the copyable recipe safe in Next.js App Router without extra agent inference.
+- Install the exact packed package into a clean Next.js 16.2.10 and React 19.2.0 App Router host.
+- Import `CodexChatEmbed` directly from an unmarked Server Component, run a production build and server, and stream a real local Codex turn through the rendered frame.
+- Inspect the Next.js host and embedded chat at desktop and mobile sizes with one iframe, no overflow, and empty browser console/page errors.
+- Gate the built artifact on preserving the client directive instead of trusting source intent through bundling.
+- Publish server-first React compatibility in the machine-readable contract and add the Next.js production host to one-command live QA.
+
 ## 0.44.0
 
 - Install the exact packed Web Component into clean Vue 3.5.39 and Svelte 5.56.4 Vite hosts and stream a real local Codex turn through each.

@@ -46,6 +46,10 @@ describe("live integration contract", () => {
         hydrationVerified: true,
         controllerRefVerified: true,
         remountVerified: true,
+        clientDirective: true,
+        nextAppRouterVerified: ["16.2.10"],
+        serverComponentImportVerified: true,
+        productionBuildVerified: true,
       },
       webComponentCompatibility: {
         browserVerified: { vue: ["3.5.39"], svelte: ["5.56.4"] },
@@ -102,6 +106,7 @@ describe("live integration contract", () => {
     const react = createIntegrationRecipe(integration, { mode: "react", port: 49123 });
     expect(react).toMatchObject({ mode: "react", delivery: "package", requiresPackageInstall: true, bridgeUrl: "http://127.0.0.1:49123" });
     expect(react.installCommand).toContain(`?v=${integration.version}`);
+    expect(react.code.startsWith('"use client";')).toBe(true);
     expect(react.code).toContain('bridgeUrl="http://127.0.0.1:49123"');
 
     const element = createIntegrationRecipe(integration, { mode: "element", port: 4174 });

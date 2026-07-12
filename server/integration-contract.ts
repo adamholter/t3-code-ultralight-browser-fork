@@ -201,7 +201,7 @@ export function createIntegrationRecipe(
       requiresPackageInstall: true,
       installCommand,
       packageExport: "t3-code-ultralight-browser-fork/react",
-      code: `import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";\n\nexport function CodexPanel() {\n  return <CodexChatEmbed bridgeUrl="${bridgeUrl}" style={{ height: 640 }} />;\n}`,
+      code: `"use client";\n\nimport { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";\n\nexport function CodexPanel() {\n  return <CodexChatEmbed bridgeUrl="${bridgeUrl}" style={{ height: 640 }} />;\n}`,
       codeLanguage: "tsx",
       csp: { "frame-src": [bridgeUrl] },
     };

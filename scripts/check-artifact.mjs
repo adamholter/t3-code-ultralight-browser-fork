@@ -14,6 +14,7 @@ const hostedModules = [
   resolve("dist-lib/client.js"),
   resolve("dist-lib/requests.js"),
 ];
+const reactModule = resolve("dist-lib/react.js");
 
 if (fontFiles.length) throw new Error(`Built app contains bundled fonts: ${fontFiles.join(", ")}`);
 if (sourceMaps.length) throw new Error(`Published library contains source maps: ${sourceMaps.join(", ")}`);
@@ -24,11 +25,15 @@ for (const modulePath of hostedModules) {
   const source = await readFile(modulePath, "utf8");
   if (/^\s*import\s/m.test(source)) throw new Error(`Hosted browser module contains an unresolved import: ${modulePath}`);
 }
+const reactSource = await readFile(reactModule, "utf8");
+if (!reactSource.startsWith('"use client";')) {
+  throw new Error("Published React module is missing its server-first framework client boundary");
+}
 
 const appBytes = (await Promise.all([...appJavaScript, ...appStyles].map(async (file) => (await stat(file)).size)))
   .reduce((total, size) => total + size, 0);
 if (appBytes > MAX_APP_BYTES) throw new Error(`Standalone app is ${appBytes} bytes; budget is ${MAX_APP_BYTES}`);
-console.log(JSON.stringify({ appBytes, maxAppBytes: MAX_APP_BYTES, fontFiles: 0, librarySourceMaps: 0, selfContainedHostedModules: hostedModules.length }));
+console.log(JSON.stringify({ appBytes, maxAppBytes: MAX_APP_BYTES, fontFiles: 0, librarySourceMaps: 0, selfContainedHostedModules: hostedModules.length, reactClientDirective: true }));
 
 async function filesUnder(directory) {
   const entries = await readdir(directory, { recursive: true, withFileTypes: true });

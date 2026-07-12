@@ -18,14 +18,14 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 
 The complete chat ships in about 94 KB of decoded JavaScript plus CSS. Its response renderer has no external Markdown runtime: it creates escaped React nodes directly, keeps raw response HTML inert, and still covers the code, tables, tasks, links, quotes, and formatting Codex commonly emits.
 
-The package boundary is exercised in clean React 18/19, Vue 3, and Svelte 5 hosts. Framework-driven custom-element attributes initialize a single frame, and controller calls made during mount wait safely for readiness.
+The package boundary is exercised in clean React 18/19, Next.js 16 App Router, Vue 3, and Svelte 5 hosts. The React export carries its own client boundary for direct Server Component imports. Framework-driven custom-element attributes initialize a single frame, and controller calls made during mount wait safely for readiness.
 
 ## One-command integration
 
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode iframe --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode iframe --port auto --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project or service owns it. The receipt returns the resolved numeric port for later status and stop commands. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -33,7 +33,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' setup --mode custom --delivery hosted --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' setup --mode custom --delivery hosted --port auto --json
 ```
 
 ## One-command chat
@@ -41,7 +41,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
@@ -49,7 +49,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.44.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.45.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -147,6 +147,8 @@ Use `bridge-url="http://127.0.0.1:4174/?mode=plan"` when the embedded chat shoul
 React projects can use the wrapper:
 
 ```tsx
+"use client";
+
 import { useRef } from "react";
 import { CodexChatEmbed, type CodexChatEmbedHandle } from "t3-code-ultralight-browser-fork/react";
 
@@ -166,7 +168,7 @@ export function AssistantPanel() {
 }
 ```
 
-The React export supports host-provided React 18 or 19. The exact packed component is browser-tested in clean React 18.3.1 and 19.2.0 Vite hosts under Strict Mode, server-rendered with both `react-dom/server` versions, and hydrated in Chromium without mismatches or duplicate frames. Its ready/connection/turn callbacks, controller ref, stop/new-thread controls, and unmount/remount cleanup are exercised with real Codex turns. React remains an optional peer, so headless, Web Component, and server-only installs do not pull it in.
+The React export supports host-provided React 18 or 19. The exact packed component is browser-tested in clean React 18.3.1 and 19.2.0 Vite hosts under Strict Mode, server-rendered with both `react-dom/server` versions, and hydrated in Chromium without mismatches or duplicate frames. The published module begins with `"use client"`, and a Next.js 16.2.10 production App Router host imports it directly from a Server Component and streams a real Codex turn. Generated React recipes also include an explicit client boundary so agents can paste them into server-first projects safely. Ready/connection/turn callbacks, controller refs, stop/new-thread controls, and unmount/remount cleanup are exercised with real Codex turns. React remains an optional peer, so headless, Web Component, and server-only installs do not pull it in.
 
 The iframe is intentional: T3's polished chat CSS stays isolated from the host app, making this the safest one-line integration.
 

@@ -30,6 +30,12 @@ describe("package version", () => {
       singleMountInitializationVerified: true,
       preReadyControllerVerified: true,
     });
+    expect(integration.modes.completeChat.reactCompatibility).toMatchObject({
+      clientDirective: true,
+      nextAppRouterVerified: ["16.2.10"],
+      serverComponentImportVerified: true,
+      productionBuildVerified: true,
+    });
     expect(packageJson.files).toEqual(expect.arrayContaining(["integration.json", "llms.txt"]));
     expect(packageJson.exports).toHaveProperty("./integration");
   });
