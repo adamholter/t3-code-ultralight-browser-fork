@@ -5,6 +5,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
 2. Install the prebuilt package from `https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz` and run `npx t3-code-ultralight doctor --json` before modifying the host.
 3. Resolve every failed doctor check or report its exact recommendation.
+   Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `serve` will safely reuse an identical one.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
 5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
@@ -34,6 +35,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - The host starts without manual source copying.
 - `doctor --json` reports `ok: true`.
 - The bridge reports ready.
+- Re-running `serve` reuses the compatible bridge or explains the exact version/origin conflict.
 - At least one local model is available.
 - A thread can be started or resumed.
 - Assistant deltas stream visibly.

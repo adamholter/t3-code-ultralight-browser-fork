@@ -49,6 +49,9 @@ export function attachCodexBridge(
     maxPayload: maxPayloadBytes,
     verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, allowedOrigins), 403, "Browser origin is not allowed"),
   });
+  webSocketServer.on("error", (error) => {
+    bridge.emit("log", { level: "debug", message: `Browser WebSocket server error: ${error.message}` });
+  });
 
   const send = (socket: WebSocket, payload: unknown) => {
     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));

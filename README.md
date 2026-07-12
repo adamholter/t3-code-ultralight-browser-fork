@@ -26,6 +26,12 @@ The stable release URL installs the prebuilt package directly: no repository clo
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 
+`serve` is safe to run repeatedly. It reuses an identical bridge already running on the requested port, but fails before startup when its version or allowed-origin configuration is incompatible. Inspect it without starting Codex using:
+
+```bash
+npx t3-code-ultralight status --json
+```
+
 The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 
 ```html
@@ -146,6 +152,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Markdown, code copy, desktop/mobile layouts, and themes
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
+- Idempotent startup plus human and JSON runtime status inspection
 - Framework-free WebSocket client plus typed React and server exports
 - Preact-powered standalone chat with a genuine React wrapper for React hosts
 - One-call `chat()` plus lower-level text and multimodal turn APIs

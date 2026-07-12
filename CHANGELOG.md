@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.0
+
+- Make `serve` idempotent when an identical standalone bridge is already running.
+- Reject existing-bridge version and requested-origin mismatches before touching Codex.
+- Add human and JSON `status` commands that report URL, readiness, version, PID, and allowed origins.
+- Add stable service identity, PID, WebSocket path, and no-store headers to `/api/status`.
+- Validate ports before startup and replace unrelated port-collision stack traces with an actionable one-line error.
+- Bind the loopback HTTP server before starting app-server so port failures stay cheap and side-effect free.
+- Add mocked CLI coverage plus real process reuse, mismatch, offline, metadata, and collision verification.
+
 ## 0.15.0
 
 - Route every thread-scoped Codex notification only to the browser that owns that thread.
