@@ -5,6 +5,7 @@ export default defineConfig({
     client: "src/lib/codex-client.ts",
     react: "src/embed/index.ts",
     server: "server/attach.ts",
+    doctor: "server/doctor.ts",
     standalone: "server/index.ts",
     types: "src/types.ts",
   },

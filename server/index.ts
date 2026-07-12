@@ -4,6 +4,7 @@ import { createServer, type ServerResponse } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { attachCodexBridge } from "./attach.js";
+import { PACKAGE_VERSION } from "./version.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
@@ -15,7 +16,7 @@ const server = createServer(async (request, response) => {
     return json(response, {
       status: bridgeReady ? "ready" : "starting",
       cwd: process.env.HOME ?? process.cwd(),
-      version: "0.2.0",
+      version: PACKAGE_VERSION,
     });
   }
 

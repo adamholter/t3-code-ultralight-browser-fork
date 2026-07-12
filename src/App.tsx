@@ -1,5 +1,5 @@
 import { FolderOpen, RefreshCw, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalBar } from "./components/ApprovalBar";
 import { Composer } from "./components/Composer";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
@@ -26,6 +26,11 @@ export default function App() {
   const [pendingRequests, setPendingRequests] = useState<PendingServerRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dark, setDark] = useState(() => localStorage.getItem("codex-web:theme") !== "light");
+  const selectedThreadId = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedThreadId.current = selected?.id ?? null;
+  }, [selected?.id]);
 
   const loadSidebar = useCallback(async () => {
     try {
@@ -52,16 +57,44 @@ export default function App() {
     const cleanup = [
       codex.on("connection", (next) => { setStatus(next); if (next === "ready") void loadSidebar(); }),
       codex.on("status", (message) => setStatus(message.status)),
-      codex.on("serverRequest", (request) => setPendingRequests((current) => [...current, request])),
-      codex.on("item/started", ({ item }) => setItems((current) => reconcileStreamedItem(current, item))),
-      codex.on("item/completed", ({ item }) => setItems((current) => reconcileStreamedItem(current, item))),
-      codex.on("item/agentMessage/delta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "text", delta))),
-      codex.on("item/reasoning/summaryTextDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "summary", delta))),
-      codex.on("item/reasoning/textDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "summary", delta))),
-      codex.on("item/commandExecution/outputDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "aggregatedOutput", delta))),
-      codex.on("turn/started", ({ turn }) => { setTurnId(turn.id); setRunning(true); }),
-      codex.on("turn/completed", ({ turn }) => { setTurnId(null); setRunning(false); if (turn?.error?.message) setError(turn.error.message); void loadSidebar(); }),
-      codex.on("error", ({ error: turnError }) => setError(turnError?.message ?? "Codex reported an error")),
+      codex.on("serverRequest", (request) => {
+        if (request.params?.threadId === selectedThreadId.current) {
+          setPendingRequests((current) => [...current, request]);
+        }
+      }),
+      codex.on("item/started", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => reconcileStreamedItem(current, payload.item));
+      }),
+      codex.on("item/completed", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => reconcileStreamedItem(current, payload.item));
+      }),
+      codex.on("item/agentMessage/delta", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => appendItemDelta(current, payload.itemId, "text", payload.delta));
+      }),
+      codex.on("item/reasoning/summaryTextDelta", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => appendItemDelta(current, payload.itemId, "summary", payload.delta));
+      }),
+      codex.on("item/reasoning/textDelta", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => appendItemDelta(current, payload.itemId, "summary", payload.delta));
+      }),
+      codex.on("item/commandExecution/outputDelta", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setItems((current) => appendItemDelta(current, payload.itemId, "aggregatedOutput", payload.delta));
+      }),
+      codex.on("turn/started", (payload) => {
+        if (payload.threadId === selectedThreadId.current) { setTurnId(payload.turn.id); setRunning(true); }
+      }),
+      codex.on("turn/completed", (payload) => {
+        if (payload.threadId !== selectedThreadId.current) return;
+        setTurnId(null);
+        setRunning(false);
+        if (payload.turn?.error?.message) setError(payload.turn.error.message);
+        void loadSidebar();
+      }),
+      codex.on("error", (payload) => {
+        if (!payload.threadId || payload.threadId === selectedThreadId.current) {
+          setError(payload.error?.message ?? "Codex reported an error");
+        }
+      }),
       codex.on("thread/name/updated", () => void loadSidebar()),
     ];
     return () => { cleanup.forEach((off) => off()); codex.close(); };
@@ -69,11 +102,13 @@ export default function App() {
 
   async function selectThread(thread: CodexThread) {
     setError(null);
+    selectedThreadId.current = thread.id;
     setSelected(thread);
     setItems([]);
     setSidebarOpen(false);
     try {
       const response = await codex.request<{ thread: CodexThread; model: string; reasoningEffort: string | null; cwd: string }>("thread/resume", { threadId: thread.id });
+      selectedThreadId.current = response.thread.id;
       setSelected(response.thread);
       setItems(flattenItems(response.thread.turns));
       setModel(response.model);
@@ -85,6 +120,7 @@ export default function App() {
   }
 
   function newThread() {
+    selectedThreadId.current = null;
     setSelected(null);
     setItems([]);
     setDraft("");
@@ -104,6 +140,7 @@ export default function App() {
       if (!thread) {
         const response = await codex.request<{ thread: CodexThread }>("thread/start", { cwd, ...(model ? { model } : {}) });
         thread = response.thread;
+        selectedThreadId.current = thread.id;
         setSelected(thread);
       }
       setItems((current) => [...current, { type: "userMessage", id: `local-${crypto.randomUUID()}`, content: [{ type: "text", text, text_elements: [] }] }]);

@@ -2,6 +2,16 @@
 
 Choose the narrowest mode that fits the host product.
 
+## Preflight
+
+Run this before integration work:
+
+```bash
+npx t3-code-ultralight doctor
+```
+
+For automation or agent parsing, use `doctor --json`. The command is read-only and does not create a thread.
+
 ## Mode 1: isolated chat embed
 
 Use this when the product needs a complete chat surface quickly. It has no CSS or state collisions with the host.

@@ -1,6 +1,8 @@
 import { EventEmitter } from "node:events";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { once } from "node:events";
 import { createInterface } from "node:readline";
+import { PACKAGE_VERSION } from "./version.js";
 
 type RpcId = number | string;
 
@@ -34,23 +36,30 @@ export class CodexBridge extends EventEmitter {
   private nextId = 1;
   private readyPromise: Promise<void> | null = null;
   private stopped = false;
+  private initialized = false;
 
   constructor(private readonly options: CodexBridgeOptions = {}) {
     super();
   }
 
   get ready() {
-    return this.child !== null;
+    return this.initialized;
   }
 
   async start() {
     if (this.readyPromise) return this.readyPromise;
-    this.readyPromise = this.boot();
+    this.readyPromise = this.boot().catch(async (error) => {
+      await this.stop();
+      this.readyPromise = null;
+      this.initialized = false;
+      throw error;
+    });
     return this.readyPromise;
   }
 
   private async boot() {
     this.stopped = false;
+    this.initialized = false;
     this.child = spawn(this.options.binary ?? "codex", this.options.args ?? ["app-server", "--stdio"], {
       cwd: this.options.cwd ?? process.env.HOME,
       env: this.options.env ?? process.env,
@@ -70,6 +79,19 @@ export class CodexBridge extends EventEmitter {
       this.emit("log", { level: "debug", message: line });
     });
 
+    const spawnedChild = this.child;
+    const spawnFailure = new Promise<never>((_resolve, reject) => {
+      spawnedChild.once("error", (error) => {
+        for (const request of this.pending.values()) {
+          clearTimeout(request.timer);
+          request.reject(error);
+        }
+        this.pending.clear();
+        if (this.child === spawnedChild) this.child = null;
+        reject(error);
+      });
+    });
+
     this.child.on("exit", (code, signal) => {
       const error = new Error(`Codex app-server exited (${code ?? signal ?? "unknown"})`);
       for (const request of this.pending.values()) {
@@ -78,20 +100,22 @@ export class CodexBridge extends EventEmitter {
       }
       this.pending.clear();
       this.child = null;
+      this.initialized = false;
       this.readyPromise = null;
       this.emit("exit", { code, signal });
       if (!this.stopped) setTimeout(() => void this.start(), 750);
     });
 
-    await this.request("initialize", {
-      clientInfo: this.options.clientInfo ?? { name: "t3_code_ultralight", title: "T3 Code Ultralight", version: "0.2.0" },
+    await Promise.race([this.request("initialize", {
+      clientInfo: this.options.clientInfo ?? { name: "t3_code_ultralight", title: "T3 Code Ultralight", version: PACKAGE_VERSION },
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,
         mcpServerOpenaiFormElicitation: false,
       },
-    });
+    }), spawnFailure]);
     this.notify("initialized");
+    this.initialized = true;
     this.emit("ready");
   }
 
@@ -120,9 +144,21 @@ export class CodexBridge extends EventEmitter {
     this.write({ id, error: { code: -32000, message } });
   }
 
-  stop() {
+  async stop() {
     this.stopped = true;
-    this.child?.kill("SIGTERM");
+    this.initialized = false;
+    const child = this.child;
+    if (!child) return;
+    const exited = once(child, "exit").then(() => undefined).catch(() => undefined);
+    child.kill("SIGTERM");
+    const graceful = await Promise.race([
+      exited.then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2_000)),
+    ]);
+    if (!graceful && child.exitCode === null) {
+      child.kill("SIGKILL");
+      await exited;
+    }
   }
 
   private write(payload: unknown) {

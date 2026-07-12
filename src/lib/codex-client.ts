@@ -1,5 +1,11 @@
 type Handler = (payload: any) => void;
 
+interface PendingRequest {
+  resolve: (value: any) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 export interface StartThreadOptions {
   cwd?: string;
   model?: string;
@@ -11,6 +17,8 @@ export interface RunTurnOptions {
   model?: string;
   effort?: string;
   cwd?: string;
+  /** Maximum time to wait for turn/completed. Not sent to Codex. */
+  turnTimeoutMs?: number;
   [key: string]: unknown;
 }
 
@@ -28,16 +36,21 @@ export interface CodexClientOptions {
   reconnectMs?: number | false;
   /** Injectable WebSocket implementation for tests and non-browser runtimes. */
   WebSocketImpl?: typeof WebSocket;
+  /** Maximum time for the initial socket connection. */
+  connectionTimeoutMs?: number;
+  /** Maximum time for an individual bridge RPC response. */
+  requestTimeoutMs?: number;
 }
 
 export class CodexClient {
   private socket: WebSocket | null = null;
-  private pending = new Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+  private pending = new Map<string, PendingRequest>();
   private handlers = new Map<string, Set<Handler>>();
   private nextId = 1;
-  private reconnectTimer: number | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private connectionPromise: Promise<void> | null = null;
   private resolveConnection: (() => void) | null = null;
+  private rejectConnection: ((error: Error) => void) | null = null;
   private manuallyClosed = false;
 
   constructor(private readonly options: CodexClientOptions = {}) {}
@@ -47,19 +60,49 @@ export class CodexClient {
     const Socket = this.options.WebSocketImpl ?? WebSocket;
     if (this.socket?.readyState === Socket.OPEN) return Promise.resolve();
     if (this.connectionPromise) return this.connectionPromise;
-    this.connectionPromise = new Promise((resolve) => { this.resolveConnection = resolve; });
+    this.connectionPromise = new Promise((resolve, reject) => {
+      this.resolveConnection = resolve;
+      this.rejectConnection = reject;
+    });
+    const connectionTimer = globalThis.setTimeout(() => {
+      const error = new Error(`Codex bridge connection timed out: ${this.resolveUrl()}`);
+      this.rejectConnection?.(error);
+      this.socket?.close();
+    }, this.options.connectionTimeoutMs ?? 10_000);
     this.socket = new Socket(this.resolveUrl());
     this.socket.addEventListener("open", () => {
+      clearTimeout(connectionTimer);
       this.resolveConnection?.();
       this.resolveConnection = null;
+      this.rejectConnection = null;
       this.emit("connection", "ready");
     });
-    this.socket.addEventListener("message", (event) => this.onMessage(JSON.parse(event.data)));
+    this.socket.addEventListener("message", (event) => {
+      try {
+        this.onMessage(JSON.parse(String(event.data)));
+      } catch (error) {
+        this.emit("protocolError", error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+    this.socket.addEventListener("error", () => {
+      clearTimeout(connectionTimer);
+      this.rejectConnection?.(new Error(`Unable to connect to Codex bridge: ${this.resolveUrl()}`));
+      this.rejectConnection = null;
+    });
     this.socket.addEventListener("close", () => {
+      clearTimeout(connectionTimer);
+      const error = new Error("Codex bridge connection closed");
+      this.rejectConnection?.(error);
+      this.rejectConnection = null;
+      for (const request of this.pending.values()) {
+        clearTimeout(request.timer);
+        request.reject(error);
+      }
+      this.pending.clear();
       this.emit("connection", "offline");
       this.connectionPromise = null;
       if (!this.manuallyClosed && this.options.reconnectMs !== false) {
-        this.reconnectTimer = window.setTimeout(
+        this.reconnectTimer = globalThis.setTimeout(
           () => void this.connect(),
           this.options.reconnectMs ?? 900,
         );
@@ -71,16 +114,23 @@ export class CodexClient {
   close() {
     this.manuallyClosed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.rejectConnection?.(new Error("Codex bridge connection closed by client"));
     this.socket?.close();
     this.socket = null;
     this.connectionPromise = null;
+    this.resolveConnection = null;
+    this.rejectConnection = null;
   }
 
   async request<T>(method: string, params?: unknown): Promise<T> {
     await this.connect();
     const id = `web-${this.nextId++}`;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      const timer = globalThis.setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`${method} timed out`));
+      }, this.options.requestTimeoutMs ?? 120_000);
+      this.pending.set(id, { resolve, reject, timer });
       this.send({ type: "rpc", id, method, params });
     });
   }
@@ -129,6 +179,7 @@ export class CodexClient {
 
   /** Run a text turn and resolve with the final streamed assistant text. */
   async runTurn(threadId: string, text: string, options: RunTurnOptions = {}): Promise<RunTurnResult> {
+    const { turnTimeoutMs = 300_000, ...turnOptions } = options;
     let expectedTurnId: string | null = null;
     let output = "";
     let resolveCompleted!: (value: { turn: unknown }) => void;
@@ -137,10 +188,25 @@ export class CodexClient {
       resolveCompleted = resolve;
       rejectCompleted = reject;
     });
+    const completedMessages = new Map<string, string>();
+    const completionTimer = globalThis.setTimeout(
+      () => rejectCompleted(new Error(`Codex turn timed out after ${turnTimeoutMs}ms`)),
+      turnTimeoutMs,
+    );
 
     const offDelta = this.on("item/agentMessage/delta", (payload) => {
       if (payload.threadId === threadId && (!expectedTurnId || payload.turnId === expectedTurnId)) {
         output += payload.delta ?? "";
+      }
+    });
+    const offItemCompleted = this.on("item/completed", (payload) => {
+      if (
+        payload.threadId === threadId &&
+        (!expectedTurnId || payload.turnId === expectedTurnId) &&
+        payload.item?.type === "agentMessage" &&
+        typeof payload.item.text === "string"
+      ) {
+        completedMessages.set(payload.item.id, payload.item.text);
       }
     });
     const offCompleted = this.on("turn/completed", (payload) => {
@@ -156,13 +222,21 @@ export class CodexClient {
       const response = await this.request<{ turn: { id: string } }>("turn/start", {
         threadId,
         input: [{ type: "text", text, text_elements: [] }],
-        ...options,
+        ...turnOptions,
       });
       expectedTurnId = response.turn.id;
       const result = await completed;
-      return { threadId, turnId: response.turn.id, text: output, turn: result.turn };
+      const completedText = [...completedMessages.values()].join("\n\n");
+      return {
+        threadId,
+        turnId: response.turn.id,
+        text: completedText.length >= output.length ? completedText : output,
+        turn: result.turn,
+      };
     } finally {
+      clearTimeout(completionTimer);
       offDelta();
+      offItemCompleted();
       offCompleted();
     }
   }
@@ -176,6 +250,7 @@ export class CodexClient {
     if (message.type === "rpcResult" || message.type === "rpcError") {
       const request = this.pending.get(message.id);
       if (!request) return;
+      clearTimeout(request.timer);
       this.pending.delete(message.id);
       message.type === "rpcError" ? request.reject(new Error(message.error)) : request.resolve(message.result);
       return;

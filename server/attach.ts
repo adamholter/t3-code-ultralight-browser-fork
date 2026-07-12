@@ -85,7 +85,7 @@ export function attachCodexBridge(
     webSocketServer,
     start: () => bridge.start(),
     stop: async () => {
-      bridge.stop();
+      await bridge.stop();
       for (const socket of sockets) socket.close();
       await new Promise<void>((resolve) => webSocketServer.close(() => resolve()));
     },

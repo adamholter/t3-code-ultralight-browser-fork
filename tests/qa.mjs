@@ -27,6 +27,8 @@ await page.getByRole("button", { name: "Send", exact: true }).click();
 await page.locator(".user-message").waitFor({ timeout: 20_000 });
 await page.locator(".assistant-message").getByText(smokeText, { exact: false }).waitFor({ timeout: 120_000 });
 await page.locator(".working").waitFor({ state: "detached", timeout: 120_000 });
+await runConcurrentTurn();
+await page.waitForTimeout(100);
 const userMessageCount = await page.locator(".user-message").count();
 await page.screenshot({ path: "/tmp/codex-web-live-turn.png", fullPage: true });
 
@@ -75,4 +77,56 @@ async function deleteSmokeThread(text) {
     socket.onerror = () => reject(new Error("Smoke thread cleanup socket failed"));
     function finish() { clearTimeout(timer); socket.close(); resolve(); }
   });
+}
+
+async function runConcurrentTurn() {
+  const socket = new WebSocket(wsUrl);
+  const pending = new Map();
+  let nextId = 1;
+  let concurrentThreadId;
+  const ready = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Concurrent QA socket timed out")), 20_000);
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "status" && message.status === "ready") {
+        clearTimeout(timer);
+        resolve();
+      } else if (message.type === "rpcResult" || message.type === "rpcError") {
+        const request = pending.get(message.id);
+        if (!request) return;
+        pending.delete(message.id);
+        message.type === "rpcError" ? request.reject(new Error(message.error)) : request.resolve(message.result);
+      } else if (
+        message.type === "notification" &&
+        message.method === "turn/completed" &&
+        message.params?.threadId === concurrentThreadId
+      ) {
+        pending.get("turn-completed")?.resolve();
+        pending.delete("turn-completed");
+      }
+    };
+    socket.onerror = () => reject(new Error("Concurrent QA socket failed"));
+  });
+  const rpc = (method, params) => new Promise((resolve, reject) => {
+    const id = `concurrent-${nextId++}`;
+    pending.set(id, { resolve, reject });
+    socket.send(JSON.stringify({ type: "rpc", id, method, params }));
+  });
+  await ready;
+  const opened = await rpc("thread/start", { cwd: "/tmp" });
+  concurrentThreadId = opened.thread.id;
+  const completed = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Concurrent Codex turn timed out")), 120_000);
+    pending.set("turn-completed", {
+      resolve: () => { clearTimeout(timer); resolve(); },
+      reject: (error) => { clearTimeout(timer); reject(error); },
+    });
+  });
+  await rpc("turn/start", {
+    threadId: concurrentThreadId,
+    input: [{ type: "text", text: "Reply with exactly: CONCURRENT_ISOLATION_OK", text_elements: [] }],
+  });
+  await completed;
+  await rpc("thread/delete", { threadId: concurrentThreadId });
+  socket.close();
 }

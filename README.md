@@ -18,8 +18,11 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 
 ```bash
 npm install github:adamholter/t3-code-ultralight-browser-fork
+npx t3-code-ultralight doctor
 npx t3-code-ultralight serve
 ```
+
+`doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 
 The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 
@@ -95,6 +98,7 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - Model, reasoning effort, and working-directory selection
 - Markdown, code copy, desktop/mobile layouts, and themes
 - Automatic local bridge restart and browser reconnect
+- Read-only `doctor` diagnostics with actionable failures and JSON output
 - Framework-free WebSocket client plus typed React and server exports
 
 ## Deliberately excluded
@@ -121,6 +125,12 @@ Validation:
 ```bash
 npm run check
 node tests/qa.mjs
+```
+
+Print the canonical agent handoff at any time:
+
+```bash
+npx t3-code-ultralight agent-prompt
 ```
 
 ## Security boundary
