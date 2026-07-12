@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Add one-call `chat()` for automatic thread creation or continuation.
+- Add multimodal `runInput()` support for image, local-image, skill, and mention input.
+- Route approval requests to the browser client that owns the active turn.
+- Reject approval responses from unrelated clients and fail pending requests when their owner disconnects.
+- Add real WebSocket ownership-routing tests and multimodal client tests.
+
 ## 0.3.0
 
 - Add `t3-code-ultralight doctor` with human and JSON output.

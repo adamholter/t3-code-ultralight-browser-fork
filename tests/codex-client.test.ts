@@ -87,4 +87,46 @@ describe("CodexClient", () => {
     const client = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
     await expect(client.request("thread/list", {})).rejects.toThrow("connection closed");
   });
+
+  it("creates a thread and sends multimodal input through one chat call", async () => {
+    const sent: any[] = [];
+    FakeWebSocket.script = (socket, message) => {
+      sent.push(message);
+      if (message.method === "thread/start") {
+        queueMicrotask(() => socket.message({
+          type: "rpcResult",
+          id: message.id,
+          result: { thread: { id: "thread-chat" } },
+        }));
+      }
+      if (message.method === "turn/start") {
+        queueMicrotask(() => {
+          socket.message({ type: "rpcResult", id: message.id, result: { turn: { id: "turn-chat" } } });
+          socket.message({
+            type: "notification",
+            method: "item/completed",
+            params: {
+              threadId: "thread-chat",
+              turnId: "turn-chat",
+              item: { type: "agentMessage", id: "message-chat", text: "IMAGE_OK" },
+            },
+          });
+          socket.message({
+            type: "notification",
+            method: "turn/completed",
+            params: { threadId: "thread-chat", turn: { id: "turn-chat", status: "completed" } },
+          });
+        });
+      }
+    };
+    const client = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
+    const result = await client.chat(
+      [{ type: "image", url: "data:image/png;base64,AAAA" }, { type: "text", text: "Describe it" }],
+      { cwd: "/tmp", turnTimeoutMs: 100 },
+    );
+    expect(result).toMatchObject({ threadId: "thread-chat", text: "IMAGE_OK" });
+    expect(sent[0]).toMatchObject({ method: "thread/start", params: { cwd: "/tmp" } });
+    expect(sent[1].params.input).toHaveLength(2);
+    client.close();
+  });
 });

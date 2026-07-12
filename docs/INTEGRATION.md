@@ -34,11 +34,20 @@ import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
 const codex = createCodexClient({ url: "ws://127.0.0.1:4174/ws" });
 await codex.connect();
 
-const opened = await codex.startThread({ cwd: projectPath });
-const result = await codex.runTurn(opened.thread.id, prompt, {
+const result = await codex.chat(prompt, {
+  cwd: projectPath,
   model: selectedModel,
   effort: "low",
 });
+```
+
+`chat()` creates a thread automatically. Continue it with `{ threadId: result.threadId }`. For images or other rich inputs, pass an array:
+
+```ts
+await codex.chat([
+  { type: "image", url: imageDataUrl },
+  { type: "text", text: "Explain this screenshot" },
+], { cwd: projectPath });
 ```
 
 Useful events:
@@ -52,7 +61,7 @@ Useful events:
 | `turn/completed` | Resolve UI state and surface errors |
 | `serverRequest` | Render approval or user-input requests |
 
-The generic `request(method, params)` method exposes the complete app-server RPC surface without growing this SDK.
+The generic `request(method, params)` method exposes the complete app-server RPC surface without growing this SDK. `runTurn()` and `runInput()` are available when the host manages thread lifecycle itself.
 
 ## Mode 3: existing Node server
 
@@ -77,7 +86,7 @@ Serialize only the selected or visible canvas state into a compact prompt. Keep 
 
 ```ts
 const selection = canvas.getSelection().map(({ id, type, text, x, y }) => ({ id, type, text, x, y }));
-const result = await codex.runTurn(threadId, `Review these selected nodes:\n${JSON.stringify(selection)}`);
+const result = await codex.chat(`Review these selected nodes:\n${JSON.stringify(selection)}`, { threadId });
 canvas.showAssistantMessage(result.text);
 ```
 
@@ -89,7 +98,7 @@ Keep speech-to-text and text-to-speech in the host. Codex remains the reasoning 
 
 ```ts
 const transcript = await speechToText(audio);
-const { text } = await codex.runTurn(threadId, transcript);
+const { text } = await codex.chat(transcript, { threadId });
 await speak(text);
 ```
 
@@ -110,7 +119,7 @@ codex.on("serverRequest", ({ id, method, params }) => {
 });
 ```
 
-Do not auto-approve requests in a reusable integration. Honor the user's existing Codex permission configuration and show prompts when the server asks.
+Do not auto-approve requests in a reusable integration. Honor the user's existing Codex permission configuration and show prompts when the server asks. In multi-client use, the bridge routes an approval only to the client that started the active turn and rejects responses from other clients.
 
 ## Deployment boundary
 

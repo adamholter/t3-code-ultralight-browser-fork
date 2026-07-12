@@ -13,6 +13,13 @@ export interface StartThreadOptions {
   [key: string]: unknown;
 }
 
+export type CodexInput =
+  | { type: "text"; text: string; text_elements?: unknown[] }
+  | { type: "image"; url: string; detail?: "auto" | "low" | "high" | "original" }
+  | { type: "localImage"; path: string; detail?: "auto" | "low" | "high" | "original" }
+  | { type: "skill"; name: string; path: string }
+  | { type: "mention"; name: string; path: string };
+
 export interface RunTurnOptions {
   model?: string;
   effort?: string;
@@ -27,6 +34,13 @@ export interface RunTurnResult {
   turnId: string;
   text: string;
   turn: unknown;
+}
+
+export interface ChatOptions extends RunTurnOptions {
+  /** Resume this thread before sending. Omit to create a new thread. */
+  threadId?: string;
+  /** Options used only when a new thread is created. */
+  thread?: StartThreadOptions;
 }
 
 export interface CodexClientOptions {
@@ -177,8 +191,38 @@ export class CodexClient {
     return this.request("turn/interrupt", { threadId, turnId });
   }
 
+  /**
+   * Simplest integration path: create or resume a thread, run one turn, and
+   * return the final text plus IDs for continuation.
+   */
+  async chat(input: string | CodexInput[], options: ChatOptions = {}) {
+    const { threadId: existingThreadId, thread: threadOptions = {}, ...turnOptions } = options;
+    let threadId = existingThreadId;
+    if (threadId) {
+      await this.resumeThread(threadId);
+    } else {
+      const opened = await this.startThread({
+        ...threadOptions,
+        ...(threadOptions.cwd ? {} : turnOptions.cwd ? { cwd: turnOptions.cwd } : {}),
+      });
+      threadId = opened.thread.id;
+    }
+    return typeof input === "string"
+      ? this.runTurn(threadId, input, turnOptions)
+      : this.runInput(threadId, input, turnOptions);
+  }
+
   /** Run a text turn and resolve with the final streamed assistant text. */
   async runTurn(threadId: string, text: string, options: RunTurnOptions = {}): Promise<RunTurnResult> {
+    return this.runInput(
+      threadId,
+      [{ type: "text", text, text_elements: [] }],
+      options,
+    );
+  }
+
+  /** Run text, image, local-image, skill, or mention input in an existing thread. */
+  async runInput(threadId: string, input: CodexInput[], options: RunTurnOptions = {}): Promise<RunTurnResult> {
     const { turnTimeoutMs = 300_000, ...turnOptions } = options;
     let expectedTurnId: string | null = null;
     let output = "";
@@ -221,7 +265,7 @@ export class CodexClient {
     try {
       const response = await this.request<{ turn: { id: string } }>("turn/start", {
         threadId,
-        input: [{ type: "text", text, text_elements: [] }],
+        input,
         ...turnOptions,
       });
       expectedTurnId = response.turn.id;

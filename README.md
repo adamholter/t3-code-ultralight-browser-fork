@@ -57,12 +57,14 @@ const codex = createCodexClient({
   url: "ws://127.0.0.1:4174/ws",
 });
 
-await codex.connect();
-const { thread } = await codex.startThread({ cwd: "/absolute/project/path" });
-const answer = await codex.runTurn(thread.id, "Explain the selected canvas nodes");
+const answer = await codex.chat("Explain the selected canvas nodes", {
+  cwd: "/absolute/project/path",
+});
 
 console.log(answer.text);
 ```
+
+Continue later with `codex.chat("follow-up", { threadId: answer.threadId })`. Pass an input array instead of a string for images, local images, skills, or mentions.
 
 For token-by-token display, subscribe directly:
 
@@ -100,6 +102,8 @@ Point the browser client at `ws://127.0.0.1:3000/codex-ws`.
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
 - Framework-free WebSocket client plus typed React and server exports
+- One-call `chat()` plus lower-level text and multimodal turn APIs
+- Approval requests routed only to the browser client that owns the active turn
 
 ## Deliberately excluded
 
