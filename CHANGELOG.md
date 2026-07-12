@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.38.0
+
+- Remove the developer-specific `/Users/adam` browser workspace default so a fresh clone or release works on any machine.
+- Make the normalized directory where `setup`, `start`, or `serve` runs the bridge's default Codex workspace; support `--cwd` as an explicit override in every standalone lifecycle mode.
+- Omit `cwd` from new browser turns until the user or host supplies one, allowing Codex to inherit the bridge workspace while showing the neutral `Bridge workspace` state.
+- Remove required path placeholders from the primary custom/headless recipes; zero-option sessions now inherit the verified bridge workspace.
+- Return the resolved workspace in trusted setup/start receipts while exposing only its SHA-256 fingerprint in browser-readable status.
+- Require an exact workspace fingerprint for bridge reuse so two projects cannot silently share the wrong default directory.
+- Add a real fresh-project browser test that runs setup from a temporary directory without `--cwd`, streams a Codex turn, confirms the resulting thread directory, checks path privacy, and inspects desktop/mobile output.
+- Replace every Adam-specific Playwright resolver in QA with a pinned repository dev dependency, plus `qa:install`, focused `qa:workspace`, and one-command `qa:live` workflows.
+- Wrap long unbroken user prompts inside mobile message bubbles instead of painting past their visual boundary.
+- Keep the complete production chat at 94,137 decoded JavaScript plus CSS bytes, still below the enforced 110 KB ceiling.
+
 ## 0.37.0
 
 - Add a typed, imperative controller for the complete chat so canvas, voice, and other host controls can send prompts without rebuilding T3's response UI.

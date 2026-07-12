@@ -1,11 +1,9 @@
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PendingRequestPanel } from "../src/components/PendingRequestPanel";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const defaultCss = readdirSync(resolve("dist/assets")).find((file) => file.endsWith(".css"));
 const cssPath = process.env.QA_CSS_PATH ?? (defaultCss ? resolve("dist/assets", defaultCss) : null);
 if (!cssPath) throw new Error("Built application CSS was not found");

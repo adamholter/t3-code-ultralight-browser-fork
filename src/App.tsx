@@ -32,7 +32,7 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [model, setModel] = useState(localStorage.getItem("codex-web:model") ?? "");
   const [effort, setEffort] = useState(localStorage.getItem("codex-web:effort") ?? "low");
-  const [cwd, setCwd] = useState(localStorage.getItem("codex-web:cwd") ?? "/Users/adam");
+  const [cwd, setCwd] = useState(localStorage.getItem("codex-web:cwd") ?? "");
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<PendingServerRequest[]>([]);
@@ -236,7 +236,7 @@ export default function App() {
     if (!text) throw new Error("Codex prompt cannot be empty");
     if (runningRef.current) throw new Error("Codex is already running a turn");
     if (status !== "ready") throw new Error("Codex is not ready");
-    const turnCwd = options.cwd?.trim() || cwd;
+    const turnCwd = options.cwd?.trim() || cwd.trim();
     if (options.cwd) {
       setCwd(turnCwd);
       localStorage.setItem("codex-web:cwd", turnCwd);
@@ -247,7 +247,7 @@ export default function App() {
     try {
       let thread = options.newThread ? null : selected;
       if (!thread) {
-        const response = await codex.request<{ thread: CodexThread }>("thread/start", { cwd: turnCwd, ...(model ? { model } : {}) });
+        const response = await codex.request<{ thread: CodexThread }>("thread/start", { ...(turnCwd ? { cwd: turnCwd } : {}), ...(model ? { model } : {}) });
         thread = response.thread;
         selectedThreadId.current = thread.id;
         setSelected(thread);
@@ -257,7 +257,7 @@ export default function App() {
       const response = await codex.request<{ turn: { id: string } }>("turn/start", {
         threadId: thread.id,
         input: [{ type: "text", text, text_elements: [] }],
-        cwd: turnCwd,
+        ...(turnCwd ? { cwd: turnCwd } : {}),
         ...(model ? { model } : {}),
         ...(effort ? { effort } : {}),
         ...(collaborationMode && model ? { collaborationMode: { mode: collaborationMode, settings: { model, reasoning_effort: effort || null, developer_instructions: null } } } : {}),
@@ -339,11 +339,14 @@ export default function App() {
   }
 
   const title = selected?.name || selected?.preview || "New thread";
-  const subtitle = selected?.cwd || cwd;
+  const subtitle = selected?.cwd || cwd || "Bridge workspace";
   const activeModel = useMemo(() => models.find((entry) => entry.model === model), [models, model]);
   function updateModel(value: string) { setModel(value); localStorage.setItem("codex-web:model", value); const entry = models.find((item) => item.model === value); if (entry) setEffort(entry.defaultReasoningEffort); }
   function updateEffort(value: string) { setEffort(value); localStorage.setItem("codex-web:effort", value); }
-  function updateCwd(value: string) { setCwd(value); localStorage.setItem("codex-web:cwd", value); }
+  function updateCwd(value: string) {
+    setCwd(value);
+    value.trim() ? localStorage.setItem("codex-web:cwd", value) : localStorage.removeItem("codex-web:cwd");
+  }
 
   return (
     <main className={`app-shell ${embedded ? "embedded" : ""}`}>

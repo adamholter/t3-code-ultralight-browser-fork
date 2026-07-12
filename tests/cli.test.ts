@@ -1,6 +1,10 @@
 import { execFile, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import packageJson from "../package.json";
@@ -101,6 +105,7 @@ describe("CLI argument validation", () => {
         status: "ready",
         pid: process.pid,
         allowedOrigins: ["https://canvas.example.com"],
+        workspaceFingerprint: fingerprint(process.cwd()),
       }));
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -122,6 +127,7 @@ describe("CLI argument validation", () => {
         running: true,
         version: packageJson.version,
         pid: process.pid,
+        cwd: process.cwd(),
         logPath: null,
         extraAllowedOrigins: [],
         originSupersetAccepted: false,
@@ -145,6 +151,16 @@ describe("CLI argument validation", () => {
       expect(incompatible.code).not.toBe(0);
       expect(incompatible.stderr).toContain("does not allow: https://voice.example.com");
       expect(incompatible.stderr).toContain(`stop --port ${port}`);
+
+      const otherWorkspace = await mkdtemp(resolve(tmpdir(), "t3-other-workspace-"));
+      try {
+        const mismatchedWorkspace = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--json"], otherWorkspace);
+        expect(mismatchedWorkspace.code).not.toBe(0);
+        expect(mismatchedWorkspace.stderr).toContain("different default workspace");
+        expect(mismatchedWorkspace.stderr).toContain(`t3-other-workspace-`);
+      } finally {
+        await rm(otherWorkspace, { recursive: true, force: true });
+      }
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
@@ -239,10 +255,14 @@ function waitForExit(child: ReturnType<typeof spawn>) {
   return new Promise<void>((resolve) => child.once("exit", () => resolve()));
 }
 
-function runCli(args: string[]) {
+function runCli(args: string[], cwd = process.cwd()) {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
-    execFile(process.execPath, [cli, ...args], (error, stdout, stderr) => {
+    execFile(process.execPath, [cli, ...args], { cwd }, (error, stdout, stderr) => {
       resolve({ code: error && "code" in error ? Number(error.code) : 0, stdout, stderr });
     });
   });
+}
+
+function fingerprint(cwd: string) {
+  return createHash("sha256").update(resolve(cwd)).digest("hex");
 }

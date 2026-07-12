@@ -2,14 +2,12 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const cli = process.env.QA_CLI ?? fileURLToPath(new URL("../bin/cli.mjs", import.meta.url));
 const bridgePort = Number(process.env.QA_BRIDGE_PORT ?? await reservePort());
 const bridgeOrigin = `http://127.0.0.1:${bridgePort}`;

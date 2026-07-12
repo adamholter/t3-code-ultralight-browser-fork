@@ -129,6 +129,7 @@ export function materializeRuntimeIntegrationContract(
     live: true,
     port,
     origin,
+    workspace: { default: "bridge", pathDisclosed: false },
   };
   return value;
 }
@@ -149,7 +150,7 @@ export function createIntegrationRecipe(
   const bridgeUrl = runtime.bridge.httpUrl as string;
   const specifier = runtime.release.specifier as string;
   const installCommand = `npm install '${specifier}'`;
-  const workingDirectory = cwd ?? "/absolute/project/path";
+  const workingDirectory = cwd?.trim();
   const socketUrl = runtime.bridge.websocketUrl as string;
   const socketOrigin = new URL(socketUrl).origin;
   const uniqueAllowedOrigins = [...new Set(allowedOrigins)];
@@ -175,7 +176,7 @@ export function createIntegrationRecipe(
       requiresPackageInstall: false,
       embedUrl: runtime.modes.completeChat.iframeUrl,
       controllerModule: runtime.modes.completeChat.controllerModule,
-      controllerCode: `import { createCodexEmbedController } from "${runtime.modes.completeChat.controllerModule}";\n\nconst iframe = document.querySelector("#local-codex");\nconst codex = createCodexEmbedController(iframe);\nawait codex.send("Explain the current selection", { cwd: ${JSON.stringify(workingDirectory)} });`,
+      controllerCode: `import { createCodexEmbedController } from "${runtime.modes.completeChat.controllerModule}";\n\nconst iframe = document.querySelector("#local-codex");\nconst codex = createCodexEmbedController(iframe);\nawait codex.send("Explain the current selection"${workingDirectory ? `, { cwd: ${JSON.stringify(workingDirectory)} }` : ""});`,
       controllerCodeLanguage: "js",
       controllerDispose: "codex.dispose()",
       code: `<iframe id="local-codex" src="${runtime.modes.completeChat.iframeUrl}" title="Local Codex chat" style="width:100%;height:100%;min-height:420px;border:0"></iframe>`,
@@ -233,7 +234,7 @@ export function createIntegrationRecipe(
   const imports = delivery === "hosted"
     ? `import { createCodexSession } from "${hostedModules.client}";\nimport { attachCodexSessionRequestHandlers } from "${hostedModules.requests}";`
     : `import { createCodexSession } from "t3-code-ultralight-browser-fork/client";\nimport { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";`;
-  const customCode = `${imports}\n\nconst codex = createCodexSession({ bridgeUrl: "${bridgeUrl}", cwd: ${JSON.stringify(workingDirectory)} });\nconst detachRequests = attachCodexSessionRequestHandlers(codex, {\n  approval: async (request) => await yourUI.reviewApproval(request) ? "accept" : "decline",\n  userInput: (questions) => yourUI.ask(questions),\n});\n\nconst answer = await codex.send(prompt, {\n  onDelta: (_delta, text) => yourUI.renderStreamingText(text),\n});\n\n// Final disposal:\n// detachRequests();\n// await codex.close();`;
+  const customCode = `${imports}\n\nconst codex = createCodexSession({ bridgeUrl: "${bridgeUrl}"${workingDirectory ? `, cwd: ${JSON.stringify(workingDirectory)}` : ""} });\nconst detachRequests = attachCodexSessionRequestHandlers(codex, {\n  approval: async (request) => await yourUI.reviewApproval(request) ? "accept" : "decline",\n  userInput: (questions) => yourUI.ask(questions),\n});\n\nconst answer = await codex.send(prompt, {\n  onDelta: (_delta, text) => yourUI.renderStreamingText(text),\n});\n\n// Final disposal:\n// detachRequests();\n// await codex.close();`;
   if (delivery === "hosted") {
     return {
       ...shared,

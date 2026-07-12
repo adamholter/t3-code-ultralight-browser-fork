@@ -1,7 +1,4 @@
-import { createRequire } from "node:module";
-
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
+import { chromium } from "playwright";
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:4174";
 const wsUrl = process.env.QA_WS_URL ?? baseUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
 

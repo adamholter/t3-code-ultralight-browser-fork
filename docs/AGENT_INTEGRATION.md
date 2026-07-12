@@ -5,12 +5,12 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, `--cwd` for a custom session, and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
+2. From the host project's root, prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, makes the invoking directory the default workspace, starts or reuses a compatible bridge, and returns the resolved workspace, exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, and use `--cwd` only to override the invoking directory. The same `--port`, `--allow-origin`, or `--reuse-origin-superset` options accepted by `start` remain available.
    Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
    For `delivery: "hosted"`, do not install or copy generated modules. Use the receipt's HTTP imports, apply its `csp` sources when the host has a CSP, and serve the host from an origin allowed by the bridge.
 3. Resolve every failed doctor check or report its exact recommendation.
    Treat any CLI parse error as a failed setup step; do not retry by dropping an unrecognized security or lifecycle flag.
-   `setup` and `start` safely reuse a compatible bridge and return only after readiness. Use `npx t3-code-ultralight status --json` for a separate inspection.
+   `setup` and `start` safely reuse only an exact version/origin/workspace match and return after readiness. Use `npx t3-code-ultralight status --json` for a separate inspection; it intentionally reports a workspace fingerprint instead of the local path.
    Require an exact allowed-origin match. Use `--reuse-origin-superset` only when the host explicitly intends to inherit every extra origin shown in the JSON receipt.
    If a verified bridge must be replaced for an upgrade or origin change, use `npx t3-code-ultralight stop --json`; never kill an unverified listener by port alone.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
@@ -40,7 +40,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package `setup --mode ... --json` command and follow its receipt. Use the isolated chat embed unless the existing UI needs custom rendering.
+From this project's root, run the package `setup --mode ... --json` command and follow its receipt. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 ```
 
@@ -50,7 +50,9 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - `doctor --json` reports `ok: true`.
 - The bridge reports ready.
 - Mistyped commands and options fail nonzero before starting or changing a process.
-- Re-running `setup` or `start` reuses only an exact version/origin match or explains the conflict.
+- Re-running `setup` or `start` reuses only an exact version/origin/workspace match or explains the conflict.
+- Setup without `--cwd` uses the host project's normalized invocation directory in both the bridge and generated recipe.
+- Browser status exposes only the workspace fingerprint, while the trusted CLI receipt reports the resolved path.
 - Every URL in the live integration contract follows the bridge's actual port.
 - At least one local model is available.
 - A thread can be started or resumed.
@@ -66,6 +68,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - A generated hosted recipe streams from an allowed HTTPS non-loopback origin while an unlisted sibling fails both module and WebSocket access.
 - A trusted generated `file://` recipe streams only when `null` is explicitly allowed and reports `opaqueOriginAllowed: true`.
 - Mobile or constrained-container layout does not overflow.
+- Long unbroken prompts stay inside the mobile user-message boundary.
 - Embedded hosts receive ready, turn, and command-acknowledgement events only from the expected iframe origin.
 - Complete-chat host commands accept only the exact parent window and an origin allowed by the bridge; acknowledgements contain no prompt or response content.
 - Pre-ready sends wait for the command receiver, rapid duplicate sends cannot start concurrent turns, and acknowledged stop followed immediately by new thread succeeds.

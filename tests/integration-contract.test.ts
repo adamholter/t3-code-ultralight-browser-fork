@@ -28,7 +28,12 @@ describe("live integration contract", () => {
       browserModule: "http://127.0.0.1:49123/codex-client.js",
       requestModule: "http://127.0.0.1:49123/codex-requests.js",
     });
-    expect(runtime.runtime).toEqual({ live: true, port: 49123, origin: "http://127.0.0.1:49123" });
+    expect(runtime.runtime).toEqual({
+      live: true,
+      port: 49123,
+      origin: "http://127.0.0.1:49123",
+      workspace: { default: "bridge", pathDisclosed: false },
+    });
     expect(integration.bridge.port).toBe(4174);
   });
 
@@ -44,6 +49,8 @@ describe("live integration contract", () => {
     expect(iframe.code).toContain('<iframe id="local-codex"');
     expect(iframe.controllerModule).toBe("http://127.0.0.1:4174/codex-embed.js");
     expect(iframe.controllerCode).toContain("createCodexEmbedController");
+    expect(iframe.controllerCode).not.toContain("cwd:");
+    expect(iframe.controllerCode).not.toContain("undefined");
     expect(iframe.controllerCodeLanguage).toBe("js");
     expect(iframe.controllerDispose).toBe("codex.dispose()");
     expect(iframe.csp).toEqual({ "script-src": ["http://127.0.0.1:4174"], "frame-src": ["http://127.0.0.1:4174"] });
@@ -66,6 +73,11 @@ describe("live integration contract", () => {
     expect(custom.code).toContain('bridgeUrl: "http://127.0.0.1:49123"');
     expect(custom.code).toContain('cwd: "/repo"');
     expect(custom.hostedModules.client).toBe("http://127.0.0.1:49123/codex-client.js");
+
+    const portableCustom = createIntegrationRecipe(integration, { mode: "custom", port: 49123 });
+    expect(portableCustom.code).toContain('createCodexSession({ bridgeUrl: "http://127.0.0.1:49123" })');
+    expect(portableCustom.code).not.toContain("/absolute/project/path");
+    expect(portableCustom.code).not.toContain("undefined");
 
     const hostedCustom = createIntegrationRecipe(integration, { mode: "custom", delivery: "hosted", port: 49123, cwd: "/repo" });
     expect(hostedCustom).toMatchObject({ delivery: "hosted", requiresPackageInstall: false, codeLanguage: "js" });

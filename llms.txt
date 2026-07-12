@@ -4,6 +4,8 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 
 - Machine-readable integration contract: ./integration.json
 - One-command verified recipe: run the release CLI with `setup --mode iframe|react|element|custom --json`
+- Run setup from the host project root; its normalized directory becomes the bridge default, with `--cwd` as an override
+- Bridge reuse requires the exact version, origin policy, and workspace fingerprint; browser status never exposes the path
 - Zero-install browser delivery: add `--delivery hosted` for element or custom modes
 - Complete-chat host control: `codex-chat.sendPrompt()`, React imperative ref, or `/codex-embed.js` for raw iframes
 - Host commands: send, stop, and newThread; exact parent window and bridge-allowed Origin required; acknowledgements never contain prompt or response text

@@ -1,11 +1,9 @@
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Markdown } from "../src/components/Markdown";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const css = readdirSync(resolve("dist/assets")).find((file) => file.endsWith(".css"));
 if (!css) throw new Error("Built application CSS was not found");
 

@@ -3,14 +3,12 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const cli = process.env.QA_CLI ?? fileURLToPath(new URL("../bin/cli.mjs", import.meta.url));
 const bridgePort = Number(process.env.QA_BRIDGE_PORT ?? await reservePort());
 const bridgeOrigin = `http://127.0.0.1:${bridgePort}`;

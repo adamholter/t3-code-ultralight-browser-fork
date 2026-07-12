@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { once } from "node:events";
 import { pathToFileURL } from "node:url";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const integrationModule = process.env.QA_INTEGRATION_MODULE
   ? pathToFileURL(process.env.QA_INTEGRATION_MODULE).href
   : new URL("../dist-lib/integration.js", import.meta.url).href;

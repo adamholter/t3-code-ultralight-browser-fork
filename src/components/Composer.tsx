@@ -57,7 +57,7 @@ export function Composer(props: ComposerProps) {
                 {efforts.map((effort) => <option key={effort} value={effort}>{effort}</option>)}
               </select><ChevronDown size={13} />
             </label>
-            <input className="cwd-input" value={props.cwd} onChange={(event) => props.onCwd(event.target.value)} aria-label="Working directory" title="Working directory" />
+            <input className="cwd-input" value={props.cwd} placeholder="Bridge workspace" onChange={(event) => props.onCwd(event.target.value)} aria-label="Working directory" title="Working directory" />
           </div>
           {props.running ? (
             <button className="send-button stop-button" onClick={props.onStop} aria-label="Stop"><Square size={13} fill="currentColor" /></button>

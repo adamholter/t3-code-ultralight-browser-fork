@@ -4,13 +4,13 @@ Choose the narrowest mode that fits the host product.
 
 ## Preflight
 
-For a new integration, prefer the combined setup receipt:
+For a new integration, run the combined setup receipt from the host project's root:
 
 ```bash
 npx t3-code-ultralight setup --mode iframe --json
 ```
 
-Choose `iframe`, `react`, `element`, or `custom`. Element and custom recipes default to package delivery; pass `--delivery hosted` when the browser must import bridge-served modules without npm or a bundler. Iframe is always hosted and React is always package-delivered; incompatible combinations fail before diagnostics or startup. The command runs the same read-only diagnostics below, starts or reuses only a version/origin-compatible background bridge, and returns a typed recipe with runtime URLs, copyable code, code language, exact CSP source additions, cleanup guidance, and verification endpoints. Pass `--cwd` for a custom session. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
+Choose `iframe`, `react`, `element`, or `custom`. Element and custom recipes default to package delivery; pass `--delivery hosted` when the browser must import bridge-served modules without npm or a bundler. Iframe is always hosted and React is always package-delivered; incompatible combinations fail before diagnostics or startup. The command runs the same read-only diagnostics below, makes its invoking directory the bridge's default Codex workspace, starts or reuses only a version/origin/workspace-compatible background bridge, and returns a typed recipe with the resolved workspace, runtime URLs, copyable code, code language, exact CSP source additions, cleanup guidance, and verification endpoints. Pass `--cwd` only to choose a different workspace. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
 
 Run diagnostics separately when setup and host editing are intentionally split:
 
@@ -22,7 +22,7 @@ For automation or agent parsing, use `doctor --json`. The command is read-only a
 
 The packaged `integration.json` describes the default port. A running bridge's `/api/integration` and `/integration.json` responses are materialized for its actual port; use the live response when generating links for a nondefault bridge. Installer authors can import `createIntegrationRecipe()` and `materializeRuntimeIntegrationContract()` from `t3-code-ultralight-browser-fork/integration`.
 
-Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` and `start` are idempotent only for an identical version and allowed-origin set, making repeated agent setup safe without silently inheriting broader access. A conflicting version, any missing or extra origin, invalid port, or unrelated listener fails with an actionable message. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat. Pass `--reuse-origin-superset` only when the invoking host intentionally accepts every additional origin already configured; the JSON receipt exposes the accepted extras.
+Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` and `start` are idempotent only for an identical version, allowed-origin set, and normalized workspace fingerprint, making repeated agent setup safe without silently inheriting broader access or another project's default directory. A conflicting version, workspace, any missing or extra origin, invalid port, or unrelated listener fails with an actionable message. Status never returns the workspace path; the trusted setup/start receipt does. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade, origin change, or workspace change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat. Pass `--reuse-origin-superset` only when the invoking host intentionally accepts every additional origin already configured; the JSON receipt exposes the accepted extras.
 
 CLI parsing is strict and occurs before side effects. Unknown commands/options, misspellings, duplicate `--port`/`--codex`/`--cwd`/boolean flags, and positional arguments fail nonzero. Only `--allow-origin` may repeat. Use `t3-code-ultralight --help` as the authoritative syntax reference instead of guessing flag names.
 
@@ -193,6 +193,8 @@ const result = await codex.send(prompt, {
   onDelta: (_delta, text) => renderStreamingText(text),
 });
 ```
+
+For the standard standalone bridge, `createCodexSession()` with no options inherits the workspace selected when the bridge started. Supply `cwd` only when this particular surface intentionally targets a different directory.
 
 `send()` creates a thread automatically and remembers it for follow-ups. Follow-ups skip the redundant `thread/resume` RPC while the session stays connected; a bridge or Codex app-server reconnect invalidates that fast path and triggers one recovery resume. `stop()` interrupts the active Codex turn while keeping the session reusable, `reset()` starts a new conversation, and `await close()` performs final disposal. Disposal is idempotent, rejects future sends/resets, and waits for an active interrupt acknowledgment before closing an owned connection; a supplied shared client remains open. In synchronous framework cleanup hooks, call `void codex.close()`. For images or other rich inputs, pass an array:
 

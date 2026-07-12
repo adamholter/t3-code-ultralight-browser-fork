@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -99,7 +99,10 @@
     "check:packed": "npm run build && node scripts/check-packed-consumer.mjs",
     "qa:origin": "node tests/external-origin-qa.mjs",
     "qa:file": "node tests/file-origin-qa.mjs",
+    "qa:workspace": "node tests/workspace-qa.mjs",
     "qa:markdown": "tsx tests/markdown-qa.tsx",
+    "qa:install": "playwright install chromium",
+    "qa:live": "npm run build && node scripts/live-qa.mjs",
     "package:release": "node scripts/package-release.mjs",
     "prepare": "npm run build"
   },
@@ -115,6 +118,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
     "lucide-react": "^0.545.0",
+    "playwright": "1.61.1",
     "preact": "^10.29.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

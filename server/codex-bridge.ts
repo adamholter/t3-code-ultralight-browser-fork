@@ -61,7 +61,7 @@ export class CodexBridge extends EventEmitter {
     this.stopped = false;
     this.initialized = false;
     this.child = spawn(this.options.binary ?? "codex", this.options.args ?? ["app-server", "--stdio"], {
-      cwd: this.options.cwd ?? process.env.HOME,
+      cwd: this.options.cwd ?? process.cwd(),
       env: this.options.env ?? process.env,
       stdio: ["pipe", "pipe", "pipe"],
     });

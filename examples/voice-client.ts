@@ -1,8 +1,6 @@
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
-const codex = createCodexSession({
-  cwd: "/absolute/path/to/project",
-});
+const codex = createCodexSession();
 
 export async function handleTranscript(transcript: string) {
   const response = await codex.send(transcript);

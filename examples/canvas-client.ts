@@ -1,8 +1,6 @@
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
-const codex = createCodexSession({
-  cwd: "/absolute/path/to/project",
-});
+const codex = createCodexSession();
 
 export async function askAboutSelection(selection: unknown[]) {
   return codex.send(

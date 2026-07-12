@@ -1,9 +1,7 @@
 import { createServer } from "node:http";
-import { createRequire } from "node:module";
+import { chromium } from "playwright";
 import { once } from "node:events";
 
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
 const bridgeOrigin = new URL(process.env.QA_BASE_URL ?? "http://127.0.0.1:4174").origin;
 const bridgeSocketOrigin = bridgeOrigin.replace(/^http/, "ws");
 const useDefaultClientUrl = process.env.QA_USE_DEFAULT_CLIENT_URL === "1";

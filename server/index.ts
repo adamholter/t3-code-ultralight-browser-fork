@@ -1,5 +1,6 @@
 import { createReadStream, existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { createServer, type ServerResponse } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +28,8 @@ const browserModules = {
 const integrationContract = resolve(root, "integration.json");
 let bridgeReady = false;
 const allowedOrigins = readAllowedOrigins(process.env.CODEX_ALLOWED_ORIGINS);
+const workspaceCwd = resolve(process.env.CODEX_WORKSPACE_CWD ?? process.cwd());
+const workspaceFingerprint = createHash("sha256").update(workspaceCwd).digest("hex");
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost");
@@ -41,6 +44,7 @@ const server = createServer(async (request, response) => {
       capabilities: CODEX_BROWSER_CAPABILITIES,
       browserModules: Object.keys(browserModules),
       allowedOrigins,
+      workspaceFingerprint,
       transport: {
         maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
         maxPendingRequestsPerClient: DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT,
@@ -61,7 +65,7 @@ const server = createServer(async (request, response) => {
   response.writeHead(404).end("Not found");
 });
 
-const controller = attachCodexBridge(server, { path: "/ws", autoStart: false, allowedOrigins });
+const controller = attachCodexBridge(server, { path: "/ws", autoStart: false, allowedOrigins, cwd: workspaceCwd });
 controller.bridge.on("ready", () => { bridgeReady = true; });
 controller.bridge.on("exit", () => { bridgeReady = false; });
 

@@ -20,18 +20,18 @@ The complete chat ships in about 94 KB of decoded JavaScript plus CSS. Its respo
 
 ## One-command integration
 
-An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
+From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' setup --mode iframe --json
 ```
 
-Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. Add `--port` or `--allow-origin` when needed. The JSON receipt contains the resolved workspace, diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
 
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' setup --mode custom --delivery hosted --json
 ```
 
 ## One-command chat
@@ -39,15 +39,15 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0' start
 ```
 
-The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
+The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
 
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.37.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.38.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -58,7 +58,7 @@ The version query is an intentional npm cache key: the URL still resolves throug
 
 `setup` composes `doctor`, safe background startup, and a mode-specific integration recipe. It is the recommended entry point for unfamiliar agents because one JSON result proves prerequisites and describes the next host edit without requiring README parsing.
 
-`start` launches in the background, waits for verified readiness, and returns a PID plus a private temporary log path. It reuses an exact version/origin match already running on the requested port, but fails before startup when either differs. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
+`start` launches in the background, waits for verified readiness, and returns the resolved workspace, PID, and private temporary log path. The current directory is the default workspace unless `--cwd` is supplied. It reuses an exact version/origin/workspace match already running on the requested port, but fails before startup when any differs. The browser status exposes only a workspace fingerprint, never the local path. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
 
 ```bash
 npx t3-code-ultralight status --json
@@ -106,7 +106,7 @@ Every setup recipe includes an `originPolicy` object. It records that loopback b
 A trusted standalone HTML file can use the same zero-install recipe with `--allow-origin null`. Browsers represent `file://` and sandboxed documents with the opaque Origin value `null`; the receipt sets `originPolicy.opaqueOriginAllowed: true` only when that access was explicitly requested. The complete chat's `frame-ancestors` policy also adds `file:` only under this explicit grant. Do not grant `null` to untrusted local files or sandboxed content.
 
 ```bash
-npx t3-code-ultralight setup --mode custom --delivery hosted --allow-origin null --cwd /absolute/project/path --json
+npx t3-code-ultralight setup --mode custom --delivery hosted --allow-origin null --json
 ```
 
 Reuse is fail-closed: a loopback-only invocation will not silently inherit extra origins from an existing bridge. If a host intentionally accepts an already-running origin superset, it must pass `--reuse-origin-superset`; JSON output then reports `originSupersetAccepted: true` and lists every extra origin.
@@ -186,9 +186,7 @@ Use the headless client when the host owns the interface:
 ```ts
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
-const codex = createCodexSession({
-  cwd: "/absolute/project/path",
-});
+const codex = createCodexSession();
 
 const answer = await codex.send("Explain the selected canvas nodes", {
   onDelta: (_delta, text) => renderStreamingText(text),
@@ -197,7 +195,7 @@ const answer = await codex.send("Explain the selected canvas nodes", {
 console.log(answer.text);
 ```
 
-No connection URL is required for the standard standalone bridge. Pass `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel while keeping the session reusable, `codex.reset()` for a new conversation, and `await codex.close()` for final disposal. Closing is idempotent, prevents reuse, and waits for any active `turn/interrupt` acknowledgment before releasing an owned socket. Pass an input array instead of a string for images, local images, skills, or mentions.
+No connection URL or working directory is required for the standard standalone bridge: the session inherits the bridge workspace selected by `setup` or `start`. Pass `cwd` only for a per-session override, `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel while keeping the session reusable, `codex.reset()` for a new conversation, and `await codex.close()` for final disposal. Closing is idempotent, prevents reuse, and waits for any active `turn/interrupt` acknowledgment before releasing an owned socket. Pass an input array instead of a string for images, local images, skills, or mentions.
 
 Custom interfaces can cover every interactive request with one fail-closed adapter:
 
@@ -278,6 +276,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Built-in safe response Markdown with no raw-HTML execution or external Markdown runtime dependency
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
+- Project-root workspace defaults, exact-workspace process reuse, and path-private browser status
 - Idempotent startup plus human and JSON runtime status inspection
 - Framework-free WebSocket client plus typed React and server exports
 - Preact-powered standalone chat with a genuine React wrapper for React hosts
@@ -312,6 +311,7 @@ Requirements: Node 22+ and a working `codex` CLI login.
 
 ```bash
 npm install
+npm run qa:install
 npm run dev
 ```
 
@@ -322,8 +322,7 @@ Validation:
 
 ```bash
 npm run check
-node tests/qa.mjs
-node tests/performance-qa.mjs
+npm run qa:live
 ```
 
 Print the canonical agent handoff at any time:

@@ -1,7 +1,4 @@
-import { createRequire } from "node:module";
-
-const require = createRequire("/Users/adam/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/package.json");
-const { chromium } = require("playwright");
+import { chromium } from "playwright";
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:4174";
 const baseOrigin = new URL(baseUrl).origin;
 const maxAssetBytes = Number(process.env.QA_MAX_ASSET_BYTES ?? 110_000);
@@ -48,6 +45,7 @@ try {
     staleAssetStatus: staleAsset.status(),
     statusNoStore: statusResponse.headers()["cache-control"] === "no-store",
     statusHidesLocalPath: !("cwd" in statusBody) && !JSON.stringify(statusBody).includes(process.env.HOME ?? "__missing_home__"),
+    workspaceFingerprintOnly: /^[a-f0-9]{64}$/.test(statusBody.workspaceFingerprint) && !("workspaceCwd" in statusBody),
   };
   const { assetUrls: _assetUrls, ...publicMetrics } = metrics;
   const result = {
@@ -69,6 +67,8 @@ try {
         && integrationContract.modes?.completeChat?.iframeUrl === `${baseOrigin}/?embed=1`
         && integrationContract.modes?.completeChat?.controllerModule === `${baseOrigin}/codex-embed.js`
         && integrationContract.modes?.customUi?.browserModule === `${baseOrigin}/codex-client.js`,
+      workspacePortable: integrationContract.runtime?.workspace?.default === "bridge"
+        && integrationContract.runtime?.workspace?.pathDisclosed === false,
     },
     httpSurface,
     consoleErrors,
@@ -86,6 +86,7 @@ try {
     || !result.integrationContract.budgetMatches
     || result.integrationContract.markdownRuntimeDependencies !== 0
     || !result.integrationContract.runtimeAware
+    || !result.integrationContract.workspacePortable
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length
