@@ -566,7 +566,10 @@ export class CodexSession {
   private readonly defaults: SessionSendOptions;
   private readonly detachReadinessListeners: Array<() => void>;
   private activeController: AbortController | null = null;
+  private activeDone: Promise<void> | null = null;
+  private closePromise: Promise<void> | null = null;
   private threadReady = false;
+  private isClosed = false;
 
   constructor(options: CodexSessionOptions = {}) {
     const {
@@ -602,10 +605,18 @@ export class CodexSession {
     return this.activeController !== null;
   }
 
+  get closed() {
+    return this.isClosed;
+  }
+
   async send(input: string | CodexInput[], options: SessionSendOptions = {}) {
+    if (this.isClosed) throw new Error("This Codex session is closed");
     if (this.activeController) throw new Error("This Codex session already has an active turn");
     const controller = new AbortController();
     this.activeController = controller;
+    let resolveDone!: () => void;
+    const done = new Promise<void>((resolve) => { resolveDone = resolve; });
+    this.activeDone = done;
     const forwardAbort = () => controller.abort();
     if (options.signal?.aborted) controller.abort();
     else options.signal?.addEventListener("abort", forwardAbort, { once: true });
@@ -635,6 +646,8 @@ export class CodexSession {
       options.signal?.removeEventListener("abort", forwardAbort);
       this.activeController = null;
       this.currentTurnId = null;
+      resolveDone();
+      if (this.activeDone === done) this.activeDone = null;
     }
   }
 
@@ -643,16 +656,28 @@ export class CodexSession {
   }
 
   reset(threadId?: string) {
+    if (this.isClosed) throw new Error("This Codex session is closed");
     this.stop();
     this.threadId = threadId;
     this.threadReady = false;
     this.currentTurnId = null;
   }
 
-  close() {
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
+    this.isClosed = true;
     this.stop();
     this.detachReadinessListeners.splice(0).forEach((detach) => detach());
-    if (this.ownsClient) this.client.close();
+    const activeDone = this.activeDone;
+    if (!activeDone) {
+      if (this.ownsClient) this.client.close();
+      this.closePromise = Promise.resolve();
+      return this.closePromise;
+    }
+    this.closePromise = activeDone.then(() => {
+      if (this.ownsClient) this.client.close();
+    });
+    return this.closePromise;
   }
 }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.24.0
+
+- Make `CodexSession.close()` idempotent and return a completion promise for reliable host disposal.
+- Keep the owned socket open until an active `turn/interrupt` request is acknowledged, preventing invisible work after UI unmount.
+- Permanently reject sends and resets after close instead of silently reconnecting a disposed session.
+- Preserve supplied shared clients while still cancelling and settling the closing session's active turn.
+- Expose `session.closed` for host lifecycle state.
+- Add deterministic delayed-interrupt, repeated-close, post-close, and shared-client coverage plus live close-during-turn verification.
+
 ## 0.23.0
 
 - Make the headless client connect to the standard port-4174 standalone bridge with no URL configuration.

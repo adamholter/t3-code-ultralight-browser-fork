@@ -19,7 +19,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.23.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.24.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a compatible bridge.
@@ -27,7 +27,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.23.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.24.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -135,7 +135,7 @@ const answer = await codex.send("Explain the selected canvas nodes", {
 console.log(answer.text);
 ```
 
-No connection URL is required for the standard standalone bridge. Pass `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
+No connection URL is required for the standard standalone bridge. Pass `bridgeUrl: "http://127.0.0.1:PORT"` for another standalone port, or an exact WebSocket `url` for a custom path on an attached server. The session remembers its thread automatically and sends healthy follow-ups without a redundant resume round trip. After a bridge or Codex app-server reconnect, it resumes once before continuing. Call `codex.stop()` to cancel while keeping the session reusable, `codex.reset()` for a new conversation, and `await codex.close()` for final disposal. Closing is idempotent, prevents reuse, and waits for any active `turn/interrupt` acknowledgment before releasing an owned socket. Pass an input array instead of a string for images, local images, skills, or mentions.
 
 Custom interfaces can cover every interactive request with one fail-closed adapter:
 

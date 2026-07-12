@@ -43,17 +43,20 @@ try {
   );
 
   let cancellationStarted = false;
+  let closing;
   await assert.rejects(
     session.send("Write the integers from one to one thousand, one per line.", {
       onTurnStarted: () => {
         cancellationStarted = true;
-        session.stop();
+        closing = session.close();
       },
     }),
     (error) => error instanceof Error && error.name === "AbortError",
   );
+  await closing;
   assert.equal(cancellationStarted, true);
   assert.equal(session.running, false);
+  assert.equal(session.closed, true);
   assert.equal(resumeRpcCount, 0, "healthy session follow-ups should not resume an already-loaded thread");
 
   console.log(JSON.stringify({
@@ -63,12 +66,13 @@ try {
     protocol: `${session.client.bridgeInfo?.protocol.major}.${session.client.bridgeInfo?.protocol.minor}`,
     eventCount: events.length,
     cancellation: "interrupted",
+    disposal: "interrupt acknowledged before socket close",
     redundantResumes: resumeRpcCount,
   }, null, 2));
 } finally {
   if (session.threadId) {
-    await session.client.request("thread/delete", { threadId: session.threadId }).catch(() => undefined);
+    await observer.request("thread/delete", { threadId: session.threadId }).catch(() => undefined);
   }
-  session.close();
+  await session.close();
   observer.close();
 }

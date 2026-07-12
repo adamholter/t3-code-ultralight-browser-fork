@@ -432,4 +432,52 @@ describe("CodexClient", () => {
     expect(sent.filter((message) => message.method === "thread/resume")).toHaveLength(2);
     session.close();
   });
+
+  it("delivers an active-turn interrupt before closing and cannot reopen", async () => {
+    const sent: any[] = [];
+    let interruptRequest!: { socket: FakeWebSocket; message: any };
+    let resolveInterruptRequested!: () => void;
+    const interruptRequested = new Promise<void>((resolve) => { resolveInterruptRequested = resolve; });
+    let resolveStarted!: () => void;
+    const started = new Promise<void>((resolve) => { resolveStarted = resolve; });
+    FakeWebSocket.script = (socket, message) => {
+      sent.push(message);
+      if (message.method === "thread/start") {
+        queueMicrotask(() => socket.message({ type: "rpcResult", id: message.id, result: { thread: { id: "thread-close" } } }));
+      } else if (message.method === "turn/start") {
+        queueMicrotask(() => {
+          socket.message({ type: "notification", method: "turn/started", params: { threadId: "thread-close", turn: { id: "turn-close" } } });
+          socket.message({ type: "rpcResult", id: message.id, result: { turn: { id: "turn-close" } } });
+        });
+      } else if (message.method === "turn/interrupt") {
+        interruptRequest = { socket, message };
+        resolveInterruptRequested();
+      }
+    };
+    const session = createCodexSession({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
+    const turn = session.send("keep going", { onTurnStarted: () => resolveStarted() });
+    await started;
+    const closing = session.close();
+    await interruptRequested;
+    expect(session.closed).toBe(true);
+    expect(FakeWebSocket.latest?.readyState).toBe(FakeWebSocket.OPEN);
+    expect(sent).toContainEqual(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-close", turnId: "turn-close" } }));
+    interruptRequest.socket.message({ type: "rpcResult", id: interruptRequest.message.id, result: {} });
+    await expect(turn).rejects.toMatchObject({ name: "AbortError" });
+    await closing;
+    expect(FakeWebSocket.latest?.readyState).toBe(3);
+    await expect(session.send("reopen")).rejects.toThrow("session is closed");
+    expect(() => session.reset()).toThrow("session is closed");
+    expect(session.close()).toBe(closing);
+  });
+
+  it("closes a session without closing its supplied shared client", async () => {
+    const client = createCodexClient({ url: "ws://localhost/codex", WebSocketImpl, reconnectMs: false });
+    await client.connect();
+    const session = createCodexSession({ client });
+    await session.close();
+    expect(session.closed).toBe(true);
+    expect(FakeWebSocket.latest?.readyState).toBe(FakeWebSocket.OPEN);
+    client.close();
+  });
 });

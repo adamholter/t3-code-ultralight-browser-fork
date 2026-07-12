@@ -132,7 +132,7 @@ const result = await codex.send(prompt, {
 });
 ```
 
-`send()` creates a thread automatically and remembers it for follow-ups. Follow-ups skip the redundant `thread/resume` RPC while the session stays connected; a bridge or Codex app-server reconnect invalidates that fast path and triggers one recovery resume. `stop()` interrupts the active Codex turn, `reset()` starts a new conversation, and `close()` releases the owned connection. For images or other rich inputs, pass an array:
+`send()` creates a thread automatically and remembers it for follow-ups. Follow-ups skip the redundant `thread/resume` RPC while the session stays connected; a bridge or Codex app-server reconnect invalidates that fast path and triggers one recovery resume. `stop()` interrupts the active Codex turn while keeping the session reusable, `reset()` starts a new conversation, and `await close()` performs final disposal. Disposal is idempotent, rejects future sends/resets, and waits for an active interrupt acknowledgment before closing an owned connection; a supplied shared client remains open. In synchronous framework cleanup hooks, call `void codex.close()`. For images or other rich inputs, pass an array:
 
 ```ts
 await codex.send([

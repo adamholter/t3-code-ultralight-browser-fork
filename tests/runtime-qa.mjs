@@ -35,5 +35,5 @@ try {
   if (session.threadId) {
     await session.client.request("thread/delete", { threadId: session.threadId }).catch(() => undefined);
   }
-  session.close();
+  await session.close();
 }

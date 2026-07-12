@@ -11,3 +11,4 @@ export async function askAboutSelection(selection: unknown[]) {
 }
 
 export const stopCanvasAssistant = () => codex.stop();
+export const closeCanvasAssistant = () => codex.close();

@@ -10,3 +10,4 @@ export async function handleTranscript(transcript: string) {
 }
 
 export const stopSpeakingTurn = () => codex.stop();
+export const closeVoiceAssistant = () => codex.close();
