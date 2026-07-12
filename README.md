@@ -19,7 +19,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.21.1'
 ```
 
 Then embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. The command is safe to repeat: it reuses an identical running bridge.
@@ -27,12 +27,12 @@ Then embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. The
 ## Install in a project
 
 ```bash
-npm install https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.21.1'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight serve
 ```
 
-The stable release URL installs the prebuilt package directly: no repository clone, Git checkout, or local compilation. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
+The version query is an intentional npm cache key: the URL still resolves through GitHub's latest release, while each README revision forces npm to fetch the matching prebuilt package instead of reusing an older mutable-URL cache entry. No repository clone, Git checkout, or local compilation is involved. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
 

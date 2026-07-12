@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.1
+
+- Cache-key the mutable latest-release URL with the package version so npm and npx cannot silently reuse an older bridge release.
+- Add a version-alignment gate that fails when public install commands are not advanced with the package.
+- Explain the cache key in both human and agent integration instructions.
+
 ## 0.21.0
 
 - Add an idempotent `stop` command for clean upgrades and allowed-origin changes.
