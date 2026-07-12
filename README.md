@@ -77,27 +77,31 @@ The iframe is intentional: T3's polished chat CSS stays isolated from the host a
 Use the headless client when the host owns the interface:
 
 ```ts
-import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
-const codex = createCodexClient({
+const codex = createCodexSession({
   url: "ws://127.0.0.1:4174/ws",
+  cwd: "/absolute/project/path",
 });
 
-const answer = await codex.chat("Explain the selected canvas nodes", {
-  cwd: "/absolute/project/path",
+const answer = await codex.send("Explain the selected canvas nodes", {
+  onDelta: (_delta, text) => renderStreamingText(text),
 });
 
 console.log(answer.text);
 ```
 
-Continue later with `codex.chat("follow-up", { threadId: answer.threadId })`. Pass an input array instead of a string for images, local images, skills, or mentions.
+The session remembers its thread automatically. Call `codex.stop()` to cancel the active turn, `codex.reset()` for a new conversation, and `codex.close()` when the host is done. Pass an input array instead of a string for images, local images, skills, or mentions.
 
-For token-by-token display, subscribe directly:
+For shared clients or lower-level control, use `createCodexClient()` and subscribe directly:
 
 ```ts
-codex.on("item/agentMessage/delta", ({ delta }) => renderToken(delta));
-codex.on("item/started", ({ item }) => renderToolActivity(item));
-codex.on("turn/completed", ({ turn }) => markComplete(turn));
+import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+
+const client = createCodexClient({ url: "ws://127.0.0.1:4174/ws" });
+client.on("item/agentMessage/delta", ({ delta }) => renderToken(delta));
+client.on("item/started", ({ item }) => renderToolActivity(item));
+client.on("turn/completed", ({ turn }) => markComplete(turn));
 ```
 
 See [Integration guide](docs/INTEGRATION.md) for canvas, voice, and existing-server recipes.
@@ -132,6 +136,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Read-only `doctor` diagnostics with actionable failures and JSON output
 - Framework-free WebSocket client plus typed React and server exports
 - One-call `chat()` plus lower-level text and multimodal turn APIs
+- Stateful `send()` sessions with scoped streaming events and real turn cancellation
 - Approval requests routed only to the browser client that owns the active turn
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration

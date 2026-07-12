@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0
+
+- Add `createCodexSession()` with remembered thread state and one-call `send()` follow-ups.
+- Add turn-scoped `onDelta`, `onEvent`, `onThreadReady`, and `onTurnStarted` callbacks.
+- Add `AbortSignal` cancellation plus `session.stop()` and `session.reset()`.
+- Interrupt the real Codex turn before cancellation or timeout settles locally.
+- Buffer early transport events until the authoritative turn ID is known.
+- Prevent unrelated turn events from contaminating scoped streams.
+- Update canvas and voice examples to remove manual thread bookkeeping.
+- Add deterministic and real local-Codex streaming/cancellation verification.
+
 ## 0.7.0
 
 - Add repeatable `serve --allow-origin` support for non-loopback browser hosts.

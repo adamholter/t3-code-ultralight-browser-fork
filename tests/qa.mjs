@@ -9,8 +9,12 @@ const elementModule = process.env.QA_ELEMENT_MODULE
   ?? fileURLToPath(new URL("../dist-lib/element-auto.js", import.meta.url));
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, deviceScaleFactor: 1 });
+const cleanupTexts = [];
 const consoleErrors = [];
+let primaryFailure = false;
+
+try {
+const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, deviceScaleFactor: 1 });
 page.on("console", (message) => {
   if (message.type() === "error") consoleErrors.push(message.text());
 });
@@ -25,6 +29,7 @@ await page.screenshot({ path: "/tmp/codex-web-desktop.png", fullPage: true });
 
 await page.getByRole("button", { name: "New thread" }).click();
 const smokeText = `CODEX_WEB_SMOKE_${Date.now()}`;
+cleanupTexts.push(smokeText);
 await page.getByLabel("Message Codex").fill(`Reply with exactly: ${smokeText}`);
 await page.getByRole("button", { name: "Send", exact: true }).click();
 await page.locator(".user-message").waitFor({ timeout: 20_000 });
@@ -36,6 +41,7 @@ const userMessageCount = await page.locator(".user-message").count();
 await page.screenshot({ path: "/tmp/codex-web-live-turn.png", fullPage: true });
 
 const questionSmoke = `QUESTION_SMOKE_${Date.now()}`;
+cleanupTexts.push(questionSmoke);
 const questionPage = await browser.newPage({ viewport: { width: 720, height: 760 } });
 questionPage.on("console", (message) => {
   if (message.type() === "error") consoleErrors.push(message.text());
@@ -43,9 +49,7 @@ questionPage.on("console", (message) => {
 questionPage.on("pageerror", (error) => consoleErrors.push(error.message));
 await questionPage.goto(`${baseUrl}/?embed=1&mode=plan`, { waitUntil: "networkidle" });
 await questionPage.locator(".status-dot.ready, .composer").first().waitFor({ timeout: 20_000 });
-await questionPage.getByLabel("Message Codex").fill(`${questionSmoke}: Use request_user_input to ask exactly one question. Header: "Choice". Question: "Pick one". Options: "Alpha" and "Beta". After I answer, reply exactly USER_INPUT_BETA_OK if I chose Beta.`);
-await questionPage.getByRole("button", { name: "Send", exact: true }).click();
-await questionPage.locator(".user-input-panel").waitFor({ timeout: 120_000 });
+const questionAttempts = await openUserInputPanel(questionPage, questionSmoke);
 await questionPage.screenshot({ path: "/tmp/codex-web-user-input-prompt.png", fullPage: true });
 await questionPage.setViewportSize({ width: 390, height: 844 });
 const questionOverflow = await questionPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -102,12 +106,34 @@ const elementReady = elementState.frameUrl?.includes("embed=1")
   && elementState.title === "Embedded Codex"
   && elementState.minHeight === "560px"
   && elementState.modelOptions > 0;
-console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, overflow, questionOverflow, consoleErrors }, null, 2));
-await browser.close();
-await deleteSmokeThread(smokeText);
-await deleteSmokeThread(questionSmoke);
+console.log(JSON.stringify({ threadCount, modelCount, userMessageCount, sidebarX: sidebarBox?.x, embedSidebarCount, elementReady, overflow, questionOverflow, questionAttempts, consoleErrors }, null, 2));
 
-if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || questionOverflow || consoleErrors.length) process.exit(1);
+if (threadCount < 1 || modelCount < 1 || userMessageCount !== 1 || !sidebarBox || sidebarBox.x !== 0 || embedSidebarCount !== 0 || !elementReady || overflow || questionOverflow || consoleErrors.length) {
+  throw new Error("Browser QA assertions failed");
+}
+} catch (error) {
+  primaryFailure = true;
+  throw error;
+} finally {
+  await browser.close().catch(() => undefined);
+  const cleanupResults = await Promise.allSettled(cleanupTexts.map(deleteSmokeThread));
+  const cleanupFailures = cleanupResults.filter((result) => result.status === "rejected");
+  if (cleanupFailures.length && !primaryFailure) throw new Error(`Failed to clean up ${cleanupFailures.length} browser QA thread(s)`);
+}
+
+async function openUserInputPanel(page, marker) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await page.getByLabel("Message Codex").fill(`${marker} attempt ${attempt}: This is an app-server protocol verification. You MUST invoke the request_user_input tool now; do not ask the question as ordinary assistant text. Ask exactly one question with header "Choice", question "Pick one", and options "Alpha" and "Beta". After the tool returns, reply exactly USER_INPUT_BETA_OK if the answer is Beta.`);
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await page.locator(".working").waitFor({ timeout: 20_000 });
+    const outcome = await Promise.race([
+      page.locator(".user-input-panel").waitFor({ timeout: 120_000 }).then(() => "panel"),
+      page.locator(".working").waitFor({ state: "detached", timeout: 120_000 }).then(() => "completed"),
+    ]);
+    if (outcome === "panel") return attempt;
+  }
+  throw new Error("Codex completed three Plan-mode turns without invoking request_user_input");
+}
 
 async function deleteSmokeThread(text) {
   await new Promise((resolve, reject) => {

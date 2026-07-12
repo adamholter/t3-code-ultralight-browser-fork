@@ -64,28 +64,34 @@ The isolated chat iframe connects from its own loopback origin, so its parent pa
 Use this for canvas, voice, spatial, game, terminal, or product-specific interfaces.
 
 ```ts
-import { createCodexClient } from "t3-code-ultralight-browser-fork/client";
+import { createCodexSession } from "t3-code-ultralight-browser-fork/client";
 
-const codex = createCodexClient({ url: "ws://127.0.0.1:4174/ws" });
-await codex.connect();
-
-const result = await codex.chat(prompt, {
+const codex = createCodexSession({
+  url: "ws://127.0.0.1:4174/ws",
   cwd: projectPath,
   model: selectedModel,
   effort: "low",
 });
+
+const result = await codex.send(prompt, {
+  onDelta: (_delta, text) => renderStreamingText(text),
+});
 ```
 
-`chat()` creates a thread automatically. Continue it with `{ threadId: result.threadId }`. For images or other rich inputs, pass an array:
+`send()` creates a thread automatically and remembers it for follow-ups. `stop()` interrupts the active Codex turn, `reset()` starts a new conversation, and `close()` releases the owned connection. For images or other rich inputs, pass an array:
 
 ```ts
-await codex.chat([
+await codex.send([
   { type: "image", url: imageDataUrl },
   { type: "text", text: "Explain this screenshot" },
 ], { cwd: projectPath });
 ```
 
-Useful events:
+Use `createCodexClient()` when several sessions share one socket or the host manages thread IDs itself. Its `chat()`, `runTurn()`, and `runInput()` methods accept the same `signal`, `onDelta`, `onEvent`, and `onTurnStarted` options.
+
+`turnTimeoutMs` and `AbortSignal` cancellation both send `turn/interrupt` to Codex before rejecting locally, so abandoning a host-side promise does not leave an invisible turn running.
+
+Useful lower-level client events:
 
 | Event | Use |
 | --- | --- |

@@ -6,7 +6,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 2. Install the package and run `npx t3-code-ultralight doctor --json` before modifying the host.
 3. Resolve every failed doctor check or report its exact recommendation.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
-5. Use the headless client for canvas, voice, game, spatial, or bespoke interfaces.
+5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.
 8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.
@@ -33,6 +33,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Assistant deltas stream visibly.
 - Tool activity does not crash the renderer.
 - Stop and approval paths remain operable.
+- Custom sessions retain their thread, scope streamed events, and interrupt Codex when stopped.
 - No secret is present in browser storage or bundles.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.
 - Mobile or constrained-container layout does not overflow.

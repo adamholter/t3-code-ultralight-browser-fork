@@ -26,7 +26,20 @@ export interface RunTurnOptions {
   cwd?: string;
   /** Maximum time to wait for turn/completed. Not sent to Codex. */
   turnTimeoutMs?: number;
+  /** Cancel the active turn. The client also asks Codex to interrupt it. */
+  signal?: AbortSignal;
+  /** Receive assistant text already scoped to this turn. */
+  onDelta?: (delta: string, text: string) => void;
+  /** Receive every app-server notification scoped to this turn. */
+  onEvent?: (event: RunTurnEvent) => void;
+  /** Receive the turn ID as soon as Codex starts the turn. */
+  onTurnStarted?: (turn: { threadId: string; turnId: string }) => void;
   [key: string]: unknown;
+}
+
+export interface RunTurnEvent {
+  method: string;
+  params: any;
 }
 
 export interface RunTurnResult {
@@ -41,6 +54,8 @@ export interface ChatOptions extends RunTurnOptions {
   threadId?: string;
   /** Options used only when a new thread is created. */
   thread?: StartThreadOptions;
+  /** Receive the thread ID before the turn starts. */
+  onThreadReady?: (thread: { threadId: string; created: boolean }) => void;
 }
 
 export interface CodexClientOptions {
@@ -54,6 +69,23 @@ export interface CodexClientOptions {
   connectionTimeoutMs?: number;
   /** Maximum time for an individual bridge RPC response. */
   requestTimeoutMs?: number;
+}
+
+export interface CodexSessionOptions extends CodexClientOptions {
+  /** Reuse an existing client. The session will not close a supplied client. */
+  client?: CodexClient;
+  /** Resume this thread on the first send. */
+  threadId?: string;
+  cwd?: string;
+  model?: string;
+  effort?: string;
+  permissions?: string;
+  thread?: StartThreadOptions;
+}
+
+export interface SessionSendOptions extends RunTurnOptions {
+  thread?: StartThreadOptions;
+  onThreadReady?: (thread: { threadId: string; created: boolean }) => void;
 }
 
 export class CodexClient {
@@ -200,7 +232,8 @@ export class CodexClient {
    * return the final text plus IDs for continuation.
    */
   async chat(input: string | CodexInput[], options: ChatOptions = {}) {
-    const { threadId: existingThreadId, thread: threadOptions = {}, ...turnOptions } = options;
+    if (options.signal?.aborted) throw abortError();
+    const { threadId: existingThreadId, thread: threadOptions = {}, onThreadReady, ...turnOptions } = options;
     let threadId = existingThreadId;
     if (threadId) {
       await this.resumeThread(threadId);
@@ -211,6 +244,7 @@ export class CodexClient {
       });
       threadId = opened.thread.id;
     }
+    onThreadReady?.({ threadId, created: !existingThreadId });
     return typeof input === "string"
       ? this.runTurn(threadId, input, turnOptions)
       : this.runInput(threadId, input, turnOptions);
@@ -227,8 +261,18 @@ export class CodexClient {
 
   /** Run text, image, local-image, skill, or mention input in an existing thread. */
   async runInput(threadId: string, input: CodexInput[], options: RunTurnOptions = {}): Promise<RunTurnResult> {
-    const { turnTimeoutMs = 300_000, ...turnOptions } = options;
+    const {
+      turnTimeoutMs = 300_000,
+      signal,
+      onDelta,
+      onEvent,
+      onTurnStarted,
+      ...turnOptions
+    } = options;
+    if (signal?.aborted) throw abortError();
     let expectedTurnId: string | null = null;
+    let startedReported = false;
+    let interruptPromise: Promise<unknown> | null = null;
     let output = "";
     let resolveCompleted!: (value: { turn: unknown }) => void;
     let rejectCompleted!: (error: Error) => void;
@@ -236,34 +280,94 @@ export class CodexClient {
       resolveCompleted = resolve;
       rejectCompleted = reject;
     });
+    void completed.catch(() => undefined);
     const completedMessages = new Map<string, string>();
-    const completionTimer = globalThis.setTimeout(
-      () => rejectCompleted(new Error(`Codex turn timed out after ${turnTimeoutMs}ms`)),
-      turnTimeoutMs,
-    );
+    const earlyDeltas: any[] = [];
+    const earlyItems: any[] = [];
+    const earlyCompletions: any[] = [];
+    const earlyEvents: any[] = [];
 
-    const offDelta = this.on("item/agentMessage/delta", (payload) => {
-      if (payload.threadId === threadId && (!expectedTurnId || payload.turnId === expectedTurnId)) {
-        output += payload.delta ?? "";
-      }
-    });
-    const offItemCompleted = this.on("item/completed", (payload) => {
+    const appendDelta = (payload: any) => {
+      if (payload.turnId !== expectedTurnId) return;
+      const delta = payload.delta ?? "";
+      output += delta;
+      onDelta?.(delta, output);
+    };
+    const recordItem = (payload: any) => {
       if (
-        payload.threadId === threadId &&
-        (!expectedTurnId || payload.turnId === expectedTurnId) &&
+        payload.turnId === expectedTurnId &&
         payload.item?.type === "agentMessage" &&
         typeof payload.item.text === "string"
       ) {
         completedMessages.set(payload.item.id, payload.item.text);
       }
-    });
-    const offCompleted = this.on("turn/completed", (payload) => {
-      if (payload.threadId !== threadId || (expectedTurnId && payload.turn?.id !== expectedTurnId)) return;
+    };
+    const completeTurn = (payload: any) => {
+      if (payload.turn?.id !== expectedTurnId) return;
       if (payload.turn?.status === "failed") {
         rejectCompleted(new Error(payload.turn?.error?.message ?? "Codex turn failed"));
       } else {
         resolveCompleted({ turn: payload.turn });
       }
+    };
+    const emitTurnEvent = (message: any) => {
+      const params = message.params;
+      const eventTurnId = params.turnId ?? params.turn?.id;
+      if (eventTurnId && eventTurnId !== expectedTurnId) return;
+      onEvent?.({ method: message.method, params });
+    };
+    const flushEarlyEvents = () => {
+      earlyDeltas.splice(0).forEach(appendDelta);
+      earlyItems.splice(0).forEach(recordItem);
+      earlyEvents.splice(0).forEach(emitTurnEvent);
+      earlyCompletions.splice(0).forEach(completeTurn);
+    };
+    const completionTimer = globalThis.setTimeout(
+      () => {
+        interruptActiveTurn();
+        rejectCompleted(new Error(`Codex turn timed out after ${turnTimeoutMs}ms`));
+      },
+      turnTimeoutMs,
+    );
+
+    const reportStarted = (turnId: string) => {
+      expectedTurnId = turnId;
+      flushEarlyEvents();
+      if (startedReported) return;
+      startedReported = true;
+      onTurnStarted?.({ threadId, turnId });
+    };
+    const interruptActiveTurn = () => {
+      if (!expectedTurnId || interruptPromise) return;
+      interruptPromise = this.interrupt(threadId, expectedTurnId);
+    };
+    const handleAbort = () => {
+      interruptActiveTurn();
+      rejectCompleted(abortError());
+    };
+    signal?.addEventListener("abort", handleAbort, { once: true });
+
+    const offStarted = this.on("turn/started", (payload) => {
+      if (payload.threadId === threadId && payload.turn?.id) reportStarted(payload.turn.id);
+    });
+    const offDelta = this.on("item/agentMessage/delta", (payload) => {
+      if (payload.threadId !== threadId) return;
+      expectedTurnId ? appendDelta(payload) : earlyDeltas.push(payload);
+    });
+    const offNotification = this.on("notification", (message) => {
+      const params = message.params;
+      if (params?.threadId !== threadId) return;
+      const eventTurnId = params.turnId ?? params.turn?.id;
+      if (!expectedTurnId && message.method === "turn/started" && eventTurnId) reportStarted(eventTurnId);
+      expectedTurnId ? emitTurnEvent(message) : earlyEvents.push(message);
+    });
+    const offItemCompleted = this.on("item/completed", (payload) => {
+      if (payload.threadId !== threadId) return;
+      expectedTurnId ? recordItem(payload) : earlyItems.push(payload);
+    });
+    const offCompleted = this.on("turn/completed", (payload) => {
+      if (payload.threadId !== threadId) return;
+      expectedTurnId ? completeTurn(payload) : earlyCompletions.push(payload);
     });
 
     try {
@@ -272,7 +376,11 @@ export class CodexClient {
         input,
         ...turnOptions,
       });
-      expectedTurnId = response.turn.id;
+      reportStarted(response.turn.id);
+      if (signal?.aborted) {
+        interruptActiveTurn();
+        throw abortError();
+      }
       const result = await completed;
       const completedText = [...completedMessages.values()].join("\n\n");
       return {
@@ -281,16 +389,26 @@ export class CodexClient {
         text: completedText.length >= output.length ? completedText : output,
         turn: result.turn,
       };
+    } catch (error) {
+      const pendingInterrupt = interruptPromise as Promise<unknown> | null;
+      if (pendingInterrupt) {
+        await pendingInterrupt.catch((interruptError: unknown) => this.emit("protocolError", interruptError));
+      }
+      throw error;
     } finally {
       clearTimeout(completionTimer);
+      signal?.removeEventListener("abort", handleAbort);
+      offStarted();
       offDelta();
+      offNotification();
       offItemCompleted();
       offCompleted();
     }
   }
 
   private send(payload: unknown) {
-    if (this.socket?.readyState !== WebSocket.OPEN) throw new Error("Codex bridge is not connected");
+    const Socket = this.options.WebSocketImpl ?? WebSocket;
+    if (this.socket?.readyState !== Socket.OPEN) throw new Error("Codex bridge is not connected");
     this.socket.send(JSON.stringify(payload));
   }
 
@@ -319,8 +437,106 @@ export class CodexClient {
   }
 }
 
+/**
+ * Stateful convenience layer for canvas, voice, and other custom interfaces.
+ * It remembers the thread between sends and owns cancellation bookkeeping.
+ */
+export class CodexSession {
+  readonly client: CodexClient;
+  threadId: string | undefined;
+  currentTurnId: string | null = null;
+  private readonly ownsClient: boolean;
+  private readonly defaults: SessionSendOptions;
+  private activeController: AbortController | null = null;
+
+  constructor(options: CodexSessionOptions = {}) {
+    const {
+      client,
+      threadId,
+      cwd,
+      model,
+      effort,
+      permissions,
+      thread = {},
+      ...clientOptions
+    } = options;
+    this.client = client ?? new CodexClient(clientOptions);
+    this.ownsClient = !client;
+    this.threadId = threadId;
+    this.defaults = {
+      ...(cwd ? { cwd } : {}),
+      ...(model ? { model } : {}),
+      ...(effort ? { effort } : {}),
+      thread: { ...thread, ...(permissions ? { permissions } : {}) },
+    };
+  }
+
+  get running() {
+    return this.activeController !== null;
+  }
+
+  async send(input: string | CodexInput[], options: SessionSendOptions = {}) {
+    if (this.activeController) throw new Error("This Codex session already has an active turn");
+    const controller = new AbortController();
+    this.activeController = controller;
+    const forwardAbort = () => controller.abort();
+    if (options.signal?.aborted) controller.abort();
+    else options.signal?.addEventListener("abort", forwardAbort, { once: true });
+    const onTurnStarted = options.onTurnStarted;
+    const onThreadReady = options.onThreadReady;
+    try {
+      const result = await this.client.chat(input, {
+        ...this.defaults,
+        ...options,
+        thread: { ...this.defaults.thread, ...options.thread },
+        threadId: this.threadId,
+        signal: controller.signal,
+        onThreadReady: (thread) => {
+          this.threadId = thread.threadId;
+          onThreadReady?.(thread);
+        },
+        onTurnStarted: (turn) => {
+          this.currentTurnId = turn.turnId;
+          onTurnStarted?.(turn);
+        },
+      });
+      this.threadId = result.threadId;
+      return result;
+    } finally {
+      options.signal?.removeEventListener("abort", forwardAbort);
+      this.activeController = null;
+      this.currentTurnId = null;
+    }
+  }
+
+  stop() {
+    this.activeController?.abort();
+  }
+
+  reset(threadId?: string) {
+    this.stop();
+    this.threadId = threadId;
+    this.currentTurnId = null;
+  }
+
+  close() {
+    this.stop();
+    if (this.ownsClient) this.client.close();
+  }
+}
+
 export const codex = new CodexClient();
 
 export function createCodexClient(options: CodexClientOptions = {}) {
   return new CodexClient(options);
+}
+
+export function createCodexSession(options: CodexSessionOptions = {}) {
+  return new CodexSession(options);
+}
+
+function abortError() {
+  const error = new Error("Codex turn was cancelled");
+  error.name = "AbortError";
+  return error;
 }
