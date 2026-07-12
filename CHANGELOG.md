@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.31.0
+
+- Add `setup --mode iframe|react|element|custom --json` to combine read-only Codex diagnostics, safe background bridge startup, and a complete copyable host recipe.
+- Return nonzero machine-readable setup failures without starting or changing a bridge.
+- Include exact versioned install commands, runtime URLs, code, cleanup guidance, and verification endpoints in setup receipts.
+- Materialize `/api/integration` and `/integration.json` from the actual standalone port instead of incorrectly retaining port 4174 URLs.
+- Rewrite live status, stop, foreground, start, setup, iframe, Web Component, client, and request-module addresses together.
+- Export typed contract and recipe builders from `t3-code-ultralight-browser-fork/integration` for installer authors.
+- Add unit and live alternate-port assertions covering contracts, recipes, CLI validation, failure side effects, and runtime URL consistency.
+
 ## 0.30.0
 
 - Export `CodexClientEventMap` with inferred payloads for stable connection, bridge, request, turn, item, delta, lifecycle, and error events.

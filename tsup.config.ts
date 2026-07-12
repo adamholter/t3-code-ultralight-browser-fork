@@ -9,6 +9,7 @@ export default defineConfig({
     "element-auto": "src/element-auto.ts",
     server: "server/attach.ts",
     doctor: "server/doctor.ts",
+    integration: "server/integration-contract.ts",
     requests: "src/lib/server-requests.ts",
     standalone: "server/index.ts",
     types: "src/types.ts",

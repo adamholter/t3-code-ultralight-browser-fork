@@ -16,12 +16,22 @@ This project is the smallest practical bridge between a browser UI and a user's 
 
 It uses the user's existing Codex login, configuration, models, skills, MCP tools, workspace permissions, and thread history. API keys and Codex credentials never enter browser JavaScript.
 
+## One-command integration
+
+An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
+
+```bash
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode iframe --json
+```
+
+Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, the exact versioned install command, runtime-correct URLs, copyable code, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+
 ## One-command chat
 
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -29,7 +39,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -37,6 +47,8 @@ npx t3-code-ultralight start
 The version query is an intentional npm cache key: the URL still resolves through GitHub's latest release, while each README revision forces npm to fetch the matching prebuilt package instead of reusing an older mutable-URL cache entry. No repository clone, Git checkout, or local compilation is involved. Use `npm install github:adamholter/t3-code-ultralight-browser-fork` when intentionally tracking source from `main`.
 
 `doctor` performs a read-only live check of the Codex binary, app-server handshake, login, model catalog, and local thread store. Add `--json` for agent-readable diagnostics.
+
+`setup` composes `doctor`, safe background startup, and a mode-specific integration recipe. It is the recommended entry point for unfamiliar agents because one JSON result proves prerequisites and describes the next host edit without requiring README parsing.
 
 `start` launches in the background, waits for verified readiness, and returns a PID plus a private temporary log path. It reuses an exact version/origin match already running on the requested port, but fails before startup when either differs. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
 
@@ -188,6 +200,8 @@ client.on("turn/completed", ({ turn }) => markComplete(turn));
 TypeScript infers stable event payloads, model/thread catalogs, and final turn objects. Known events reject incompatible handlers at compile time; an unknown string event retains an `any` payload as a forward-compatible escape hatch for new Codex notifications.
 
 See [Integration guide](docs/INTEGRATION.md) for canvas, voice, and existing-server recipes.
+
+The programmatic `t3-code-ultralight-browser-fork/integration` export materializes runtime-aware contracts and typed recipes when another installer or agent tool needs to build its own setup flow.
 
 ## Attach it to an existing Node server
 

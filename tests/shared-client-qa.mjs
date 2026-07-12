@@ -15,6 +15,7 @@ class CountingWebSocket extends WebSocket {
 }
 
 const client = createCodexClient({
+  ...(process.env.QA_BASE_URL ? { bridgeUrl: process.env.QA_BASE_URL } : {}),
   WebSocketImpl: CountingWebSocket,
   reconnectMs: false,
   requiredCapabilities: ["requestOwnership", "threadIsolation"],

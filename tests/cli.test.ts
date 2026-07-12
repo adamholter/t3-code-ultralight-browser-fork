@@ -40,10 +40,33 @@ describe("CLI argument validation", () => {
     expect(result.stderr).toContain("--allow-origin requires a value");
   });
 
+  it("validates setup mode before running diagnostics", async () => {
+    const result = await runCli(["setup", "--mode", "dashboard", "--json"]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('Invalid --mode "dashboard"');
+  });
+
+  it("returns a machine-readable failed setup receipt without starting a bridge", async () => {
+    const port = String(await reservePort());
+    const result = await runCli(["setup", "--mode", "custom", "--port", port, "--codex", "/missing/codex", "--json"]);
+    expect(result.code).not.toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      mode: "custom",
+      doctor: { ok: false },
+      bridge: null,
+      integration: null,
+    });
+    const status = await runCli(["status", "--port", port, "--json"]);
+    expect(status.code).not.toBe(0);
+    expect(JSON.parse(status.stdout)).toMatchObject({ running: false });
+  });
+
   it("points agents at the stable prebuilt release", async () => {
     const result = await runCli(["agent-prompt"]);
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("stable prebuilt release asset");
+    expect(result.stdout).toContain("package setup command");
   });
 
   it("prints the packaged machine-readable integration contract", async () => {

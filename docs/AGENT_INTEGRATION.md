@@ -1,15 +1,15 @@
 # Agent integration contract
 
-Read `/integration.json` first when machine-readable mode selection, commands, exports, URLs, or acceptance checks are preferable to prose. An installed CLI prints the identical contract with `t3-code-ultralight integration`; a running bridge serves it from `/api/integration`.
+Read `/integration.json` first when machine-readable mode selection, commands, exports, URLs, or acceptance checks are preferable to prose. An installed CLI prints the packaged default-port contract with `t3-code-ultralight integration`; a running bridge serves a runtime-materialized contract from `/api/integration`, so every URL and lifecycle command follows its actual port.
 
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. For the complete chat or a no-bundler host, run the prebuilt package directly with `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.30.0' start --json`; no clone or install is required. Keep the documented version query intact because it prevents npm from reusing an older cached release. Install that same URL as a dependency only when the host imports package exports.
-   Before modifying the host, append `doctor --json` to that direct command, or run `npx t3-code-ultralight doctor --json` when the package is installed.
+2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.31.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--cwd` for a custom session and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
+   Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
 3. Resolve every failed doctor check or report its exact recommendation.
    Treat any CLI parse error as a failed setup step; do not retry by dropping an unrecognized security or lifecycle flag.
-   Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `start` will safely reuse a compatible one and returns only after readiness.
+   `setup` and `start` safely reuse a compatible bridge and return only after readiness. Use `npx t3-code-ultralight status --json` for a separate inspection.
    Require an exact allowed-origin match. Use `--reuse-origin-superset` only when the host explicitly intends to inherit every extra origin shown in the JSON receipt.
    If a verified bridge must be replaced for an upgrade or origin change, use `npx t3-code-ultralight stop --json`; never kill an unverified listener by port alone.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
@@ -39,7 +39,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package doctor first. Use the isolated chat embed unless the existing UI needs custom rendering.
+Run the package `setup --mode ... --json` command and follow its receipt. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 ```
 
@@ -49,7 +49,8 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - `doctor --json` reports `ok: true`.
 - The bridge reports ready.
 - Mistyped commands and options fail nonzero before starting or changing a process.
-- Re-running `start` reuses only an exact version/origin match or explains the conflict.
+- Re-running `setup` or `start` reuses only an exact version/origin match or explains the conflict.
+- Every URL in the live integration contract follows the bridge's actual port.
 - At least one local model is available.
 - A thread can be started or resumed.
 - Assistant deltas stream visibly.

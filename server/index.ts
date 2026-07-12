@@ -1,5 +1,5 @@
 import { createReadStream, existsSync } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import {
   DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT,
 } from "./attach.js";
 import { isAllowedOrigin, readAllowedOrigins } from "./origins.js";
+import { materializeRuntimeIntegrationContract } from "./integration-contract.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
@@ -46,7 +47,7 @@ const server = createServer(async (request, response) => {
     });
   }
   if (url.pathname === "/api/integration" || url.pathname === "/integration.json") {
-    return serveIntegrationContract(response);
+    return serveIntegrationContract(response, port);
   }
 
   const browserModule = browserModules[url.pathname as keyof typeof browserModules];
@@ -100,18 +101,22 @@ async function serveBrowserModule(filePath: string, origin: string | undefined, 
   createReadStream(filePath).pipe(response);
 }
 
-async function serveIntegrationContract(response: ServerResponse) {
+async function serveIntegrationContract(response: ServerResponse, port: number) {
   if (!(await isFile(integrationContract))) {
     response.writeHead(404, { "content-type": "application/json; charset=utf-8" }).end(JSON.stringify({ error: "Integration contract is not packaged" }));
     return;
   }
-  response.writeHead(200, {
-    "cache-control": "no-store",
-    "content-type": "application/json; charset=utf-8",
-    "referrer-policy": "no-referrer",
-    "x-content-type-options": "nosniff",
-  });
-  createReadStream(integrationContract).pipe(response);
+  try {
+    const packaged = JSON.parse(await readFile(integrationContract, "utf8"));
+    json(response, materializeRuntimeIntegrationContract(packaged, { port }));
+  } catch (cause) {
+    response.writeHead(500, {
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8",
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+    }).end(JSON.stringify({ error: cause instanceof Error ? cause.message : "Integration contract is invalid" }));
+  }
 }
 console.log(`Codex bridge listening at http://127.0.0.1:${port}`);
 if (allowedOrigins.length) console.log(`Additional browser origins: ${allowedOrigins.join(", ")}`);

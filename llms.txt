@@ -3,6 +3,7 @@
 Ultralight localhost bridge, headless client, and embeddable chat UI for a user's authenticated local Codex.
 
 - Machine-readable integration contract: ./integration.json
+- One-command verified recipe: run the release CLI with `setup --mode iframe|react|element|custom --json`
 - Agent implementation guide: ./docs/AGENT_INTEGRATION.md
 - Human quickstart and API overview: ./README.md
 - Detailed recipes and security model: ./docs/INTEGRATION.md

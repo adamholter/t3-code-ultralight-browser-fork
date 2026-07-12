@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const DEFAULT_PORT = 4174;
 const commandOptions = {
+  setup: { values: ["--port", "--allow-origin", "--mode", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
   start: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
   serve: { values: ["--port", "--allow-origin"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
   status: { values: ["--port"], repeatable: [], booleans: ["--json"] },
@@ -50,44 +51,42 @@ async function main() {
     return;
   }
 
+  if (command === "setup") {
+    const port = parsePort(valueAfter("--port"));
+    const mode = parseSetupMode(valueAfter("--mode"));
+    const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
+    const { runDoctor } = await import("../dist-lib/doctor.js");
+    const doctor = await runDoctor({
+      binary: valueAfter("--codex"),
+      cwd: valueAfter("--cwd"),
+    });
+    if (!doctor.ok) {
+      const report = { ok: false, mode, doctor, bridge: null, integration: null };
+      printSetupReport(report);
+      process.exitCode = 1;
+      return;
+    }
+
+    const contract = JSON.parse(await readFile(new URL("../integration.json", import.meta.url), "utf8"));
+    const { createIntegrationRecipe } = await import("../dist-lib/integration.js");
+    const integration = createIntegrationRecipe(contract, {
+      mode,
+      port,
+      cwd: valueAfter("--cwd"),
+    });
+    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset);
+    const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset);
+    printSetupReport({ ok: true, mode, doctor, bridge, integration });
+    return;
+  }
+
   if (command === "start") {
     const port = parsePort(valueAfter("--port"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
-    const existing = await readBridgeStatus(port);
-    if (existing) {
-      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset);
-      printStartReport(existing, port, true, null, allowedOrigins, reuseOriginSuperset);
-      return;
-    }
-
-    const logDirectory = mkdtempSync(join(tmpdir(), "t3-code-ultralight-"));
-    const logPath = join(logDirectory, `bridge-${port}.log`);
-    const log = openSync(logPath, "wx", 0o600);
-    let child;
-    try {
-      child = spawn(process.execPath, [
-        fileURLToPath(import.meta.url),
-        "serve",
-        "--port",
-        String(port),
-        ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
-        ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
-      ], {
-        detached: true,
-        env: process.env,
-        stdio: ["ignore", log, log],
-      });
-    } finally {
-      closeSync(log);
-    }
-    child.unref();
-    const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset);
-    if (!status) {
-      const detail = await readLogTail(logPath);
-      throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
-    }
-    printStartReport(status, port, status.pid !== child.pid, logPath, allowedOrigins, reuseOriginSuperset);
+    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset);
+    printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset);
     return;
   }
 
@@ -167,7 +166,7 @@ async function main() {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package doctor first, then use the background start command with JSON output. Use the isolated chat embed unless the existing UI needs custom rendering.
+Run the package setup command with --mode iframe, react, element, or custom and JSON output. Follow its verified integration receipt. Use iframe unless the existing UI needs custom rendering.
 Keep the bridge loopback-only. If a custom browser UI is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
@@ -182,6 +181,7 @@ function printHelp() {
 t3-code-ultralight
 
 Usage:
+  t3-code-ultralight setup [--mode iframe|react|element|custom] [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
   t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--json]
   t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset]
   t3-code-ultralight status [--port 4174] [--json]
@@ -191,6 +191,7 @@ Usage:
   t3-code-ultralight agent-prompt
 
 Commands:
+  setup         Verify Codex, start the bridge, and print a complete host recipe.
   start         Start in the background, wait for ready, or reuse a compatible bridge.
   serve         Run the loopback bridge in the foreground.
   status        Inspect a running standalone bridge without starting Codex.
@@ -255,6 +256,14 @@ function parsePort(value) {
     throw new Error(`Invalid --port ${JSON.stringify(value)}. Use an integer from 1 to 65535.`);
   }
   return port;
+}
+
+function parseSetupMode(value) {
+  const mode = value ?? "iframe";
+  if (!["iframe", "react", "element", "custom"].includes(mode)) {
+    throw new Error(`Invalid --mode ${JSON.stringify(mode)}. Use iframe, react, element, or custom.`);
+  }
+  return mode;
 }
 
 function normalizeOrigin(value) {
@@ -355,9 +364,52 @@ async function readLogTail(logPath) {
   }
 }
 
+async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset) {
+  const existing = await readBridgeStatus(port);
+  if (existing) {
+    assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset);
+    return { status: existing, reused: true, logPath: null };
+  }
+
+  const logDirectory = mkdtempSync(join(tmpdir(), "t3-code-ultralight-"));
+  const logPath = join(logDirectory, `bridge-${port}.log`);
+  const log = openSync(logPath, "wx", 0o600);
+  let child;
+  try {
+    child = spawn(process.execPath, [
+      fileURLToPath(import.meta.url),
+      "serve",
+      "--port",
+      String(port),
+      ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
+      ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
+    ], {
+      detached: true,
+      env: process.env,
+      stdio: ["ignore", log, log],
+    });
+  } finally {
+    closeSync(log);
+  }
+  child.unref();
+  const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset);
+  if (!status) {
+    const detail = await readLogTail(logPath);
+    throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
+  }
+  return { status, reused: status.pid !== child.pid, logPath: status.pid === child.pid ? logPath : null };
+}
+
 function printStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset) {
+  const report = createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset);
+  if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
+  else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
+  else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nLogs: ${logPath}`);
+}
+
+function createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset) {
   const extraAllowedOrigins = status.allowedOrigins.filter((origin) => !requestedOrigins.includes(origin));
-  const report = {
+  return {
     started: !reused,
     reused,
     running: true,
@@ -370,9 +422,26 @@ function printStartReport(status, port, reused, logPath, requestedOrigins, reuse
     originSupersetAccepted: reused && reuseOriginSuperset && extraAllowedOrigins.length > 0,
     logPath: reused ? null : logPath,
   };
-  if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
-  else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
-  else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nLogs: ${logPath}`);
+}
+
+function printSetupReport(report) {
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  if (!report.ok) {
+    console.log("Codex setup could not start the bridge.");
+    for (const [name, check] of Object.entries(report.doctor.checks)) {
+      console.log(`${check.ok ? "✓" : "✗"} ${name}: ${check.detail}`);
+    }
+    for (const recommendation of report.doctor.recommendations) console.log(`\n→ ${recommendation}`);
+    return;
+  }
+  console.log(`Codex is ready at ${report.bridge.url}.`);
+  console.log(`Integration mode: ${report.mode}`);
+  if (report.integration.installCommand) console.log(`\nInstall in the host:\n${report.integration.installCommand}`);
+  console.log(`\nAdd to the host:\n${report.integration.code}`);
+  console.log(`\nVerify:\n${report.integration.verify}`);
 }
 
 function unique(values) {

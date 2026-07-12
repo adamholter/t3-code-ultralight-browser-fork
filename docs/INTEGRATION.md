@@ -4,13 +4,23 @@ Choose the narrowest mode that fits the host product.
 
 ## Preflight
 
-Run this before integration work:
+For a new integration, prefer the combined setup receipt:
+
+```bash
+npx t3-code-ultralight setup --mode iframe --json
+```
+
+Choose `iframe`, `react`, `element`, or `custom`. The command runs the same read-only diagnostics below, starts or reuses only a version/origin-compatible background bridge, and returns a typed mode-specific recipe with install command, runtime URLs, copyable code, cleanup guidance, and verification endpoints. Pass `--cwd` for a custom session. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
+
+Run diagnostics separately when setup and host editing are intentionally split:
 
 ```bash
 npx t3-code-ultralight doctor
 ```
 
 For automation or agent parsing, use `doctor --json`. The command is read-only and does not create a thread.
+
+The packaged `integration.json` describes the default port. A running bridge's `/api/integration` and `/integration.json` responses are materialized for its actual port; use the live response when generating links for a nondefault bridge. Installer authors can import `createIntegrationRecipe()` and `materializeRuntimeIntegrationContract()` from `t3-code-ultralight-browser-fork/integration`.
 
 Use `t3-code-ultralight status --json` to inspect a standalone bridge without starting Codex. `serve` and `start` are idempotent only for an identical version and allowed-origin set, making repeated agent setup safe without silently inheriting broader access. A conflicting version, any missing or extra origin, invalid port, or unrelated listener fails with an actionable message. Use `t3-code-ultralight stop [--port PORT] [--json]` before an upgrade or origin change; it validates the service identity and reported PID, waits for shutdown, and is safe to repeat. Pass `--reuse-origin-superset` only when the invoking host intentionally accepts every additional origin already configured; the JSON receipt exposes the accepted extras.
 

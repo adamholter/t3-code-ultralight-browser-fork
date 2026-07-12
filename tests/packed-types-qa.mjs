@@ -1,9 +1,10 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const packagePath = resolve(process.argv[2] ?? "release/t3-code-ultralight-browser-fork-0.30.0.tgz");
+const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const packagePath = resolve(process.argv[2] ?? `release/t3-code-ultralight-browser-fork-${version}.tgz`);
 const fixture = await mkdtemp(resolve(tmpdir(), "t3-ultralight-types-"));
 
 try {
@@ -20,6 +21,7 @@ import {
   type CodexClientEventMap,
 } from "t3-code-ultralight-browser-fork/client";
 import { attachCodexSessionRequestHandlers } from "t3-code-ultralight-browser-fork/requests";
+import { createIntegrationRecipe } from "t3-code-ultralight-browser-fork/integration";
 
 const client = createCodexClient();
 const canvas = createCodexSession({ client, cwd: "/workspace" });
@@ -42,6 +44,15 @@ const turnStarted: CodexClientEventMap["turn/started"] = {
 };
 void turnStarted;
 
+declare const contract: Record<string, any>;
+const recipe = createIntegrationRecipe(contract, { mode: "custom", port: 4174, cwd: "/workspace" });
+const installCommand: string = recipe.installCommand;
+const clientModule: string = recipe.hostedModules.client;
+void [installCommand, clientModule];
+
+// @ts-expect-error Setup modes are intentionally finite and typo-safe.
+createIntegrationRecipe(contract, { mode: "canvas", port: 4174 });
+
 // @ts-expect-error Known events must not fall through to the untyped escape hatch.
 client.on("connection", (status: number) => void status);
 `);
@@ -62,7 +73,7 @@ client.on("connection", (status: number) => void status);
   const compile = spawnSync(compiler, ["--project", "tsconfig.json"], { cwd: fixture, encoding: "utf8" });
   if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout);
 
-  console.log(JSON.stringify({ packagePath, packageImport: true, knownEventsTyped: true, unknownEventsCompatible: true }, null, 2));
+  console.log(JSON.stringify({ packagePath, packageImport: true, knownEventsTyped: true, unknownEventsCompatible: true, integrationRecipesTyped: true }, null, 2));
 } finally {
   await rm(fixture, { recursive: true, force: true });
 }
