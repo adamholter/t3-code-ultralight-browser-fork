@@ -116,6 +116,8 @@ npx t3-code-ultralight start \
 
 Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
 
+The setup recipe repeats the effective policy under `originPolicy`: `loopbackAutomatic`, deduplicated `additionalAllowedOrigins`, and `nonLoopbackRequiresExactFlag`. This keeps extracted integration recipes self-contained. `npm run qa:origin` exercises the generated hosted recipe from a temporary HTTPS non-loopback hostname, verifies exact CORS and WebSocket acceptance, and confirms an unlisted sibling hostname is denied by both transports.
+
 Origin sets are compared exactly during normal process reuse. For example, running `start` without `--allow-origin` refuses to reuse a bridge that already allows `https://canvas.example.com`, even though the requested empty set is technically a subset. This prevents a new tool from unknowingly inheriting another tool's broader browser access.
 
 The isolated chat iframe connects from its own loopback origin, so its parent page does not normally need an entry. A headless client runs in the parent page and does.

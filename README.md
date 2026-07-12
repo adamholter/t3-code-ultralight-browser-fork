@@ -21,7 +21,7 @@ It uses the user's existing Codex login, configuration, models, skills, MCP tool
 An agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.33.0' setup --mode iframe --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.34.0' setup --mode iframe --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. Add `--cwd /absolute/project/path` for custom sessions and `--port` or `--allow-origin` when needed. The JSON receipt contains diagnostics, verified bridge state, runtime-correct URLs, copyable code, its language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
@@ -29,7 +29,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.33.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.34.0' setup --mode custom --delivery hosted --cwd /absolute/project/path --json
 ```
 
 ## One-command chat
@@ -37,7 +37,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.33.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.34.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat and reuses a bridge with the same version and exact origin set.
@@ -45,7 +45,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.33.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.34.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -98,6 +98,8 @@ npx t3-code-ultralight start --allow-origin https://canvas.example.com
 ```
 
 Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.
+
+Every setup recipe includes an `originPolicy` object. It records that loopback browser origins work automatically, lists the exact additional origins configured for this bridge, and names the required `--allow-origin <exact browser origin>` flag for any other host. The HTTPS non-loopback path is tested with real browser CORS and WebSocket Origin headers; an unlisted sibling is rejected on both transports.
 
 Reuse is fail-closed: a loopback-only invocation will not silently inherit extra origins from an existing bridge. If a host intentionally accepts an already-running origin superset, it must pass `--reuse-origin-superset`; JSON output then reports `originSupersetAccepted: true` and lists every extra origin.
 

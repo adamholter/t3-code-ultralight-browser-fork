@@ -7,6 +7,7 @@ export type IntegrationRecipeDelivery = "package" | "hosted";
 
 interface IntegrationRecipeOptionBase extends RuntimeIntegrationOptions {
   cwd?: string;
+  allowedOrigins?: readonly string[];
 }
 
 export type IntegrationRecipeOptions =
@@ -25,6 +26,11 @@ interface IntegrationRecipeBase {
   code: string;
   codeLanguage: "html" | "js" | "ts" | "tsx";
   csp: Record<string, string[]>;
+  originPolicy: {
+    loopbackAutomatic: true;
+    additionalAllowedOrigins: string[];
+    nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>";
+  };
 }
 
 export interface IframeIntegrationRecipe extends IntegrationRecipeBase {
@@ -131,7 +137,7 @@ export function createIntegrationRecipe(contract: Record<string, any>, options: 
 export function createIntegrationRecipe(contract: Record<string, any>, options: IntegrationRecipeOptions): IntegrationRecipe;
 export function createIntegrationRecipe(
   contract: Record<string, any>,
-  { mode, port, cwd, delivery: requestedDelivery }: IntegrationRecipeOptions,
+  { mode, port, cwd, delivery: requestedDelivery, allowedOrigins = [] }: IntegrationRecipeOptions,
 ): IntegrationRecipe {
   const runtime = materializeRuntimeIntegrationContract(contract, { port });
   const bridgeUrl = runtime.bridge.httpUrl as string;
@@ -145,6 +151,11 @@ export function createIntegrationRecipe(
     statusUrl: `${bridgeUrl}${runtime.bridge.statusPath}`,
     integrationUrl: `${bridgeUrl}${runtime.bridge.integrationPath}`,
     verify: "Send one real turn through the final user-facing UI and confirm streamed output plus stop behavior.",
+    originPolicy: {
+      loopbackAutomatic: true as const,
+      additionalAllowedOrigins: [...new Set(allowedOrigins)],
+      nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>" as const,
+    },
   };
 
   if (mode === "iframe") {

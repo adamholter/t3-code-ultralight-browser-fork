@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.34.0
+
+- Add an executable HTTPS non-loopback browser-origin harness for the zero-install hosted recipe.
+- Verify an exact configured origin receives matching CORS headers, opens the browser WebSocket, streams a real Codex turn, and disposes cleanly.
+- Verify an unlisted sibling origin is rejected independently by both hosted-module HTTP routing and the WebSocket upgrade.
+- Exercise the secure-page-to-loopback HTTP and `ws://127.0.0.1` boundary under a restrictive generated CSP with no console or page errors.
+- Include a typed `originPolicy` in every integration recipe with automatic loopback behavior, deduplicated additional origins, and the exact non-loopback setup flag.
+- Pass setup's normalized allowlist into the generated recipe so the integration object is self-contained instead of relying on a sibling bridge receipt.
+- Add `npm run qa:origin` and contributor guidance for repeating the live security boundary test.
+
 ## 0.33.0
 
 - Make a real fresh-packed-consumer test a required part of `npm run check` and GitHub CI.

@@ -67,6 +67,18 @@ describe("live integration contract", () => {
     expect(hostedCustom.code).toContain('from "http://127.0.0.1:49123/codex-requests.js"');
     expect(hostedCustom.csp).toEqual({ "script-src": ["http://127.0.0.1:49123"], "connect-src": ["ws://127.0.0.1:49123"] });
 
+    const external = createIntegrationRecipe(integration, {
+      mode: "custom",
+      delivery: "hosted",
+      port: 49123,
+      allowedOrigins: ["https://canvas.example.com", "https://canvas.example.com"],
+    });
+    expect(external.originPolicy).toEqual({
+      loopbackAutomatic: true,
+      additionalAllowedOrigins: ["https://canvas.example.com"],
+      nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
+    });
+
     expect(() => {
       // @ts-expect-error React intentionally rejects hosted delivery at compile time and runtime.
       return createIntegrationRecipe(integration, { mode: "react", delivery: "hosted", port: 4174 });

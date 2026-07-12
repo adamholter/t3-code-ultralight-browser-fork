@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -97,6 +97,7 @@
     "check": "npm run test && npm run check:packed && npm run check:artifact",
     "check:artifact": "node scripts/check-artifact.mjs",
     "check:packed": "npm run build && node scripts/check-packed-consumer.mjs",
+    "qa:origin": "node tests/external-origin-qa.mjs",
     "package:release": "node scripts/package-release.mjs",
     "prepare": "npm run build"
   },

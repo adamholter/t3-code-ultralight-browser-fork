@@ -5,7 +5,7 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.33.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, `--cwd` for a custom session, and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
+2. Prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.34.0' setup --mode MODE --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, starts or reuses a compatible bridge, and returns the exact install command, runtime URLs, code, cleanup rule, and verification endpoints; no clone or build is required. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, `--cwd` for a custom session, and the same `--port`, `--allow-origin`, or `--reuse-origin-superset` options used by `start`.
    Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
    For `delivery: "hosted"`, do not install or copy generated modules. Use the receipt's HTTP imports, apply its `csp` sources when the host has a CSP, and serve the host from an origin allowed by the bridge.
 3. Resolve every failed doctor check or report its exact recommendation.
@@ -62,6 +62,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Custom sessions retain their thread, scope streamed events, and interrupt Codex when stopped.
 - No secret is present in browser storage or bundles.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.
+- A generated hosted recipe streams from an allowed HTTPS non-loopback origin while an unlisted sibling fails both module and WebSocket access.
 - Mobile or constrained-container layout does not overflow.
 - Embedded hosts receive ready and turn lifecycle events only from the expected iframe origin.
 - Malformed, oversized, over-concurrent, unowned, and duplicate-response transport paths fail closed.

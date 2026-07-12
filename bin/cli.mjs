@@ -76,6 +76,7 @@ async function main() {
       delivery,
       port,
       cwd: valueAfter("--cwd"),
+      allowedOrigins,
     });
     const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset);
     const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset);
