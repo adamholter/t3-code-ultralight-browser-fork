@@ -56,5 +56,13 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     cleanStop: true,
   }, null, 2));
 } finally {
-  await rm(fixture, { recursive: true, force: true });
+  // Windows may briefly retain the batch shim or script handle after cmd.exe
+  // and its child have exited. fs.rm's bounded retry is specifically designed
+  // for transient EBUSY/EPERM directory cleanup on that platform.
+  await rm(fixture, {
+    recursive: true,
+    force: true,
+    maxRetries: process.platform === "win32" ? 20 : 0,
+    retryDelay: 50,
+  });
 }
