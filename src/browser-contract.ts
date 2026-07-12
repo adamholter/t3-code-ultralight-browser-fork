@@ -1,4 +1,4 @@
-export const CODEX_BROWSER_PROTOCOL = { major: 1, minor: 0 } as const;
+export const CODEX_BROWSER_PROTOCOL = { major: 1, minor: 1 } as const;
 
 export const CODEX_BROWSER_CAPABILITIES = [
   "rpc",
@@ -6,6 +6,7 @@ export const CODEX_BROWSER_CAPABILITIES = [
   "requestOwnership",
   "threadIsolation",
   "transportLimits",
+  "hostedModules",
 ] as const;
 
 export type CodexBrowserCapability = (typeof CODEX_BROWSER_CAPABILITIES)[number];

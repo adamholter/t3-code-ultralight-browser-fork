@@ -4,14 +4,15 @@ import { buildApprovalResponse, buildMcpElicitationAction, buildMcpElicitationRe
 import type { PendingServerRequest } from "../types";
 
 interface PendingRequestPanelProps {
+  autoFocus?: boolean;
   request: PendingServerRequest;
   onRespond: (result: unknown) => void;
   onReject: (message?: string) => void;
 }
 
-export function PendingRequestPanel({ request, onRespond, onReject }: PendingRequestPanelProps) {
+export function PendingRequestPanel({ request, onRespond, onReject, autoFocus }: PendingRequestPanelProps) {
   const questions = getUserInputQuestions(request);
-  if (questions) return <UserInputPanel questions={questions} onRespond={onRespond} />;
+  if (questions) return <UserInputPanel questions={questions} onRespond={onRespond} autoFocus={autoFocus} />;
   const permissions = getPermissionRequest(request);
   if (permissions) return <PermissionPanel request={permissions} onRespond={onRespond} onReject={onReject} />;
   const elicitation = getMcpElicitationRequest(request);
@@ -109,7 +110,7 @@ function PermissionPanel({ request, onRespond, onReject }: { request: Permission
   );
 }
 
-function UserInputPanel({ questions, onRespond }: { questions: NonNullable<ReturnType<typeof getUserInputQuestions>>; onRespond: (result: unknown) => void }) {
+function UserInputPanel({ questions, onRespond, autoFocus }: { questions: NonNullable<ReturnType<typeof getUserInputQuestions>>; onRespond: (result: unknown) => void; autoFocus?: boolean }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [other, setOther] = useState<Record<string, boolean>>({});
   const complete = questions.every((question) => (answers[question.id] ?? "").length > 0);
@@ -151,7 +152,7 @@ function UserInputPanel({ questions, onRespond }: { questions: NonNullable<Retur
                 <label className="request-text">
                   <span>{hasOptions ? "Other answer" : "Your answer"}</span>
                   <input
-                    autoFocus={questions.length === 1}
+                    autoFocus={autoFocus && questions.length === 1}
                     type={question.isSecret ? "password" : "text"}
                     value={answers[question.id] ?? ""}
                     onChange={(event) => choose(question.id, event.target.value, Boolean(other[question.id]))}

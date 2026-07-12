@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.0
+
+- Serve self-contained `/codex-chat.js` and `/codex-client.js` modules from the standalone bridge.
+- Let plain HTML embed the complete chat or headless client without a bundler, copied files, or package imports.
+- Apply the WebSocket exact-origin policy to hosted modules with origin-scoped CORS.
+- Add no-store, nosniff, and explicit cross-origin resource policy headers.
+- Advertise hosted modules through protocol `1.1`, the `hostedModules` capability, and standalone status.
+- Disable autofocus only inside embeds to avoid blocked cross-origin focus attempts and console errors.
+- Add strict-CSP, desktop/mobile, lifecycle, headless, CORS-header, overflow, and denied-origin Chromium verification.
+- Add an artifact gate that keeps both hosted modules self-contained.
+
 ## 0.17.0
 
 - Add a `1.0` browser protocol hello before the existing bridge status envelope.

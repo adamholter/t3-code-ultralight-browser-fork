@@ -10,12 +10,17 @@ import {
   DEFAULT_MAX_PAYLOAD_BYTES,
   DEFAULT_MAX_PENDING_REQUESTS_PER_CLIENT,
 } from "./attach.js";
-import { readAllowedOrigins } from "./origins.js";
+import { isAllowedOrigin, readAllowedOrigins } from "./origins.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
+const libraryDist = resolve(root, "dist-lib");
+const browserModules = {
+  "/codex-chat.js": resolve(libraryDist, "element-auto.js"),
+  "/codex-client.js": resolve(libraryDist, "client.js"),
+} as const;
 let bridgeReady = false;
 const allowedOrigins = readAllowedOrigins(process.env.CODEX_ALLOWED_ORIGINS);
 
@@ -31,6 +36,7 @@ const server = createServer(async (request, response) => {
       websocketPath: "/ws",
       protocol: CODEX_BROWSER_PROTOCOL,
       capabilities: CODEX_BROWSER_CAPABILITIES,
+      browserModules: Object.keys(browserModules),
       allowedOrigins,
       transport: {
         maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
@@ -38,6 +44,9 @@ const server = createServer(async (request, response) => {
       },
     });
   }
+
+  const browserModule = browserModules[url.pathname as keyof typeof browserModules];
+  if (browserModule) return serveBrowserModule(browserModule, request.headers.origin, response);
 
   if (process.env.NODE_ENV === "production" && existsSync(dist)) {
     return serveStatic(url.pathname, response);
@@ -59,6 +68,32 @@ try {
   await controller.stop().catch(() => undefined);
   await closeServer();
   throw error;
+}
+
+async function serveBrowserModule(filePath: string, origin: string | undefined, response: ServerResponse) {
+  if (!isAllowedOrigin(origin, allowedOrigins)) {
+    response.writeHead(403, {
+      "content-type": "text/plain; charset=utf-8",
+      "x-content-type-options": "nosniff",
+    }).end("Browser origin is not allowed");
+    return;
+  }
+  if (!(await isFile(filePath))) {
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" }).end("Browser module is not built");
+    return;
+  }
+  const headers: Record<string, string> = {
+    "cache-control": "no-store",
+    "content-type": "text/javascript; charset=utf-8",
+    "cross-origin-resource-policy": "cross-origin",
+    "x-content-type-options": "nosniff",
+  };
+  if (origin) {
+    headers["access-control-allow-origin"] = origin;
+    headers.vary = "Origin";
+  }
+  response.writeHead(200, headers);
+  createReadStream(filePath).pipe(response);
 }
 console.log(`Codex bridge listening at http://127.0.0.1:${port}`);
 if (allowedOrigins.length) console.log(`Additional browser origins: ${allowedOrigins.join(", ")}`);

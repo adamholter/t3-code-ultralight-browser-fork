@@ -8,6 +8,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Run `npx t3-code-ultralight status --json` before starting a second standalone bridge; `serve` will safely reuse an identical one.
 4. Use the Web Component for a normal non-React chat panel and the React wrapper in React hosts.
    Wire the host's loading, connection, and busy states to the provided embed lifecycle events instead of probing iframe DOM.
+   For plain HTML without a bundler, load `/codex-chat.js` directly from the running bridge; do not copy generated files into the host.
 5. Use `createCodexSession()` for a normal canvas, voice, game, spatial, or bespoke interface; use the lower-level client only when the host manages threads or shares a socket.
 6. Attach the bridge to the host's existing Node HTTP server when practical; otherwise run the included localhost service.
 7. Keep the bridge bound to loopback.
@@ -51,3 +52,4 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Malformed, oversized, over-concurrent, unowned, and duplicate-response transport paths fail closed.
 - A passive second browser cannot observe another browser's thread-scoped notifications.
 - The negotiated browser protocol major is compatible and required capabilities are advertised before RPCs begin.
+- Plain HTML integrations load the hosted module directly and pass exact-origin CORS without copying build artifacts.

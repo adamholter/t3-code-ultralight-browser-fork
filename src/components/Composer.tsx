@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import type { CodexModel } from "../types";
 
 interface ComposerProps {
+  autoFocus?: boolean;
   value: string;
   running: boolean;
   disabled: boolean;
@@ -32,7 +33,7 @@ export function Composer(props: ComposerProps) {
       <div className="composer">
         <textarea
           ref={textarea}
-          autoFocus
+          autoFocus={props.autoFocus}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
           onKeyDown={(event) => {

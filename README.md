@@ -42,6 +42,15 @@ The full chat runs at `http://127.0.0.1:4174`. The isolated embed is:
 ></iframe>
 ```
 
+Plain HTML needs no bundler or package import. The running bridge serves a stable, self-registering Web Component module:
+
+```html
+<script type="module" src="http://127.0.0.1:4174/codex-chat.js"></script>
+<codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
+```
+
+For a no-bundler canvas, voice, or other custom UI, import the standalone client directly from `http://127.0.0.1:4174/codex-client.js`. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. Both module routes use that same origin policy and expose no credentials.
+
 Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
 
 ```bash
@@ -50,7 +59,7 @@ npx t3-code-ultralight serve --allow-origin https://canvas.example.com
 
 Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.
 
-Any framework with an ESM bundler can use the Web Component:
+Projects with an ESM bundler can instead use the package export:
 
 ```ts
 import "t3-code-ultralight-browser-fork/element/auto";
@@ -164,6 +173,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Versioned browser handshake with early protocol and required-capability validation
 - Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration
+- No-bundler chat and headless-client modules served directly by the local bridge
 - Origin-verified embed lifecycle events for host coordination without response-data leakage
 - Exported request parsers and response builders for fully custom interfaces
 - Exported negotiated bridge version, capabilities, and active transport limits

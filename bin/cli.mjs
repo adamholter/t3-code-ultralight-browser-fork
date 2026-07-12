@@ -41,12 +41,13 @@ async function main() {
     const status = await readBridgeStatus(port);
     const report = status
       ? { running: true, url: bridgeUrl(port), ...status }
-      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], protocol: null, capabilities: [] };
+      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], protocol: null, capabilities: [], browserModules: [] };
     if (process.argv.includes("--json")) {
       console.log(JSON.stringify(report, null, 2));
     } else if (status) {
       console.log(`Codex bridge v${status.version} is ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
       if (status.protocol) console.log(`Browser protocol: ${status.protocol.major}.${status.protocol.minor}`);
+      if (status.browserModules.length) console.log(`Hosted browser modules: ${status.browserModules.join(", ")}`);
       console.log(`Allowed browser origins: ${status.allowedOrigins.length ? status.allowedOrigins.join(", ") : "loopback only"}`);
     } else {
       console.log(`No Codex bridge is running at ${bridgeUrl(port)}.`);
@@ -165,6 +166,9 @@ async function readBridgeStatus(port) {
         : null,
       capabilities: Array.isArray(value.capabilities) && value.capabilities.every((entry) => typeof entry === "string")
         ? value.capabilities
+        : [],
+      browserModules: Array.isArray(value.browserModules) && value.browserModules.every((entry) => typeof entry === "string")
+        ? value.browserModules
         : [],
     };
   } catch {

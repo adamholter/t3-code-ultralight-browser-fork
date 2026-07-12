@@ -30,9 +30,9 @@ describe("browser bridge hello", () => {
       maxPendingRequestsPerClient: 8,
     });
     expect(parseCodexBridgeHello(hello)).toEqual({
-      protocol: { major: 1, minor: 0 },
+      protocol: { major: 1, minor: 1 },
       bridgeVersion: "1.2.3",
-      capabilities: ["rpc", "serverRequests", "requestOwnership", "threadIsolation", "transportLimits"],
+      capabilities: ["rpc", "serverRequests", "requestOwnership", "threadIsolation", "transportLimits", "hostedModules"],
       limits: { maxPayloadBytes: 4096, maxPendingRequestsPerClient: 8 },
       legacy: false,
     });

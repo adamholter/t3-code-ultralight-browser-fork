@@ -18,6 +18,17 @@ Use `t3-code-ultralight status --json` to inspect a standalone bridge without st
 
 Use this for Vue, Svelte, Angular, Lit, Astro, vanilla TypeScript, or any host that supports custom elements:
 
+Without a bundler, load the self-registering module directly from the running bridge:
+
+```html
+<script type="module" src="http://127.0.0.1:4174/codex-chat.js"></script>
+<codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
+```
+
+The endpoint is a self-contained ES module with `no-store`, `nosniff`, explicit cross-origin resource policy, and origin-scoped CORS headers. A strict CSP can allow it with `script-src http://127.0.0.1:4174` and the iframe with `frame-src http://127.0.0.1:4174`; no inline JavaScript is required.
+
+With an ESM bundler, use the package export:
+
 ```ts
 import "t3-code-ultralight-browser-fork/element/auto";
 ```
@@ -98,6 +109,14 @@ The isolated chat iframe connects from its own loopback origin, so its parent pa
 ## Mode 2: headless client
 
 Use this for canvas, voice, spatial, game, terminal, or product-specific interfaces.
+
+No-bundler hosts can import the same self-contained API from the running bridge:
+
+```ts
+import { createCodexSession } from "http://127.0.0.1:4174/codex-client.js";
+```
+
+The module endpoint follows the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
 
 ```ts
 import { createCodexSession } from "t3-code-ultralight-browser-fork/client";

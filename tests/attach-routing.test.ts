@@ -36,7 +36,7 @@ describe("attachCodexBridge routing", () => {
     const otherHello = nextMessage(other, (message) => message.type === "hello");
     await Promise.all([opened(owner), opened(other)]);
     await expect(ownerHello).resolves.toMatchObject({
-      protocol: { major: 1, minor: 0 },
+      protocol: { major: 1, minor: 1 },
       capabilities: expect.arrayContaining(["rpc", "requestOwnership", "threadIsolation"]),
     });
     await expect(otherHello).resolves.toMatchObject({ type: "hello" });
