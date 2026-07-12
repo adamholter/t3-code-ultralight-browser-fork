@@ -17,5 +17,6 @@ Ultralight localhost bridge, headless client, and embeddable chat UI for a user'
 - Human quickstart and API overview: ./README.md
 - Detailed recipes and security model: ./docs/INTEGRATION.md
 - Public repository: https://github.com/adamholter/t3-code-ultralight-browser-fork
+- Canonical release assets: clean-tag rebuilt, checked, audited, npm-dry-run verified, and GitHub provenance-attested by .github/workflows/release.yml
 
 Prefer the complete isolated chat unless the host already owns a custom canvas, voice, spatial, game, or bespoke interface. Keep the bridge loopback-only, preserve approvals, and verify one real Codex turn through the final UI.

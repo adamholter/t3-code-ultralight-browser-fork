@@ -38,6 +38,27 @@ describe("package version", () => {
     });
     expect(packageJson.files).toEqual(expect.arrayContaining(["integration.json", "llms.txt"]));
     expect(packageJson.exports).toHaveProperty("./integration");
+    expect(integration.release.verification).toMatchObject({
+      workflow: ".github/workflows/release.yml",
+      cleanCheckout: true,
+      standardChecks: true,
+      productionAudit: true,
+      npmPublishDryRun: true,
+      githubProvenanceAttestation: true,
+      verifiedAssetReplacement: true,
+    });
+    expect(integration.security.attestedReleaseArtifacts).toBe(true);
+  });
+
+  it("keeps public registry metadata and release automation fail-closed", () => {
+    expect(packageJson.publishConfig).toEqual({ access: "public", provenance: true });
+    const workflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+    expect(workflow).toContain("types: [published]");
+    expect(workflow).toContain("npm run check");
+    expect(workflow).toContain("npm publish \"$PWD/release/$tarball\" --dry-run --json");
+    expect(workflow).toContain("actions/attest-build-provenance@v4.1.1");
+    expect(workflow).toContain("gh release upload \"$RELEASE_TAG\" release/*.tgz --clobber");
+    expect(workflow).toContain("if: ${{ env.NODE_AUTH_TOKEN != '' }}");
   });
 
   it("keeps React optional for headless installs while declaring the wrapper peer", () => {

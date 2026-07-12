@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46.0
+
+- Add a published-release GitHub Actions workflow that reconstructs distribution archives from the exact tag instead of trusting one developer machine.
+- Require the release tag to match `package.json`, then rerun standard tests, packed-consumer checks, artifact checks, and the production dependency audit.
+- Validate the exact versioned archive with `npm publish --dry-run --json`, including package identity, version, minimum file surface, and an empty bundled-dependency list.
+- Create GitHub build-provenance attestations for both archives and replace the release assets with the clean-run outputs.
+- Make optional npm publication idempotent and conditional on a repository `NPM_TOKEN`, while retaining GitHub archives as the canonical no-account integration path.
+- Add public npm access and provenance metadata without advertising an unavailable registry package.
+- Publish release-verification guarantees through `integration.json`, `llms.txt`, and the agent, integration, and contributor guides.
+
 ## 0.45.0
 
 - Mark the published React entry with `"use client"` so server-first frameworks recognize its hook-using implementation as a client boundary.

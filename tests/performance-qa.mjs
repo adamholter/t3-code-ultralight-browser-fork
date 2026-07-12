@@ -72,6 +72,7 @@ try {
       pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,
       deterministicAutoPortSelection: integrationContract.security?.deterministicAutoPortSelection === true,
       automaticPort: integrationContract.bridge?.automaticPort,
+      releaseVerification: integrationContract.release?.verification,
       reactCompatibility: integrationContract.modes?.completeChat?.reactCompatibility,
       webComponentCompatibility: integrationContract.modes?.completeChat?.webComponentCompatibility,
       attachedServerCompatibility: integrationContract.modes?.attachedServer,
@@ -102,6 +103,13 @@ try {
     || result.integrationContract.automaticPort?.compatibleBridgeReuse !== true
     || result.integrationContract.automaticPort?.incompatibleListenerPreserved !== true
     || result.integrationContract.automaticPort?.receiptReturnsResolvedPort !== true
+    || result.integrationContract.releaseVerification?.workflow !== ".github/workflows/release.yml"
+    || result.integrationContract.releaseVerification?.cleanCheckout !== true
+    || result.integrationContract.releaseVerification?.standardChecks !== true
+    || result.integrationContract.releaseVerification?.productionAudit !== true
+    || result.integrationContract.releaseVerification?.npmPublishDryRun !== true
+    || result.integrationContract.releaseVerification?.githubProvenanceAttestation !== true
+    || result.integrationContract.releaseVerification?.verifiedAssetReplacement !== true
     || result.integrationContract.reactCompatibility?.peerRange !== "^18.0.0 || ^19.0.0"
     || result.integrationContract.reactCompatibility?.browserVerified?.join(",") !== "18.3.1,19.2.0"
     || result.integrationContract.reactCompatibility?.strictModeVerified !== true
