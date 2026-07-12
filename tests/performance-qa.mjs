@@ -70,6 +70,7 @@ try {
       workspacePortable: integrationContract.runtime?.workspace?.default === "bridge"
         && integrationContract.runtime?.workspace?.pathDisclosed === false,
       pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,
+      reactCompatibility: integrationContract.modes?.completeChat?.reactCompatibility,
     },
     httpSurface,
     consoleErrors,
@@ -89,6 +90,13 @@ try {
     || !result.integrationContract.runtimeAware
     || !result.integrationContract.workspacePortable
     || !result.integrationContract.pathFreeSetupRecipes
+    || result.integrationContract.reactCompatibility?.peerRange !== "^18.0.0 || ^19.0.0"
+    || result.integrationContract.reactCompatibility?.browserVerified?.join(",") !== "18.3.1,19.2.0"
+    || result.integrationContract.reactCompatibility?.strictModeVerified !== true
+    || result.integrationContract.reactCompatibility?.ssrVerified !== true
+    || result.integrationContract.reactCompatibility?.hydrationVerified !== true
+    || result.integrationContract.reactCompatibility?.controllerRefVerified !== true
+    || result.integrationContract.reactCompatibility?.remountVerified !== true
     || Object.entries(httpSurface).some(([key, value]) => key !== "staleAssetStatus" && value !== true)
     || httpSurface.staleAssetStatus !== 404
     || consoleErrors.length

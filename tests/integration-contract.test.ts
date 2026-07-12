@@ -23,6 +23,15 @@ describe("live integration contract", () => {
       iframeUrl: "http://127.0.0.1:49123/?embed=1",
       webComponentModule: "http://127.0.0.1:49123/codex-chat.js",
       controllerModule: "http://127.0.0.1:49123/codex-embed.js",
+      reactCompatibility: {
+        peerRange: "^18.0.0 || ^19.0.0",
+        browserVerified: ["18.3.1", "19.2.0"],
+        strictModeVerified: true,
+        ssrVerified: true,
+        hydrationVerified: true,
+        controllerRefVerified: true,
+        remountVerified: true,
+      },
     });
     expect(runtime.modes.customUi).toMatchObject({
       browserModule: "http://127.0.0.1:49123/codex-client.js",

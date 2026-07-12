@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.40.0
+
+- Install the exact packed package into clean React 18.3.1 and React 19.2.0 Vite hosts instead of relying on type checks or source imports.
+- Render the published `CodexChatEmbed` through `react-dom/server` and hydrate that markup in Chromium for both React generations without mismatch warnings or duplicate frames.
+- Exercise React Strict Mode, ready/connection/turn callbacks, `controllerRef.sendPrompt()`, `newThread()`, `stop()`, and unmount/remount cleanup against real local Codex turns.
+- Capture and inspect streamed desktop/mobile host output for both React generations while asserting that neither the host nor embedded frame overflows.
+- Add a machine-readable React compatibility snapshot to `integration.json` and include the packed framework matrix in one-command live QA.
+- Clean every Codex thread created by the framework matrix and keep browser consoles and page errors empty.
+
 ## 0.39.0
 
 - Keep the resolved project directory in the trusted CLI bridge receipt while removing it from every setup-generated browser snippet.

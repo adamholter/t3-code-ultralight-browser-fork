@@ -10,6 +10,7 @@ const receipt = JSON.parse(started.stdout);
 const suites = [
   ["standalone performance", [resolve(root, "tests/performance-qa.mjs")]],
   ["zero-install modules", [resolve(root, "tests/no-bundler-qa.mjs")]],
+  ["packed React 18 and 19 hosts", [resolve(root, "tests/react-host-qa.mjs")]],
   ["complete browser story", [resolve(root, "tests/qa.mjs")]],
   ["external HTTPS origin", [resolve(root, "tests/external-origin-qa.mjs")]],
   ["trusted file origin", [resolve(root, "tests/file-origin-qa.mjs")]],
