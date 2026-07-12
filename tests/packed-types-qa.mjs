@@ -3,12 +3,23 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const { version } = packageJson;
 const packagePath = resolve(process.argv[2] ?? `release/t3-code-ultralight-browser-fork-${version}.tgz`);
 const fixture = await mkdtemp(resolve(tmpdir(), "t3-ultralight-types-"));
+const expectedExports = [".", "./client", "./react", "./element", "./element/auto", "./embed-events", "./server", "./doctor", "./integration", "./requests", "./types"];
 
 try {
-  const install = spawnSync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", packagePath], {
+  if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(expectedExports)) {
+    throw new Error(`Update packed export coverage for: ${Object.keys(packageJson.exports).join(", ")}`);
+  }
+  const install = spawnSync("npm", [
+    "install",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    packagePath,
+  ], {
     cwd: fixture,
     encoding: "utf8",
   });
@@ -81,7 +92,75 @@ client.on("connection", (status: number) => void status);
   const compile = spawnSync(compiler, ["--project", "tsconfig.json"], { cwd: fixture, encoding: "utf8" });
   if (compile.status !== 0) throw new Error(compile.stderr || compile.stdout);
 
-  console.log(JSON.stringify({ packagePath, packageImport: true, knownEventsTyped: true, unknownEventsCompatible: true, integrationRecipesTyped: true }, null, 2));
+  await writeFile(resolve(fixture, "runtime.mjs"), `
+const allExports = ${JSON.stringify(expectedExports)};
+const expected = process.env.INCLUDE_REACT === "1"
+  ? allExports
+  : allExports.filter((subpath) => subpath !== "./react");
+const modules = new Map();
+for (const subpath of expected) {
+  const specifier = subpath === "."
+    ? "t3-code-ultralight-browser-fork"
+    : "t3-code-ultralight-browser-fork" + subpath.slice(1);
+  modules.set(subpath, await import(specifier));
+}
+const required = {
+  ".": "createCodexSession",
+  "./client": "createCodexClient",
+  "./react": "CodexChatEmbed",
+  "./element": "defineCodexChatElement",
+  "./element/auto": "defineCodexChatElement",
+  "./embed-events": "subscribeCodexEmbedEvents",
+  "./server": "attachCodexBridge",
+  "./doctor": "runDoctor",
+  "./integration": "createIntegrationRecipe",
+  "./requests": "attachCodexRequestHandlers",
+};
+for (const [subpath, symbol] of Object.entries(required)) {
+  if (!expected.includes(subpath)) continue;
+  if (typeof modules.get(subpath)?.[symbol] !== "function") {
+    throw new Error(\`Missing runtime export \${subpath}:\${symbol}\`);
+  }
+}
+console.log(JSON.stringify({ runtimeExports: expected, ssrSafeElementAuto: true }));
+`);
+  const headlessRuntime = spawnSync(process.execPath, ["runtime.mjs"], { cwd: fixture, encoding: "utf8" });
+  if (headlessRuntime.status !== 0) throw new Error(headlessRuntime.stderr || headlessRuntime.stdout);
+
+  const installReact = spawnSync("npm", [
+    "install",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    resolve("node_modules/react"),
+  ], { cwd: fixture, encoding: "utf8" });
+  if (installReact.status !== 0) throw new Error(installReact.stderr || installReact.stdout);
+  const reactRuntime = spawnSync(process.execPath, ["runtime.mjs"], {
+    cwd: fixture,
+    encoding: "utf8",
+    env: { ...process.env, INCLUDE_REACT: "1" },
+  });
+  if (reactRuntime.status !== 0) throw new Error(reactRuntime.stderr || reactRuntime.stdout);
+
+  const cli = resolve(fixture, "node_modules/.bin/t3-code-ultralight");
+  const help = spawnSync(cli, ["--help"], { cwd: fixture, encoding: "utf8" });
+  if (help.status !== 0 || !help.stdout.includes("setup")) throw new Error(help.stderr || help.stdout || "Packed CLI help failed");
+  const integration = spawnSync(cli, ["integration"], { cwd: fixture, encoding: "utf8" });
+  if (integration.status !== 0 || JSON.parse(integration.stdout).version !== version) {
+    throw new Error(integration.stderr || integration.stdout || "Packed CLI integration contract failed");
+  }
+
+  console.log(JSON.stringify({
+    packagePath,
+    packageImport: true,
+    knownEventsTyped: true,
+    unknownEventsCompatible: true,
+    integrationRecipesTyped: true,
+    runtimeExports: expectedExports,
+    headlessWithoutReact: true,
+    optionalReactPeer: true,
+    cliEntrypoint: true,
+  }, null, 2));
 } finally {
   await rm(fixture, { recursive: true, force: true });
 }

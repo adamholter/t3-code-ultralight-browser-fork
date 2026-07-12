@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.33.0
+
+- Make a real fresh-packed-consumer test a required part of `npm run check` and GitHub CI.
+- Build the current source before packing so standalone `check:packed` cannot validate stale distribution files.
+- Install the tarball into an isolated temporary project and compile its public TypeScript API with strict NodeNext resolution and dependency checking.
+- Import every declared package export at runtime and fail when the export map grows without matching consumer coverage.
+- Prove headless, server, Web Component, request, doctor, and integration exports load with React absent, then separately verify the optional React peer path.
+- Exercise the installed CLI help and packaged integration contract instead of trusting source entrypoints or `npm pack --dry-run`.
+- Clean every temporary tarball and consumer installation after the gate.
+
 ## 0.32.0
 
 - Add `--delivery package|hosted` to setup recipes for Web Component and custom canvas, voice, or bespoke interfaces.

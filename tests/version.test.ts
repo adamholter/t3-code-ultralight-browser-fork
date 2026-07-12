@@ -33,4 +33,10 @@ describe("package version", () => {
     expect(packageJson.peerDependencies).toMatchObject({ react: "^18.0.0 || ^19.0.0" });
     expect(packageJson.peerDependenciesMeta).toMatchObject({ react: { optional: true } });
   });
+
+  it("gates standard checks on a fresh packed consumer", () => {
+    expect(packageJson.scripts.check).toContain("check:packed");
+    expect(packageJson.scripts["check:packed"]).toContain("npm run build");
+    expect(packageJson.scripts["check:packed"]).toContain("check-packed-consumer.mjs");
+  });
 });
