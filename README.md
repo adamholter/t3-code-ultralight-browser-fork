@@ -139,6 +139,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Approval and stop controls
 - Interactive Codex questions with options, free text, secret inputs, and multi-question forms
 - Structured permission review with exact capability details, turn/session scope, and strict command review
+- MCP elicitation forms for text, numbers, booleans, selects, multi-selects, and safe authorization URLs
 - Model, reasoning effort, and working-directory selection
 - Markdown, code copy, desktop/mobile layouts, and themes
 - Automatic local bridge restart and browser reconnect

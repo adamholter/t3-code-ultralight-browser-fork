@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0
+
+- Render MCP `form` and `openai/form` primitive object schemas in the complete chat.
+- Support text formats, number/integer constraints, booleans, single-selects, and multi-selects.
+- Apply defaults and required/min/max constraints before enabling submission.
+- Render MCP URL elicitations as explicit credential-free HTTP(S) authorization flows.
+- Return typed MCP content with schema-correct accept, decline, and cancel responses.
+- Export framework-neutral elicitation parsers, defaults, validation, and response builders.
+- Fail closed on nested, unknown, unsafe, or contradictory schema shapes.
+- Add parser, static-render, desktop, and mobile Chromium form/URL verification.
+
 ## 0.11.0
 
 - Render structured network and filesystem permission requests in the complete chat.

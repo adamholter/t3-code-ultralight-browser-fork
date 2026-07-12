@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApprovalResponse, buildCurrentTimeResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions } from "../src/lib/server-requests";
+import { buildApprovalResponse, buildCurrentTimeResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getServerRequestThreadId, getUserInputQuestions, isMcpElicitationComplete } from "../src/lib/server-requests";
 
 describe("server request helpers", () => {
   it("serializes user answers in the app-server response shape", () => {
@@ -75,5 +75,55 @@ describe("server request helpers", () => {
     expect(buildCurrentTimeResponse(1_750)).toEqual({ currentTimeAt: 1 });
     expect(getServerRequestThreadId({ id: 1, method: "modern", params: { threadId: "thread-modern" } })).toBe("thread-modern");
     expect(getServerRequestThreadId({ id: 2, method: "legacy", params: { conversationId: "thread-legacy" } })).toBe("thread-legacy");
+  });
+
+  it("parses primitive MCP forms and serializes typed content", () => {
+    const request = getMcpElicitationRequest({
+      id: "mcp-1",
+      method: "mcpServer/elicitation/request",
+      params: {
+        mode: "form",
+        serverName: "Issue tracker",
+        message: "Create the issue",
+        requestedSchema: {
+          type: "object",
+          required: ["title", "priority", "estimate"],
+          properties: {
+            title: { type: "string", title: "Title", minLength: 3 },
+            priority: { type: "string", oneOf: [{ const: "high", title: "High" }, { const: "low", title: "Low" }], default: "high" },
+            estimate: { type: "integer", minimum: 1, maximum: 10, default: 3 },
+            notify: { type: "boolean", default: true },
+            labels: { type: "array", items: { type: "string", enum: ["bug", "feature"] }, default: ["bug"], maxItems: 2 },
+          },
+        },
+      },
+    });
+    expect(request?.mode).toBe("form");
+    if (!request || request.mode === "url") throw new Error("Expected an MCP form");
+    const values = getMcpElicitationDefaults(request);
+    expect(values).toEqual({ title: "", priority: "high", estimate: 3, notify: true, labels: ["bug"] });
+    expect(isMcpElicitationComplete(request, values)).toBe(false);
+    values.title = "Broken export";
+    expect(isMcpElicitationComplete(request, values)).toBe(true);
+    expect(buildMcpElicitationResponse(request, values)).toEqual({ action: "accept", content: values, _meta: null });
+    expect(buildMcpElicitationAction("decline")).toEqual({ action: "decline", content: null, _meta: null });
+  });
+
+  it("accepts safe MCP URL flows and rejects unsafe or nested schemas", () => {
+    expect(getMcpElicitationRequest({
+      id: 1,
+      method: "mcpServer/elicitation/request",
+      params: { mode: "url", serverName: "Calendar", message: "Connect", url: "https://accounts.example.com/connect", elicitationId: "auth-1" },
+    })).toMatchObject({ mode: "url", url: "https://accounts.example.com/connect" });
+    expect(getMcpElicitationRequest({
+      id: 2,
+      method: "mcpServer/elicitation/request",
+      params: { mode: "url", serverName: "Bad", message: "Connect", url: "javascript:alert(1)", elicitationId: "bad" },
+    })).toBeNull();
+    expect(getMcpElicitationRequest({
+      id: 3,
+      method: "mcpServer/elicitation/request",
+      params: { mode: "openai/form", serverName: "Nested", message: "No", requestedSchema: { type: "object", properties: { nested: { type: "object", properties: {} } } } },
+    })).toBeNull();
   });
 });

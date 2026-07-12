@@ -15,6 +15,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 10. Preserve approval and user-input requests instead of silently accepting them.
     Never broadcast an unowned request or forward a response without recorded ownership.
     Render structured permission capabilities and scope explicitly; never map them to a generic approval payload.
+    Render supported MCP elicitation schemas as typed controls and fail closed on nested, unknown, or unsafe schemas.
 11. Verify one real local Codex turn through the final user-facing UI.
 
 ## Minimal agent task
@@ -37,6 +38,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - Tool activity does not crash the renderer.
 - Stop and approval paths remain operable.
 - Permission requests show exact capabilities and return schema-correct turn or session grants.
+- MCP primitive forms return typed content; authorization links are explicit, credential-free HTTP(S) URLs.
 - Custom sessions retain their thread, scope streamed events, and interrupt Codex when stopped.
 - No secret is present in browser storage or bundles.
 - Non-loopback browser origins are explicit and exact; unlisted origins are rejected.

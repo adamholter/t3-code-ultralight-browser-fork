@@ -177,6 +177,31 @@ codex.on("serverRequest", async (request) => {
 
 The complete chat includes this review panel. It grants exactly the requested network and filesystem profile, defaults the primary choice to the current turn, makes session scope explicit, and can keep strict command-by-command review enabled. It also answers thread-scoped `currentTime/read` requests locally with whole Unix seconds and removes prompts resolved automatically by app-server.
 
+MCP tools can elicit primitive typed data or ask the user to complete a URL flow. The complete chat renders supported `form` and `openai/form` object schemas with string, email, URL, date, date-time, number, integer, boolean, single-select, and multi-select controls. It enforces required/default/min/max constraints and returns typed content:
+
+```ts
+import {
+  buildMcpElicitationAction,
+  buildMcpElicitationResponse,
+  getMcpElicitationDefaults,
+  getMcpElicitationRequest,
+  isMcpElicitationComplete,
+} from "t3-code-ultralight-browser-fork/requests";
+
+const elicitation = getMcpElicitationRequest(request);
+if (elicitation?.mode === "url") {
+  const finished = await yourUI.openAndWait(elicitation.url);
+  codex.respond(request.id, buildMcpElicitationAction(finished ? "accept" : "decline"));
+} else if (elicitation) {
+  const values = await yourUI.fill(elicitation.fields, getMcpElicitationDefaults(elicitation));
+  if (isMcpElicitationComplete(elicitation, values)) {
+    codex.respond(request.id, buildMcpElicitationResponse(elicitation, values));
+  }
+}
+```
+
+URL mode accepts only credential-free HTTP(S) URLs and always requires an explicit user click. Nested objects, arbitrary arrays, unknown formats, contradictory constraints, and unsafe URLs are not approximated; they fail closed so the host can decline them explicitly.
+
 ## Mode 3: existing Node server
 
 Attach to an existing `node:http` server rather than launching a second service:

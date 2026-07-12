@@ -1,6 +1,6 @@
 import { ShieldAlert } from "lucide-react";
 import { useId, useState } from "react";
-import { buildApprovalResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getPermissionRequest, getUserInputQuestions, isApprovalRequest, type PermissionRequest } from "../lib/server-requests";
+import { buildApprovalResponse, buildMcpElicitationAction, buildMcpElicitationResponse, buildPermissionResponse, buildUserInputResponse, describePermissionRequest, getMcpElicitationDefaults, getMcpElicitationRequest, getPermissionRequest, getUserInputQuestions, isApprovalRequest, isMcpElicitationComplete, type McpElicitationRequest, type McpElicitationValues, type PermissionRequest } from "../lib/server-requests";
 import type { PendingServerRequest } from "../types";
 
 interface PendingRequestPanelProps {
@@ -14,11 +14,72 @@ export function PendingRequestPanel({ request, onRespond, onReject }: PendingReq
   if (questions) return <UserInputPanel questions={questions} onRespond={onRespond} />;
   const permissions = getPermissionRequest(request);
   if (permissions) return <PermissionPanel request={permissions} onRespond={onRespond} onReject={onReject} />;
+  const elicitation = getMcpElicitationRequest(request);
+  if (elicitation) return <McpElicitationPanel request={elicitation} onRespond={onRespond} />;
   if (isApprovalRequest(request.method)) return <ApprovalBar request={request} onRespond={onRespond} />;
   if (request.method === "mcpServer/elicitation/request") {
     return <UnsupportedRequest request={request} onRespond={onRespond} onReject={() => onRespond({ action: "decline", content: null, _meta: null })} />;
   }
   return <UnsupportedRequest request={request} onRespond={onRespond} onReject={onReject} />;
+}
+
+function McpElicitationPanel({ request, onRespond }: { request: McpElicitationRequest; onRespond: (result: unknown) => void }) {
+  return request.mode === "url"
+    ? <McpUrlPanel request={request} onRespond={onRespond} />
+    : <McpFormPanel request={request} onRespond={onRespond} />;
+}
+
+function McpUrlPanel({ request, onRespond }: { request: Extract<McpElicitationRequest, { mode: "url" }>; onRespond: (result: unknown) => void }) {
+  const headingId = useId();
+  const host = new URL(request.url).host;
+  return (
+    <section className="permission-panel mcp-panel" aria-labelledby={headingId}>
+      <div className="request-heading">
+        <strong id={headingId}>{request.serverName} needs authorization</strong>
+        <span>{request.message}</span>
+      </div>
+      <a className="mcp-open-link" href={request.url} target="_blank" rel="noreferrer noopener">Open {host}</a>
+      <p className="mcp-help">Complete the flow in the new tab, then return here to continue Codex.</p>
+      <div className="request-actions">
+        <button type="button" onClick={() => onRespond(buildMcpElicitationAction("decline"))}>Decline</button>
+        <button type="button" className="request-primary" onClick={() => onRespond(buildMcpElicitationAction("accept"))}>I’ve finished</button>
+      </div>
+    </section>
+  );
+}
+
+function McpFormPanel({ request, onRespond }: { request: Extract<McpElicitationRequest, { mode: "form" | "openai/form" }>; onRespond: (result: unknown) => void }) {
+  const [values, setValues] = useState<McpElicitationValues>(() => getMcpElicitationDefaults(request));
+  const headingId = useId();
+  const complete = isMcpElicitationComplete(request, values);
+  const update = (id: string, value: McpElicitationValues[string]) => setValues((current) => ({ ...current, [id]: value }));
+  return (
+    <form className="permission-panel mcp-panel" aria-labelledby={headingId} onSubmit={(event) => {
+      event.preventDefault();
+      if (complete) onRespond(buildMcpElicitationResponse(request, values));
+    }}>
+      <div className="request-heading">
+        <strong id={headingId}>{request.serverName} needs information</strong>
+        <span>{request.message}</span>
+      </div>
+      <div className="mcp-fields">
+        {request.fields.map((field) => (
+          <div className="mcp-field" key={field.id}>
+            <label htmlFor={`${headingId}-${field.id}`}><strong>{field.title}{field.required && <span aria-label="required"> *</span>}</strong>{field.description && <small>{field.description}</small>}</label>
+            {field.type === "text" && <input id={`${headingId}-${field.id}`} type={field.format === "uri" ? "url" : field.format === "date-time" ? "datetime-local" : field.format ?? "text"} required={field.required} minLength={field.minLength} maxLength={field.maxLength} value={String(values[field.id] ?? "")} onChange={(event) => update(field.id, event.target.value)} />}
+            {(field.type === "number" || field.type === "integer") && <input id={`${headingId}-${field.id}`} type="number" required={field.required} step={field.type === "integer" ? 1 : "any"} min={field.minimum} max={field.maximum} value={String(values[field.id] ?? "")} onChange={(event) => update(field.id, event.target.value === "" ? "" : Number(event.target.value))} />}
+            {field.type === "boolean" && <label className="mcp-boolean"><input id={`${headingId}-${field.id}`} type="checkbox" checked={Boolean(values[field.id])} onChange={(event) => update(field.id, event.target.checked)} /><span>Yes</span></label>}
+            {field.type === "select" && <select id={`${headingId}-${field.id}`} required={field.required} value={String(values[field.id] ?? "")} onChange={(event) => update(field.id, event.target.value)}><option value="">Choose an option</option>{field.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
+            {field.type === "multiselect" && <div className="mcp-options">{field.options.map((option) => { const selected = Array.isArray(values[field.id]) ? values[field.id] as string[] : []; return <label key={option.value}><input type="checkbox" checked={selected.includes(option.value)} onChange={(event) => update(field.id, event.target.checked ? [...selected, option.value] : selected.filter((value) => value !== option.value))} /><span>{option.label}</span></label>; })}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="request-actions">
+        <button type="button" onClick={() => onRespond(buildMcpElicitationAction("decline"))}>Decline</button>
+        <button type="submit" className="request-primary" disabled={!complete}>Continue</button>
+      </div>
+    </form>
+  );
 }
 
 function PermissionPanel({ request, onRespond, onReject }: { request: PermissionRequest; onRespond: (result: unknown) => void; onReject: (message?: string) => void }) {
