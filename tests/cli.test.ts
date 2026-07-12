@@ -329,7 +329,8 @@ function fingerprint(cwd: string) {
 }
 
 function binaryFingerprint(binary: string) {
-  return createHash("sha256").update(binary).digest("hex");
+  const normalized = binary.includes("/") || binary.includes("\\") ? resolve(binary) : binary;
+  return createHash("sha256").update(normalized).digest("hex");
 }
 
 function autoPortCandidate(cwd: string) {
