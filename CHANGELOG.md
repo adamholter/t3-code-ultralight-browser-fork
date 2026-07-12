@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0
+
+- Run the bundled standalone chat on Preact's React-compatible runtime.
+- Keep the exported React wrapper and React-focused tests on real React.
+- Reduce standalone JavaScript from 394.8 KB to 219.5 KB and gzip size from 122.4 KB to 69.2 KB.
+- Enforce a 260 KB combined JavaScript/CSS artifact budget.
+- Add real-browser startup, asset-count, asset-size, font-request, and console-error performance QA.
+- Verify both production and Vite development paths against the local Codex bridge.
+
 ## 0.13.0
 
 - Add a stable `releases/latest/download` package URL for build-free consumer installs.

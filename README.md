@@ -147,6 +147,7 @@ For a browser UI served elsewhere, pass its exact origin as `allowedOrigins: ["h
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
 - Framework-free WebSocket client plus typed React and server exports
+- Preact-powered standalone chat with a genuine React wrapper for React hosts
 - One-call `chat()` plus lower-level text and multimodal turn APIs
 - Stateful `send()` sessions with scoped streaming events and real turn cancellation
 - Approval requests routed only to the browser client that owns the active turn
@@ -182,6 +183,7 @@ Validation:
 ```bash
 npm run check
 node tests/qa.mjs
+node tests/performance-qa.mjs
 ```
 
 Print the canonical agent handoff at any time:

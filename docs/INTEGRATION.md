@@ -45,6 +45,8 @@ defineCodexChatElement({ tagName: "my-codex", defaultBridgeUrl: "/local-codex" }
 
 Use this when the product needs a complete chat surface quickly. It has no CSS or state collisions with the host.
 
+The isolated page uses Preact internally to minimize its standalone download. The `CodexChatEmbed` wrapper below remains a normal React component and does not replace or alias React inside the host application.
+
 ```tsx
 import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 

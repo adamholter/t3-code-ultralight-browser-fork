@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -97,6 +97,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.5",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -104,12 +105,13 @@
     "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
     "lucide-react": "^0.545.0",
+    "preact": "^10.29.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "tsx": "^4.20.6",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
