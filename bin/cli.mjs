@@ -16,8 +16,8 @@ const AUTO_PORT_SPAN = 18_000;
 const AUTO_PORT_ATTEMPTS = 64;
 const commandOptions = {
   setup: { values: ["--port", "--allow-origin", "--mode", "--delivery", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
-  start: { values: ["--port", "--allow-origin", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
-  serve: { values: ["--port", "--allow-origin", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
+  start: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
+  serve: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
   status: { values: ["--port"], repeatable: [], booleans: ["--json"] },
   stop: { values: ["--port"], repeatable: [], booleans: ["--json"] },
   doctor: { values: ["--codex", "--cwd"], repeatable: [], booleans: ["--json"] },
@@ -42,17 +42,19 @@ async function main() {
   if (command === "serve") {
     const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
+    const codexBinary = normalizeCodexBinary(valueAfter("--codex"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
     const existing = await readBridgeStatus(port);
     if (existing) {
-      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
       console.log(`Codex bridge v${existing.version} is already ${existing.status} at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}.`);
       return;
     }
     process.env.PORT = String(port);
     process.env.CODEX_WORKSPACE_CWD = workspaceCwd;
+    process.env.CODEX_BINARY = codexBinary;
     if (allowedOrigins.length) process.env.CODEX_ALLOWED_ORIGINS = JSON.stringify(allowedOrigins);
     process.env.NODE_ENV = "production";
     await import("../dist-lib/standalone.js");
@@ -62,13 +64,14 @@ async function main() {
   if (command === "setup") {
     const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
+    const codexBinary = normalizeCodexBinary(valueAfter("--codex"));
     const mode = parseSetupMode(valueAfter("--mode"));
     const delivery = parseSetupDelivery(valueAfter("--delivery"), mode);
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
     const { runDoctor } = await import("../dist-lib/doctor.js");
     const doctor = await runDoctor({
-      binary: valueAfter("--codex"),
+      binary: codexBinary,
       cwd: workspaceCwd,
     });
     if (!doctor.ok) {
@@ -78,7 +81,7 @@ async function main() {
       return;
     }
 
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
 
     const contract = JSON.parse(await readFile(new URL("../integration.json", import.meta.url), "utf8"));
     const { createIntegrationRecipe } = await import("../dist-lib/integration.js");
@@ -88,8 +91,8 @@ async function main() {
       port,
       allowedOrigins,
     });
-    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
-    const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     printSetupReport({ ok: true, mode, delivery, doctor, bridge, integration });
     return;
   }
@@ -97,11 +100,12 @@ async function main() {
   if (command === "start") {
     const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
+    const codexBinary = normalizeCodexBinary(valueAfter("--codex"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
-    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
-    printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
+    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     return;
   }
 
@@ -110,7 +114,7 @@ async function main() {
     const status = await readBridgeStatus(port);
     const report = status
       ? { running: true, url: bridgeUrl(port), ...status }
-      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], workspaceFingerprint: null, protocol: null, capabilities: [], browserModules: [] };
+      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], workspaceFingerprint: null, codexBinaryFingerprint: null, protocol: null, capabilities: [], browserModules: [] };
     if (process.argv.includes("--json")) {
       console.log(JSON.stringify(report, null, 2));
     } else if (status) {
@@ -183,6 +187,7 @@ Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
 Run the package setup command from the host project's root with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
 Use --port auto when this project should coexist with another local Codex bridge; keep the selected port from the receipt for later status and stop commands.
+If Codex is not the default PATH command, pass the same --codex path to setup, start, or serve; bridge reuse is isolated by a path-private binary fingerprint.
 Keep the bridge loopback-only. If a custom browser UI or imperative embed host is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
@@ -198,8 +203,8 @@ t3-code-ultralight
 
 Usage:
   t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
-  t3-code-ultralight start [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH] [--json]
-  t3-code-ultralight serve [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH]
+  t3-code-ultralight start [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
+  t3-code-ultralight serve [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH]
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
@@ -276,19 +281,21 @@ function parsePort(value, allowAuto = false) {
   return port;
 }
 
-async function selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) {
+async function selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+  let firstAvailablePort = null;
   for (const port of autoPortCandidates(workspaceCwd)) {
     const existing = await readBridgeStatus(port);
     if (existing) {
       try {
-        assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+        assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
         return port;
       } catch {
         continue;
       }
     }
-    if (await canBindLoopbackPort(port)) return port;
+    if (firstAvailablePort === null && await canBindLoopbackPort(port)) firstAvailablePort = port;
   }
+  if (firstAvailablePort !== null) return firstAvailablePort;
   throw new Error(`Unable to find an available deterministic loopback port after ${AUTO_PORT_ATTEMPTS + 1} attempts. Pass an explicit --port.`);
 }
 
@@ -354,7 +361,7 @@ function normalizeOrigin(value) {
   return url.origin;
 }
 
-function assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset = false, workspaceCwd = resolveWorkspaceCwd()) {
+function assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset = false, workspaceCwd = resolveWorkspaceCwd(), codexBinary = normalizeCodexBinary()) {
   if (existing.version !== packageVersion) {
     throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
   }
@@ -368,6 +375,9 @@ function assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuper
   }
   if (existing.workspaceFingerprint !== workspaceFingerprint(workspaceCwd)) {
     throw new Error(`The existing Codex bridge uses a different default workspace. Run ${stopCommand(port)}, then restart it from this project or pass --cwd ${JSON.stringify(workspaceCwd)}.`);
+  }
+  if (existing.codexBinaryFingerprint !== codexBinaryFingerprint(codexBinary)) {
+    throw new Error(`The existing Codex bridge uses a different Codex binary. Run ${stopCommand(port)}, then restart it with the intended --codex path.`);
   }
 }
 
@@ -401,6 +411,9 @@ async function readBridgeStatus(port) {
       workspaceFingerprint: typeof value.workspaceFingerprint === "string" && /^[a-f0-9]{64}$/.test(value.workspaceFingerprint)
         ? value.workspaceFingerprint
         : null,
+      codexBinaryFingerprint: typeof value.codexBinaryFingerprint === "string" && /^[a-f0-9]{64}$/.test(value.codexBinaryFingerprint)
+        ? value.codexBinaryFingerprint
+        : null,
     };
   } catch {
     return null;
@@ -417,7 +430,7 @@ async function waitForBridgeStop(port, pid) {
   return false;
 }
 
-async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd) {
+async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const deadline = Date.now() + 10_000;
   let spawnError = null;
   child.once("error", (error) => { spawnError = error; });
@@ -425,7 +438,7 @@ async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSupers
     if (spawnError) throw spawnError;
     const status = await readBridgeStatus(port);
     if (status) {
-      assertCompatibleBridge(status, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+      assertCompatibleBridge(status, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
       if (status.status === "ready") return status;
     }
     if (child.exitCode !== null) return null;
@@ -447,10 +460,10 @@ async function readLogTail(logPath) {
   }
 }
 
-async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd) {
+async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const existing = await readBridgeStatus(port);
   if (existing) {
-    assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+    assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     return { status: existing, reused: true, logPath: null };
   }
 
@@ -466,6 +479,8 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
       String(port),
       "--cwd",
       workspaceCwd,
+      "--codex",
+      codexBinary,
       ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
       ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
     ], {
@@ -477,7 +492,7 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
     closeSync(log);
   }
   child.unref();
-  const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+  const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
   if (!status) {
     const detail = await readLogTail(logPath);
     throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
@@ -485,14 +500,14 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
   return { status, reused: status.pid !== child.pid, logPath: status.pid === child.pid ? logPath : null };
 }
 
-function printStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd) {
-  const report = createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd);
+function printStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+  const report = createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
   if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
   else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
   else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nWorkspace: ${workspaceCwd}\nLogs: ${logPath}`);
 }
 
-function createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd) {
+function createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const extraAllowedOrigins = status.allowedOrigins.filter((origin) => !requestedOrigins.includes(origin));
   return {
     started: !reused,
@@ -505,6 +520,7 @@ function createStartReport(status, port, reused, logPath, requestedOrigins, reus
     status: status.status,
     pid: status.pid,
     cwd: workspaceCwd,
+    codexBinary,
     allowedOrigins: status.allowedOrigins,
     extraAllowedOrigins,
     originSupersetAccepted: reused && reuseOriginSuperset && extraAllowedOrigins.length > 0,
@@ -525,6 +541,16 @@ function resolveWorkspaceCwd(value = process.cwd()) {
 
 function workspaceFingerprint(cwd) {
   return createHash("sha256").update(resolveWorkspaceCwd(cwd)).digest("hex");
+}
+
+function normalizeCodexBinary(value = "codex") {
+  const binary = value.trim();
+  if (!binary) throw new Error("--codex requires a non-empty value.");
+  return binary.includes("/") || binary.includes("\\") ? resolve(binary) : binary;
+}
+
+function codexBinaryFingerprint(binary) {
+  return createHash("sha256").update(normalizeCodexBinary(binary)).digest("hex");
 }
 
 function printSetupReport(report) {

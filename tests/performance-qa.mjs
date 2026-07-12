@@ -46,6 +46,7 @@ try {
     statusNoStore: statusResponse.headers()["cache-control"] === "no-store",
     statusHidesLocalPath: !("cwd" in statusBody) && !JSON.stringify(statusBody).includes(process.env.HOME ?? "__missing_home__"),
     workspaceFingerprintOnly: /^[a-f0-9]{64}$/.test(statusBody.workspaceFingerprint) && !("workspaceCwd" in statusBody),
+    codexBinaryFingerprintOnly: /^[a-f0-9]{64}$/.test(statusBody.codexBinaryFingerprint) && !("codexBinary" in statusBody),
   };
   const { assetUrls: _assetUrls, ...publicMetrics } = metrics;
   const result = {
@@ -97,11 +98,13 @@ try {
     || !result.integrationContract.workspacePortable
     || !result.integrationContract.pathFreeSetupRecipes
     || !result.integrationContract.deterministicAutoPortSelection
+    || !result.httpSurface.codexBinaryFingerprintOnly
     || result.integrationContract.automaticPort?.flag !== "--port auto"
     || result.integrationContract.automaticPort?.preferredPort !== 4174
     || result.integrationContract.automaticPort?.fallbackRange?.join(",") !== "42000,59999"
     || result.integrationContract.automaticPort?.deterministicBy !== "normalized workspace"
     || result.integrationContract.automaticPort?.compatibleBridgeReuse !== true
+    || result.integrationContract.automaticPort?.existingCompatibleBridgePreferred !== true
     || result.integrationContract.automaticPort?.incompatibleListenerPreserved !== true
     || result.integrationContract.automaticPort?.receiptReturnsResolvedPort !== true
     || result.integrationContract.releaseVerification?.workflow !== ".github/workflows/release.yml"

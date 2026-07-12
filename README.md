@@ -25,15 +25,15 @@ The package boundary is exercised in clean React 18/19, Next.js 16 App Router, V
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode iframe --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.48.0' setup --mode iframe --port auto --json
 ```
 
-Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project or service owns it. The receipt returns the resolved numeric port for later status and stop commands. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace separately, while its copyable browser code inherits that workspace without embedding an absolute local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
+Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. If the intended CLI is not the default PATH command, add `--codex /path/to/codex`; setup uses that same binary for diagnostics and the background app-server. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project, service, or Codex binary owns it. The receipt returns the resolved numeric port for later status and stop commands. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace and selected binary separately, while browser status exposes only fingerprints and its copyable code embeds neither local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge.
 
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' setup --mode custom --delivery hosted --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.48.0' setup --mode custom --delivery hosted --port auto --json
 ```
 
 ## One-command chat
@@ -41,15 +41,15 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.48.0' start
 ```
 
-The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, and exact workspace fingerprint.
+The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, workspace fingerprint, and Codex-binary fingerprint.
 
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.47.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.48.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -62,7 +62,7 @@ GitHub release archives are the canonical distribution path. Every published rel
 
 `setup` composes `doctor`, safe background startup, and a mode-specific integration recipe. It is the recommended entry point for unfamiliar agents because one JSON result proves prerequisites and describes the next host edit without requiring README parsing.
 
-`start` launches in the background, waits for verified readiness, and returns the resolved workspace, PID, and private temporary log path. The current directory is the default workspace unless `--cwd` is supplied. It reuses an exact version/origin/workspace match already running on the requested port, but fails before startup when any differs. The browser status exposes only a workspace fingerprint, never the local path. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
+`start` launches in the background, waits for verified readiness, and returns the resolved workspace, selected Codex binary, PID, and private temporary log path. The current directory is the default workspace unless `--cwd` is supplied. `setup`, `start`, and `serve` all accept the same `--codex` override. They reuse only an exact version/origin/workspace/binary match already running on the requested port and fail before startup when any differs. Browser status exposes only workspace and binary fingerprints, never either local path. Add `--json` for agent-readable output. Use `serve` instead when a foreground process is preferable. Inspect either mode without starting Codex using:
 
 ```bash
 npx t3-code-ultralight status --json
@@ -285,7 +285,7 @@ The public controller exposes a minimal structural WebSocket-server handle rathe
 - Built-in safe response Markdown with no raw-HTML execution or external Markdown runtime dependency
 - Automatic local bridge restart and browser reconnect
 - Read-only `doctor` diagnostics with actionable failures and JSON output
-- Project-root workspace defaults, exact-workspace process reuse, and path-private browser status
+- Project-root workspace defaults, exact workspace/binary process reuse, and path-private browser status
 - Idempotent startup plus human and JSON runtime status inspection
 - Framework-free WebSocket client plus typed React and server exports
 - Preact-powered standalone chat with a genuine React wrapper for React hosts

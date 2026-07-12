@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -106,6 +106,7 @@ describe("CLI argument validation", () => {
         pid: process.pid,
         allowedOrigins: ["https://canvas.example.com"],
         workspaceFingerprint: fingerprint(process.cwd()),
+        codexBinaryFingerprint: binaryFingerprint("codex"),
       }));
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -152,6 +153,11 @@ describe("CLI argument validation", () => {
       expect(incompatible.stderr).toContain("does not allow: https://voice.example.com");
       expect(incompatible.stderr).toContain(`stop --port ${port}`);
 
+      const differentBinary = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--codex", "/opt/alternate-codex", "--json"]);
+      expect(differentBinary.code).not.toBe(0);
+      expect(differentBinary.stderr).toContain("different Codex binary");
+      expect(differentBinary.stderr).toContain(`stop --port ${port}`);
+
       const otherWorkspace = await mkdtemp(resolve(tmpdir(), "t3-other-workspace-"));
       try {
         const mismatchedWorkspace = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--json"], otherWorkspace);
@@ -163,6 +169,41 @@ describe("CLI argument validation", () => {
       }
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("prefers an existing compatible auto-port bridge over a newly free default port", async () => {
+    const workspace = await realpath(await mkdtemp(resolve(tmpdir(), "t3-existing-auto-")));
+    const candidate = autoPortCandidate(workspace);
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        service: "t3-code-ultralight-browser-fork",
+        version: packageJson.version,
+        status: "ready",
+        pid: process.pid,
+        allowedOrigins: [],
+        workspaceFingerprint: fingerprint(workspace),
+        codexBinaryFingerprint: binaryFingerprint("codex"),
+      }));
+    });
+    try {
+      await new Promise<void>((resolveListen, reject) => {
+        server.once("error", reject);
+        server.listen(candidate, "127.0.0.1", resolveListen);
+      });
+      const result = await runCli(["start", "--port", "auto", "--cwd", workspace, "--json"]);
+      expect(result.code).toBe(0);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        port: candidate,
+        portSelection: "auto",
+        reused: true,
+        started: false,
+        pid: process.pid,
+      });
+    } finally {
+      await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
+      await rm(workspace, { recursive: true, force: true });
     }
   });
 
@@ -273,4 +314,13 @@ function runCli(args: string[], cwd = process.cwd()) {
 
 function fingerprint(cwd: string) {
   return createHash("sha256").update(resolve(cwd)).digest("hex");
+}
+
+function binaryFingerprint(binary: string) {
+  return createHash("sha256").update(binary).digest("hex");
+}
+
+function autoPortCandidate(cwd: string) {
+  const digest = createHash("sha256").update(`${cwd}\0${0}`).digest();
+  return 42_000 + (digest.readUInt32BE(0) % 18_000);
 }

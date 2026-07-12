@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.48.0
+
+- Propagate `--codex` from setup diagnostics into the actual background and foreground Codex app-server instead of silently falling back to the PATH default.
+- Support the same `--codex` override across `setup`, `start`, `serve`, and `doctor`.
+- Add a path-private Codex-binary fingerprint to browser status and require an exact binary match before reusing a bridge.
+- Make deterministic automatic-port selection preserve an incompatible bridge that targets another Codex installation and choose a separate stable port.
+- Search every deterministic candidate for an existing exact match before using a newly available earlier port, preventing duplicate bridges after port availability changes.
+- Return the selected binary only in the trusted CLI receipt; generated browser code and browser-readable status never expose its local path.
+- Add a live executable-wrapper harness that proves diagnostics and a real streamed turn use the custom binary, matching starts reuse it, mismatched starts fail closed, and the default bridge remains untouched.
+
 ## 0.47.0
 
 - Add `createCodexAssistant()` as the smallest safe custom-interface API: one import combines stateful threads, streaming, cancellation, and a thread-scoped request adapter.
