@@ -170,6 +170,14 @@ describe("CLI argument validation", () => {
     const result = await runCli(["status", "--port", "0"]);
     expect(result.code).not.toBe(0);
     expect(result.stderr).toContain("integer from 1 to 65535");
+
+    const automaticStatus = await runCli(["status", "--port", "auto"]);
+    expect(automaticStatus.code).not.toBe(0);
+    expect(automaticStatus.stderr).toContain('Invalid --port "auto"');
+
+    const misspelledAuto = await runCli(["start", "--port", "automatic"]);
+    expect(misspelledAuto.code).not.toBe(0);
+    expect(misspelledAuto.stderr).toContain("Use auto or an integer from 1 to 65535");
   });
 
   it("stops only a verified bridge process and stays idempotent", async () => {

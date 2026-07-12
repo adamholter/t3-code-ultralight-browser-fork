@@ -1,6 +1,6 @@
 {
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "description": "An ultralight browser bridge, headless client, and embeddable chat UI for local Codex.",
   "license": "MIT",
   "private": false,
@@ -102,6 +102,7 @@
     "qa:workspace": "node tests/workspace-qa.mjs",
     "qa:react": "npm run build && node tests/react-host-qa.mjs",
     "qa:attached": "npm run build && node tests/attached-server-qa.mjs",
+    "qa:auto-port": "npm run build && node tests/auto-port-qa.mjs",
     "qa:markdown": "tsx tests/markdown-qa.tsx",
     "qa:install": "playwright install chromium",
     "qa:live": "npm run build && node scripts/live-qa.mjs",

@@ -9,6 +9,7 @@ const receipt = JSON.parse(started.stdout);
 
 const suites = [
   ["standalone performance", [resolve(root, "tests/performance-qa.mjs")]],
+  ["deterministic multi-project auto ports", [resolve(root, "tests/auto-port-qa.mjs")]],
   ["zero-install modules", [resolve(root, "tests/no-bundler-qa.mjs")]],
   ["packed React 18 and 19 hosts", [resolve(root, "tests/react-host-qa.mjs")]],
   ["packed existing Node server", [resolve(root, "tests/attached-server-qa.mjs")]],

@@ -3,6 +3,20 @@ import integration from "../integration.json";
 import { createIntegrationRecipe, materializeRuntimeIntegrationContract } from "../server/integration-contract";
 
 describe("live integration contract", () => {
+  it("advertises automatic setup only in the packaged discovery contract", () => {
+    expect(integration.bridge.automaticPort).toMatchObject({
+      flag: "--port auto",
+      preferredPort: 4174,
+      fallbackRange: [42000, 59999],
+      deterministicBy: "normalized workspace",
+      compatibleBridgeReuse: true,
+      incompatibleListenerPreserved: true,
+      receiptReturnsResolvedPort: true,
+    });
+    expect(integration.security.deterministicAutoPortSelection).toBe(true);
+    expect(Object.values(integration.release.setupCommands).every((command) => command.includes("--port auto"))).toBe(true);
+  });
+
   it("rewrites every bridge address and lifecycle command for an alternate port", () => {
     const runtime = materializeRuntimeIntegrationContract(integration, { port: 49123 });
 
@@ -19,6 +33,7 @@ describe("live integration contract", () => {
     expect(runtime.release.startCommand).toContain("start --port 49123 --json");
     expect(runtime.release.setupCommands.custom).toContain("setup --mode custom --port 49123 --json");
     expect(runtime.release.setupCommands.customHosted).toContain("setup --mode custom --delivery hosted --port 49123 --json");
+    expect(runtime.release.setupCommands.customHosted).not.toContain("--port auto");
     expect(runtime.modes.completeChat).toMatchObject({
       iframeUrl: "http://127.0.0.1:49123/?embed=1",
       webComponentModule: "http://127.0.0.1:49123/codex-chat.js",

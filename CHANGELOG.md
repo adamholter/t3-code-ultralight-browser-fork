@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.43.0
+
+- Add `--port auto` to `setup`, `start`, and `serve`, preferring port 4174 when safe and otherwise selecting a deterministic workspace-derived loopback fallback.
+- Reuse a compatible version/origin/workspace bridge at the same deterministic port instead of spawning duplicates on repeated automatic setup.
+- Skip incompatible Ultralight bridges and unrelated listeners without stopping or broadening them; probe up to 64 stable fallback candidates in the 42000-59999 range.
+- Return the resolved numeric `port` plus `portSelection` in trusted setup/start receipts so agents can retain exact lifecycle commands.
+- Make automatic selection the recommended one-link setup command while keeping running integration contracts pinned to their already-resolved port.
+- Add a live two-project collision harness that occupies 4174, proves repeat reuse and workspace isolation, streams a real Codex turn, verifies runtime URLs, and stops only its two fallback bridges.
+
 ## 0.42.0
 
 - Close attached browser sockets before stopping the Codex process so pending approvals and other owned server requests can still be rejected cleanly during teardown.

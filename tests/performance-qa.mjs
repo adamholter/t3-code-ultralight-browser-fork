@@ -70,6 +70,8 @@ try {
       workspacePortable: integrationContract.runtime?.workspace?.default === "bridge"
         && integrationContract.runtime?.workspace?.pathDisclosed === false,
       pathFreeSetupRecipes: integrationContract.security?.pathFreeSetupRecipes === true,
+      deterministicAutoPortSelection: integrationContract.security?.deterministicAutoPortSelection === true,
+      automaticPort: integrationContract.bridge?.automaticPort,
       reactCompatibility: integrationContract.modes?.completeChat?.reactCompatibility,
       attachedServerCompatibility: integrationContract.modes?.attachedServer,
     },
@@ -91,6 +93,14 @@ try {
     || !result.integrationContract.runtimeAware
     || !result.integrationContract.workspacePortable
     || !result.integrationContract.pathFreeSetupRecipes
+    || !result.integrationContract.deterministicAutoPortSelection
+    || result.integrationContract.automaticPort?.flag !== "--port auto"
+    || result.integrationContract.automaticPort?.preferredPort !== 4174
+    || result.integrationContract.automaticPort?.fallbackRange?.join(",") !== "42000,59999"
+    || result.integrationContract.automaticPort?.deterministicBy !== "normalized workspace"
+    || result.integrationContract.automaticPort?.compatibleBridgeReuse !== true
+    || result.integrationContract.automaticPort?.incompatibleListenerPreserved !== true
+    || result.integrationContract.automaticPort?.receiptReturnsResolvedPort !== true
     || result.integrationContract.reactCompatibility?.peerRange !== "^18.0.0 || ^19.0.0"
     || result.integrationContract.reactCompatibility?.browserVerified?.join(",") !== "18.3.1,19.2.0"
     || result.integrationContract.reactCompatibility?.strictModeVerified !== true

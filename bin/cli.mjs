@@ -4,12 +4,16 @@ import { closeSync, mkdtempSync, openSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SERVICE_NAME = "t3-code-ultralight-browser-fork";
 const DEFAULT_PORT = 4174;
+const AUTO_PORT_MIN = 42_000;
+const AUTO_PORT_SPAN = 18_000;
+const AUTO_PORT_ATTEMPTS = 64;
 const commandOptions = {
   setup: { values: ["--port", "--allow-origin", "--mode", "--delivery", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
   start: { values: ["--port", "--allow-origin", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
@@ -36,10 +40,11 @@ async function main() {
   validateCommandArgs(command, process.argv.slice(3));
 
   if (command === "serve") {
-    const port = parsePort(valueAfter("--port"));
+    const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
     const existing = await readBridgeStatus(port);
     if (existing) {
       assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
@@ -55,7 +60,7 @@ async function main() {
   }
 
   if (command === "setup") {
-    const port = parsePort(valueAfter("--port"));
+    const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
     const mode = parseSetupMode(valueAfter("--mode"));
     const delivery = parseSetupDelivery(valueAfter("--delivery"), mode);
@@ -73,6 +78,8 @@ async function main() {
       return;
     }
 
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
+
     const contract = JSON.parse(await readFile(new URL("../integration.json", import.meta.url), "utf8"));
     const { createIntegrationRecipe } = await import("../dist-lib/integration.js");
     const integration = createIntegrationRecipe(contract, {
@@ -88,10 +95,11 @@ async function main() {
   }
 
   if (command === "start") {
-    const port = parsePort(valueAfter("--port"));
+    const requestedPort = parsePort(valueAfter("--port"), true);
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) : requestedPort;
     const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
     printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd);
     return;
@@ -174,6 +182,7 @@ async function main() {
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
 Run the package setup command from the host project's root with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
+Use --port auto when this project should coexist with another local Codex bridge; keep the selected port from the receipt for later status and stop commands.
 Keep the bridge loopback-only. If a custom browser UI or imperative embed host is not on loopback, allow only its exact origin.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
@@ -188,9 +197,9 @@ function printHelp() {
 t3-code-ultralight
 
 Usage:
-  t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
-  t3-code-ultralight start [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH] [--json]
-  t3-code-ultralight serve [--port 4174] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH]
+  t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
+  t3-code-ultralight start [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH] [--json]
+  t3-code-ultralight serve [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--cwd PATH]
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
@@ -255,14 +264,61 @@ function valuesAfter(flag) {
   return values;
 }
 
-function parsePort(value) {
+function parsePort(value, allowAuto = false) {
   if (value === undefined) return DEFAULT_PORT;
-  if (!/^\d+$/.test(value)) throw new Error(`Invalid --port ${JSON.stringify(value)}. Use an integer from 1 to 65535.`);
+  if (allowAuto && value === "auto") return value;
+  const recommendation = allowAuto ? "Use auto or an integer from 1 to 65535." : "Use an integer from 1 to 65535.";
+  if (!/^\d+$/.test(value)) throw new Error(`Invalid --port ${JSON.stringify(value)}. ${recommendation}`);
   const port = Number(value);
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error(`Invalid --port ${JSON.stringify(value)}. Use an integer from 1 to 65535.`);
+    throw new Error(`Invalid --port ${JSON.stringify(value)}. ${recommendation}`);
   }
   return port;
+}
+
+async function selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd) {
+  for (const port of autoPortCandidates(workspaceCwd)) {
+    const existing = await readBridgeStatus(port);
+    if (existing) {
+      try {
+        assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd);
+        return port;
+      } catch {
+        continue;
+      }
+    }
+    if (await canBindLoopbackPort(port)) return port;
+  }
+  throw new Error(`Unable to find an available deterministic loopback port after ${AUTO_PORT_ATTEMPTS + 1} attempts. Pass an explicit --port.`);
+}
+
+function autoPortCandidates(workspaceCwd) {
+  const candidates = [DEFAULT_PORT];
+  const seen = new Set(candidates);
+  for (let attempt = 0; attempt < AUTO_PORT_ATTEMPTS; attempt += 1) {
+    const digest = createHash("sha256").update(`${workspaceCwd}\0${attempt}`).digest();
+    const port = AUTO_PORT_MIN + (digest.readUInt32BE(0) % AUTO_PORT_SPAN);
+    if (seen.has(port)) continue;
+    seen.add(port);
+    candidates.push(port);
+  }
+  return candidates;
+}
+
+function canBindLoopbackPort(port) {
+  return new Promise((resolveAvailable) => {
+    const server = createNetServer();
+    let settled = false;
+    const finish = (available) => {
+      if (settled) return;
+      settled = true;
+      resolveAvailable(available);
+    };
+    server.once("error", () => finish(false));
+    server.listen({ host: "127.0.0.1", port, exclusive: true }, () => {
+      server.close(() => finish(true));
+    });
+  });
 }
 
 function parseSetupMode(value) {
@@ -442,6 +498,8 @@ function createStartReport(status, port, reused, logPath, requestedOrigins, reus
     started: !reused,
     reused,
     running: true,
+    port,
+    portSelection: selectedPortMode(),
     url: bridgeUrl(port),
     version: status.version,
     status: status.status,
@@ -452,6 +510,12 @@ function createStartReport(status, port, reused, logPath, requestedOrigins, reus
     originSupersetAccepted: reused && reuseOriginSuperset && extraAllowedOrigins.length > 0,
     logPath: reused ? null : logPath,
   };
+}
+
+function selectedPortMode() {
+  const value = valueAfter("--port");
+  if (value === "auto") return "auto";
+  return value ? "explicit" : "default";
 }
 
 function resolveWorkspaceCwd(value = process.cwd()) {
