@@ -6,16 +6,16 @@ export function normalizeAllowedOrigins(origins: string[] = []) {
 }
 
 /**
- * Browser sockets are same-machine by default. Additional origins must be
- * explicitly listed; a wildcard is intentionally unsupported.
+ * Browser sockets are exact-origin by default. Native clients without Origin
+ * remain supported; broad loopback browser access is an explicit opt-in.
  */
-export function isAllowedOrigin(origin: string | undefined, additional: string[] = []) {
+export function isAllowedOrigin(origin: string | undefined, additional: string[] = [], allowLoopbackOrigins = false) {
   // Node, native, and CLI WebSocket clients commonly omit Origin.
   if (!origin) return true;
   if (additional.includes(origin)) return true;
   try {
     const url = new URL(origin);
-    return WEB_PROTOCOLS.has(url.protocol)
+    return allowLoopbackOrigins && WEB_PROTOCOLS.has(url.protocol)
       && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]");
   } catch {
     return false;

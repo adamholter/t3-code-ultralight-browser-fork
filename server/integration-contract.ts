@@ -8,6 +8,7 @@ export type IntegrationRecipeDelivery = "package" | "hosted";
 interface IntegrationRecipeOptionBase extends RuntimeIntegrationOptions {
   cwd?: string;
   allowedOrigins?: readonly string[];
+  allowLoopbackOrigins?: boolean;
 }
 
 export type IntegrationRecipeOptions =
@@ -31,9 +32,12 @@ interface IntegrationRecipeBase {
   codeLanguage: "html" | "js" | "ts" | "tsx";
   csp: Record<string, string[]>;
   originPolicy: {
-    loopbackAutomatic: true;
+    bridgeSelfOriginAutomatic: true;
+    loopbackAutomatic: boolean;
+    broadLoopbackOptInFlag: "--allow-loopback-origins";
     additionalAllowedOrigins: string[];
     opaqueOriginAllowed: boolean;
+    browserHostRequiresExactFlag: "--allow-origin <exact browser origin>";
     nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>";
   };
 }
@@ -120,10 +124,10 @@ export function materializeRuntimeIntegrationContract(
   value.release.startCommand = `npx --yes '${value.release.specifier}' start${portArgument} --json`;
   value.release.setupCommands ??= {};
   for (const mode of ["iframe", "react", "element", "custom"]) {
-    value.release.setupCommands[mode] = `npx --yes '${value.release.specifier}' setup --mode ${mode}${portArgument} --json`;
+    value.release.setupCommands[mode] = `npx --yes '${value.release.specifier}' setup --mode ${mode}${portArgument} --allow-origin '{BROWSER_ORIGIN}' --json`;
   }
-  value.release.setupCommands.elementHosted = `npx --yes '${value.release.specifier}' setup --mode element --delivery hosted${portArgument} --json`;
-  value.release.setupCommands.customHosted = `npx --yes '${value.release.specifier}' setup --mode custom --delivery hosted${portArgument} --json`;
+  value.release.setupCommands.elementHosted = `npx --yes '${value.release.specifier}' setup --mode element --delivery hosted${portArgument} --allow-origin '{BROWSER_ORIGIN}' --json`;
+  value.release.setupCommands.customHosted = `npx --yes '${value.release.specifier}' setup --mode custom --delivery hosted${portArgument} --allow-origin '{BROWSER_ORIGIN}' --json`;
   value.modes.completeChat.iframeUrl = `${origin}/?embed=1`;
   value.modes.completeChat.webComponentModule = `${origin}/codex-chat.js`;
   value.modes.completeChat.controllerModule = `${origin}/codex-embed.js`;
@@ -149,7 +153,7 @@ export function createIntegrationRecipe(contract: Record<string, any>, options: 
 export function createIntegrationRecipe(contract: Record<string, any>, options: IntegrationRecipeOptions): IntegrationRecipe;
 export function createIntegrationRecipe(
   contract: Record<string, any>,
-  { mode, port, cwd, delivery: requestedDelivery, allowedOrigins = [] }: IntegrationRecipeOptions,
+  { mode, port, cwd, delivery: requestedDelivery, allowedOrigins = [], allowLoopbackOrigins = false }: IntegrationRecipeOptions,
 ): IntegrationRecipe {
   const runtime = materializeRuntimeIntegrationContract(contract, { port });
   const bridgeUrl = runtime.bridge.httpUrl as string;
@@ -169,9 +173,12 @@ export function createIntegrationRecipe(
     },
     verify: "Send one real turn through the final user-facing UI and confirm streamed output plus stop behavior.",
     originPolicy: {
-      loopbackAutomatic: true as const,
+      bridgeSelfOriginAutomatic: true as const,
+      loopbackAutomatic: allowLoopbackOrigins,
+      broadLoopbackOptInFlag: "--allow-loopback-origins" as const,
       additionalAllowedOrigins: uniqueAllowedOrigins,
       opaqueOriginAllowed: uniqueAllowedOrigins.includes("null"),
+      browserHostRequiresExactFlag: "--allow-origin <exact browser origin>" as const,
       nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>" as const,
     },
   };

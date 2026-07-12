@@ -7,7 +7,7 @@ Choose the narrowest mode that fits the host product.
 For a new integration, run the combined setup receipt from the host project's root:
 
 ```bash
-npx t3-code-ultralight setup --mode iframe --port auto --json
+npx t3-code-ultralight setup --mode iframe --port auto --allow-origin http://localhost:3000 --json
 ```
 
 Choose `iframe`, `react`, `element`, or `custom`. Element and custom recipes default to package delivery; pass `--delivery hosted` when the browser must import bridge-served modules without npm or a bundler. Iframe is always hosted and React is always package-delivered; incompatible combinations fail before diagnostics or startup. The command runs the same read-only diagnostics below, makes its invoking directory the bridge's default Codex workspace, starts or reuses only a version/origin/workspace/binary-compatible background bridge, and returns a typed recipe with runtime URLs, copyable path-free browser code, code language, exact CSP source additions, cleanup guidance, and verification endpoints. The sibling trusted bridge receipt contains the resolved workspace and selected Codex binary. Pass `--cwd` only to choose a different bridge workspace and `--codex` when the intended CLI is not the default PATH command; neither path appears in generated browser source. `--port auto` prefers 4174 when compatible, otherwise chooses a stable fallback derived from the normalized workspace while preserving unrelated or incompatible listeners. Repeat setup from the same project and binary reuses that exact port. Retain the resolved numeric `bridge.port`, because `status` and `stop` intentionally require an exact port. All standalone lifecycle and origin flags accepted by `start` are also accepted by `setup`.
@@ -156,23 +156,24 @@ controller.dispose();
 
 ## Browser origins
 
-The bridge accepts browser connections from `localhost`, `127.0.0.1`, and `[::1]` by default. This covers normal local development regardless of port. A custom UI running on a non-loopback browser origin needs an explicit exact-origin allowlist entry:
+The bridge accepts its own browser UI origin and native clients without an Origin header by default. Every separate browser host needs an explicit exact-origin allowlist entry—even another `localhost`, `127.0.0.1`, or `[::1]` port. This prevents an unrelated local dev page from opening the headless socket and reading Codex output:
 
 ```bash
 npx t3-code-ultralight start \
+  --allow-origin http://127.0.0.1:3000 \
   --allow-origin https://canvas.example.com \
   --allow-origin http://192.168.1.20:3000
 ```
 
-Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. This changes which browser pages may connect; it never changes the server's `127.0.0.1` bind address.
+Use scheme, host, and optional port only. Paths, credentials, comma-separated values, and `*` are rejected. Use `--allow-origin null` only when a trusted `file://` or sandboxed host is intentional. `--allow-loopback-origins` opts back into trusting every HTTP(S) loopback browser origin and should be reserved for compatibility. None of these flags changes the server's `127.0.0.1` bind address.
 
 When `null` is explicitly configured, the recipe reports `originPolicy.opaqueOriginAllowed: true` and the complete chat adds `file:` to its `frame-ancestors` policy. Without that explicit grant, `file://` framing remains blocked. `npm run qa:file` opens the generated hosted recipe directly from a temporary file, verifies module responses use `Access-Control-Allow-Origin: null`, drives both a headless and complete-chat turn, and removes the file afterward. Never treat `null` as a wildcard: it represents every opaque-origin document, so grant it only when the local file or sandbox is trusted.
 
-The setup recipe repeats the effective policy under `originPolicy`: `loopbackAutomatic`, deduplicated `additionalAllowedOrigins`, and `nonLoopbackRequiresExactFlag`. This keeps extracted integration recipes self-contained. `npm run qa:origin` exercises the generated hosted recipe from a temporary HTTPS non-loopback hostname, verifies exact CORS and WebSocket acceptance, and confirms an unlisted sibling hostname is denied by both transports.
+The setup recipe repeats the effective policy under `originPolicy`: `bridgeSelfOriginAutomatic`, `loopbackAutomatic`, deduplicated `additionalAllowedOrigins`, `browserHostRequiresExactFlag`, and `broadLoopbackOptInFlag`. This keeps extracted integration recipes self-contained. Dedicated browser suites verify an allowed localhost host while denying a sibling localhost hostname over both modules and WebSockets, plus the equivalent HTTPS and opaque-origin paths.
 
 Origin sets are compared exactly during normal process reuse. For example, running `start` without `--allow-origin` refuses to reuse a bridge that already allows `https://canvas.example.com`, even though the requested empty set is technically a subset. This prevents a new tool from unknowingly inheriting another tool's broader browser access.
 
-The isolated chat iframe connects from its own loopback origin, so a view-only parent page does not need an entry. A parent that sends imperative embed commands is checked against the same browser-origin policy as a headless client: loopback works automatically, while non-loopback and opaque parents require their exact `--allow-origin` entry. Each command must also come from the iframe's actual parent window. Invalid sources, spoofed origins, malformed payloads, empty or oversized prompts, and commands from an unconfigured `file://` page are ignored without acknowledgement.
+The isolated chat iframe connects from the bridge's own origin, but its parent must still be explicitly allowed so `frame-ancestors` can prevent an unrelated page from embedding the chat. Imperative commands use the same exact policy, including on localhost, and must also come from the iframe's actual parent window. Invalid sources, unlisted origins, malformed payloads, empty or oversized prompts, and commands from an unconfigured `file://` page are ignored without acknowledgement.
 
 ## Mode 2: headless client
 
@@ -184,7 +185,7 @@ No-bundler hosts can import the same self-contained one-object API from the runn
 import { createCodexAssistant } from "http://127.0.0.1:4174/codex-assistant.js";
 ```
 
-The assistant, lower-level client, and request modules all follow the WebSocket origin policy. Localhost origins work automatically; pass the exact non-loopback origin to `serve --allow-origin` when needed.
+The assistant, lower-level client, and request modules all follow the exact WebSocket origin policy. Pass the host origin to `serve --allow-origin`, including localhost development origins.
 
 ```ts
 import { createCodexAssistant } from "t3-code-ultralight-browser-fork/assistant";
@@ -439,4 +440,4 @@ Do not auto-approve requests in a reusable integration. Honor the user's existin
 
 This is a local application bridge, not a public hosted API. Bind the HTTP server to `127.0.0.1`. An allowed origin is not authentication and does not make exposing the port to a network safe. A remote deployment needs a separate authenticated transport design. Browsers may also apply mixed-content or local-network-access rules when an HTTPS site connects to a loopback service; those browser controls are outside this bridge's origin allowlist.
 
-The standalone bridge does not expose the user's home or working path through status metadata. HTML and JSON metadata are `no-store`; content-hashed JavaScript/CSS are immutable; missing asset filenames return 404 instead of the SPA shell. Static UI responses add nosniff, no-referrer, and a restrictive CSP while intentionally allowing cross-origin framing for the supported embed route. Do not add `X-Frame-Options` or narrow `frame-ancestors` in a wrapper proxy unless embedding is intentionally disabled.
+The standalone bridge does not expose the user's home, working path, or executable path through status metadata. HTML and JSON metadata are `no-store`; content-hashed JavaScript/CSS are immutable; missing asset filenames return 404 instead of the SPA shell. Static UI responses add nosniff, no-referrer, and a restrictive CSP whose `frame-ancestors` contains only the bridge itself plus explicitly allowed hosts (or loopback sources under the compatibility flag). Do not add `X-Frame-Options` in a wrapper proxy unless embedding is intentionally disabled.

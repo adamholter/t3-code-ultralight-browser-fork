@@ -31,8 +31,8 @@ describe("live integration contract", () => {
       },
     });
     expect(runtime.release.startCommand).toContain("start --port 49123 --json");
-    expect(runtime.release.setupCommands.custom).toContain("setup --mode custom --port 49123 --json");
-    expect(runtime.release.setupCommands.customHosted).toContain("setup --mode custom --delivery hosted --port 49123 --json");
+    expect(runtime.release.setupCommands.custom).toContain("setup --mode custom --port 49123 --allow-origin '{BROWSER_ORIGIN}' --json");
+    expect(runtime.release.setupCommands.customHosted).toContain("setup --mode custom --delivery hosted --port 49123 --allow-origin '{BROWSER_ORIGIN}' --json");
     expect(runtime.release.setupCommands.customHosted).not.toContain("--port auto");
     expect(runtime.modes.completeChat).toMatchObject({
       iframeUrl: "http://127.0.0.1:49123/?embed=1",
@@ -147,11 +147,20 @@ describe("live integration contract", () => {
       allowedOrigins: ["https://canvas.example.com", "https://canvas.example.com"],
     });
     expect(external.originPolicy).toEqual({
-      loopbackAutomatic: true,
+      bridgeSelfOriginAutomatic: true,
+      loopbackAutomatic: false,
+      broadLoopbackOptInFlag: "--allow-loopback-origins",
       additionalAllowedOrigins: ["https://canvas.example.com"],
       opaqueOriginAllowed: false,
+      browserHostRequiresExactFlag: "--allow-origin <exact browser origin>",
       nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
     });
+    expect(createIntegrationRecipe(integration, {
+      mode: "custom",
+      delivery: "hosted",
+      port: 49123,
+      allowLoopbackOrigins: true,
+    }).originPolicy.loopbackAutomatic).toBe(true);
 
     expect(() => {
       // @ts-expect-error React intentionally rejects hosted delivery at compile time and runtime.

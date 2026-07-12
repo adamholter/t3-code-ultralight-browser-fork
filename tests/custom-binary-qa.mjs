@@ -28,7 +28,7 @@ child.once("exit", (code, signal) => {
 `);
   await chmod(wrapper, 0o755);
 
-  const setup = run(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--codex", wrapper, "--cwd", root, "--json"]);
+  const setup = run(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--allow-origin", "http://127.0.0.1:39002", "--codex", wrapper, "--cwd", root, "--json"]);
   assert.equal(setup.status, 0, setup.stderr || setup.stdout);
   const receipt = JSON.parse(setup.stdout);
   port = receipt.bridge.port;
@@ -47,11 +47,11 @@ child.once("exit", (code, signal) => {
   await assistant.client.request("thread/delete", { threadId: answer.threadId });
   await assistant.close();
 
-  const repeated = run(["start", "--port", String(port), "--codex", wrapper, "--cwd", root, "--json"]);
+  const repeated = run(["start", "--port", String(port), "--allow-origin", "http://127.0.0.1:39002", "--codex", wrapper, "--cwd", root, "--json"]);
   assert.equal(repeated.status, 0, repeated.stderr || repeated.stdout);
   assert.equal(JSON.parse(repeated.stdout).reused, true);
 
-  const mismatch = run(["start", "--port", String(port), "--cwd", root, "--json"]);
+  const mismatch = run(["start", "--port", String(port), "--allow-origin", "http://127.0.0.1:39002", "--cwd", root, "--json"]);
   assert.notEqual(mismatch.status, 0);
   assert.match(mismatch.stderr, /different Codex binary/);
 

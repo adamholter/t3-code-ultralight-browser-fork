@@ -17,6 +17,7 @@ describe("package version", () => {
     expect(readFileSync(new URL("../docs/AGENT_INTEGRATION.md", import.meta.url), "utf8")).toContain(cacheKey);
     expect(integration.release.specifier).toContain(cacheKey);
     expect(Object.values(integration.release.setupCommands).every((command) => command.includes(cacheKey))).toBe(true);
+    expect(Object.values(integration.release.setupCommands).every((command) => command.includes("--allow-origin '{BROWSER_ORIGIN}'"))).toBe(true);
   });
 
   it("publishes a complete machine-readable integration contract", () => {
@@ -28,11 +29,24 @@ describe("package version", () => {
       diagnosticAndRuntimeMatch: true,
       browserPathDisclosure: false,
     });
+    expect(integration.bridge.browserOrigins).toMatchObject({
+      setupRequiresPolicy: true,
+      exactFlag: "--allow-origin <exact browser origin>",
+      broadLoopbackCompatibilityFlag: "--allow-loopback-origins",
+    });
     expect(integration.bridge.automaticPort).toMatchObject({
       compatibleBridgeReuse: true,
       existingCompatibleBridgePreferred: true,
     });
-    expect(integration.security).toMatchObject({ loopbackOnly: true, browserCredentials: false, wildcardOrigins: false });
+    expect(integration.security).toMatchObject({
+      loopbackOnly: true,
+      browserCredentials: false,
+      wildcardOrigins: false,
+      browserOriginsExactByDefault: true,
+      bridgeSelfOriginAutomatic: true,
+      broadLoopbackOriginsRequireOptIn: true,
+      unlistedSiblingLoopbackRejected: true,
+    });
     expect(integration.security).toMatchObject({
       exactCodexBinaryReuse: true,
       customCodexBinaryEndToEnd: true,
@@ -73,6 +87,7 @@ describe("package version", () => {
       exactResolvedPort: true,
       exactWorkspace: true,
       exactCodexBinary: true,
+      exactBrowserOriginPolicy: true,
       installedAndZeroInstallCommands: true,
       idempotentEnsure: true,
       restartBrowserVerified: true,

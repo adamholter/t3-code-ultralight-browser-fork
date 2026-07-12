@@ -24,7 +24,7 @@ let client;
 let recipeHost;
 
 try {
-  const setup = runCli(["setup", "--mode", "iframe", "--port", String(port), "--json"], directory);
+  const setup = runCli(["setup", "--mode", "iframe", "--port", String(port), "--allow-origin", "http://127.0.0.1:39004", "--json"], directory);
   if (setup.status !== 0) throw new Error(setup.stderr || setup.stdout);
   const report = JSON.parse(setup.stdout);
   bridgeStarted = true;
@@ -39,7 +39,7 @@ try {
   assert.equal(JSON.stringify(report.integration).includes(directory), false);
 
   const customSetup = runCli([
-    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--json",
+    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--allow-origin", "http://127.0.0.1:39004", "--json",
   ], directory);
   if (customSetup.status !== 0) throw new Error(customSetup.stderr || customSetup.stdout);
   const customReport = JSON.parse(customSetup.stdout);
@@ -49,7 +49,7 @@ try {
   assert.equal(JSON.stringify(customReport.integration).includes(directory), false);
 
   const explicitSetup = runCli([
-    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--cwd", directory, "--json",
+    "setup", "--mode", "custom", "--delivery", "hosted", "--port", String(port), "--allow-origin", "http://127.0.0.1:39004", "--cwd", directory, "--json",
   ], otherDirectory);
   if (explicitSetup.status !== 0) throw new Error(explicitSetup.stderr || explicitSetup.stdout);
   const explicitReport = JSON.parse(explicitSetup.stdout);
@@ -63,7 +63,7 @@ try {
   assert.equal("cwd" in status, false);
   assert.equal("workspaceCwd" in status, false);
   assert.equal(JSON.stringify(status).includes(directory), false);
-  const mismatched = runCli(["start", "--port", String(port), "--json"], otherDirectory);
+  const mismatched = runCli(["start", "--port", String(port), "--allow-origin", "http://127.0.0.1:39004", "--json"], otherDirectory);
   assert.notEqual(mismatched.status, 0);
   assert.match(mismatched.stderr, /different default workspace/);
 
@@ -91,7 +91,7 @@ try {
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     response.end('<!doctype html><meta charset="utf-8"><script type="module" src="/app.js"></script>');
   });
-  recipeHost.listen(0, "127.0.0.1");
+  recipeHost.listen(39004, "127.0.0.1");
   await once(recipeHost, "listening");
   const recipePage = await browser.newPage();
   const recipeErrors = [];

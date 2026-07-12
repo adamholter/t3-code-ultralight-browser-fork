@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const cli = resolve(root, "bin/cli.mjs");
-const started = runCapture([cli, "start", "--cwd", root, "--json"]);
+const started = runCapture([cli, "start", "--cwd", root, "--allow-loopback-origins", "--json"]);
 const receipt = JSON.parse(started.stdout);
 
 const suites = [
@@ -12,6 +12,7 @@ const suites = [
   ["deterministic multi-project auto ports", [resolve(root, "tests/auto-port-qa.mjs")]],
   ["custom Codex binary propagation", [resolve(root, "tests/custom-binary-qa.mjs")]],
   ["durable lifecycle receipt", [resolve(root, "tests/lifecycle-receipt-qa.mjs")]],
+  ["strict sibling loopback origin isolation", [resolve(root, "tests/strict-loopback-origin-qa.mjs")]],
   ["zero-install modules", [resolve(root, "tests/no-bundler-qa.mjs")]],
   ["generated hosted assistant recipe", [resolve(root, "tests/hosted-recipe-qa.mjs")]],
   ["packed React 18 and 19 hosts", [resolve(root, "tests/react-host-qa.mjs")]],

@@ -103,11 +103,11 @@ export function isCodexEmbedCommand(value: unknown): value is CodexEmbedCommand 
 }
 
 /** Match the bridge's browser-origin policy without importing server code into the app. */
-export function isAllowedCodexEmbedHostOrigin(origin: string, additional: readonly string[] = []) {
+export function isAllowedCodexEmbedHostOrigin(origin: string, additional: readonly string[] = [], allowLoopbackOrigins = false) {
   if (additional.includes(origin)) return true;
   try {
     const url = new URL(origin);
-    return ["http:", "https:"].includes(url.protocol)
+    return allowLoopbackOrigins && ["http:", "https:"].includes(url.protocol)
       && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   } catch {
     return false;
@@ -136,12 +136,13 @@ export function subscribeCodexEmbedEvents(
 export function subscribeCodexEmbedCommands(
   handlers: CodexEmbedCommandHandlers,
   additionalAllowedOrigins: readonly string[] = [],
+  allowLoopbackOrigins = false,
 ) {
   if (typeof window === "undefined" || window.parent === window) return () => undefined;
   const listener = (event: MessageEvent) => {
     if (
       event.source !== window.parent
-      || !isAllowedCodexEmbedHostOrigin(event.origin, additionalAllowedOrigins)
+      || !isAllowedCodexEmbedHostOrigin(event.origin, additionalAllowedOrigins, allowLoopbackOrigins)
       || !isCodexEmbedCommand(event.data)
     ) return;
     const command = event.data;

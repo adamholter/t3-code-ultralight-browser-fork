@@ -20,9 +20,11 @@ describe("browser origin policy", () => {
     expect(() => readAllowedOrigins("https://example.com")).toThrow("JSON array");
   });
 
-  it("keeps browser access loopback-only unless an exact origin is allowed", () => {
-    expect(isAllowedOrigin("http://localhost:3000")).toBe(true);
-    expect(isAllowedOrigin("https://127.0.0.1:8443")).toBe(true);
+  it("requires exact browser origins unless broad loopback access is explicitly enabled", () => {
+    expect(isAllowedOrigin("http://localhost:3000")).toBe(false);
+    expect(isAllowedOrigin("https://127.0.0.1:8443")).toBe(false);
+    expect(isAllowedOrigin("http://localhost:3000", [], true)).toBe(true);
+    expect(isAllowedOrigin("https://127.0.0.1:8443", [], true)).toBe(true);
     expect(isAllowedOrigin("https://canvas.example", ["https://canvas.example"])).toBe(true);
     expect(isAllowedOrigin("https://canvas.example.evil.test", ["https://canvas.example"])).toBe(false);
     expect(isAllowedOrigin("null", ["null"])).toBe(true);
@@ -42,13 +44,14 @@ describe("browser origin policy", () => {
     const port = (server.address() as AddressInfo).port;
 
     const local = new WebSocket(`ws://127.0.0.1:${port}/codex`, { origin: "http://localhost:3000" });
+    const localRejection = rejectionStatus(local);
     const configured = new WebSocket(`ws://127.0.0.1:${port}/codex`, { origin: "https://canvas.example" });
-    await Promise.all([opened(local), opened(configured)]);
+    await opened(configured);
+    await expect(localRejection).resolves.toBe(403);
 
     const rejected = new WebSocket(`ws://127.0.0.1:${port}/codex`, { origin: "https://untrusted.example" });
     await expect(rejectionStatus(rejected)).resolves.toBe(403);
 
-    local.close();
     configured.close();
     await controller.stop();
     await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -16,6 +16,8 @@ export interface AttachCodexBridgeOptions extends CodexBridgeOptions {
   autoStart?: boolean;
   /** Additional browser origins allowed to open the bridge socket. */
   allowedOrigins?: string[];
+  /** Opt into trusting every HTTP(S) loopback browser origin. Exact origins are safer. */
+  allowLoopbackOrigins?: boolean;
   /** Maximum browser WebSocket message size. Defaults to 16 MiB. */
   maxPayloadBytes?: number;
   /** Maximum simultaneous RPC requests from one browser. Defaults to 32. */
@@ -60,7 +62,7 @@ export function attachCodexBridge(
   const webSocketServer = new WebSocketServer({
     noServer: true,
     maxPayload: maxPayloadBytes,
-    verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, allowedOrigins), 403, "Browser origin is not allowed"),
+    verifyClient: ({ origin }, done) => done(isAllowedOrigin(origin, allowedOrigins, options.allowLoopbackOrigins === true), 403, "Browser origin is not allowed"),
   });
   const handleUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     let pathname: string;

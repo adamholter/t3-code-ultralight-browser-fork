@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "t3-code-ultralight-browser-fork",
-  "version": "0.49.0",
+  "version": "0.50.0",
   "repository": "https://github.com/adamholter/t3-code-ultralight-browser-fork",
   "purpose": "Let a local web, canvas, voice, or custom interface talk to the user's authenticated local Codex.",
   "requirements": {
@@ -9,16 +9,16 @@
     "codex": "Installed and authenticated Codex CLI"
   },
   "release": {
-    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0",
-    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' doctor --json",
-    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' start --json",
+    "specifier": "https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0",
+    "doctorCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' doctor --json",
+    "startCommand": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' start --json",
     "setupCommands": {
-      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode iframe --port auto --json",
-      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode react --port auto --json",
-      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode element --port auto --json",
-      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode element --delivery hosted --port auto --json",
-      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode custom --port auto --json",
-      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode custom --delivery hosted --port auto --json"
+      "iframe": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode iframe --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "react": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode react --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "element": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode element --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "elementHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode element --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "custom": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode custom --port auto --allow-origin '{BROWSER_ORIGIN}' --json",
+      "customHosted": "npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode custom --delivery hosted --port auto --allow-origin '{BROWSER_ORIGIN}' --json"
     },
     "verification": {
       "workflow": ".github/workflows/release.yml",
@@ -36,6 +36,7 @@
       "exactResolvedPort": true,
       "exactWorkspace": true,
       "exactCodexBinary": true,
+      "exactBrowserOriginPolicy": true,
       "installedAndZeroInstallCommands": true,
       "idempotentEnsure": true,
       "restartBrowserVerified": true
@@ -66,6 +67,13 @@
       "diagnosticAndRuntimeMatch": true,
       "reusePolicy": "exact binary fingerprint",
       "browserPathDisclosure": false
+    },
+    "browserOrigins": {
+      "default": "bridge self-origin plus exact --allow-origin entries",
+      "setupRequiresPolicy": true,
+      "exactFlag": "--allow-origin <exact browser origin>",
+      "broadLoopbackCompatibilityFlag": "--allow-loopback-origins",
+      "appliesTo": ["hosted modules", "WebSocket", "iframe commands", "frame ancestors"]
     },
     "automaticPort": {
       "flag": "--port auto",
@@ -159,6 +167,10 @@
     "browserCredentials": false,
     "wildcardOrigins": false,
     "exactOriginAllowlist": true,
+    "browserOriginsExactByDefault": true,
+    "bridgeSelfOriginAutomatic": true,
+    "broadLoopbackOriginsRequireOptIn": true,
+    "unlistedSiblingLoopbackRejected": true,
     "exactOriginReuse": true,
     "exactWorkspaceReuse": true,
     "exactCodexBinaryReuse": true,
@@ -192,7 +204,8 @@
     "one real local Codex turn streams through the final user-facing UI",
     "stop and approval paths remain operable",
     "no Codex credential or token is copied into browser code",
-    "an unlisted non-loopback browser origin is rejected",
+    "an unlisted browser origin is rejected even when it is another localhost or loopback page",
+    "an allowed loopback browser host streams while an unlisted sibling is denied hosted modules, WebSocket, iframe commands, and framing",
     "a fresh packed consumer compiles and imports every declared package export",
     "an allowed HTTPS non-loopback host streams while an unlisted sibling origin fails HTTP modules and WebSocket upgrades",
     "a trusted file origin streams only with the explicit null allowlist and matching CORS",

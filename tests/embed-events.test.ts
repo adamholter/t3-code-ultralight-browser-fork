@@ -58,8 +58,10 @@ describe("embed lifecycle protocol", () => {
   });
 
   it("matches the bridge's exact browser-origin policy", () => {
-    expect(isAllowedCodexEmbedHostOrigin("http://localhost:3000")).toBe(true);
-    expect(isAllowedCodexEmbedHostOrigin("https://127.0.0.1:8443")).toBe(true);
+    expect(isAllowedCodexEmbedHostOrigin("http://localhost:3000")).toBe(false);
+    expect(isAllowedCodexEmbedHostOrigin("https://127.0.0.1:8443")).toBe(false);
+    expect(isAllowedCodexEmbedHostOrigin("http://localhost:3000", [], true)).toBe(true);
+    expect(isAllowedCodexEmbedHostOrigin("https://127.0.0.1:8443", [], true)).toBe(true);
     expect(isAllowedCodexEmbedHostOrigin("https://canvas.example.com", ["https://canvas.example.com"])).toBe(true);
     expect(isAllowedCodexEmbedHostOrigin("null", ["null"])).toBe(true);
     expect(isAllowedCodexEmbedHostOrigin("https://sibling.example.com", ["https://canvas.example.com"])).toBe(false);

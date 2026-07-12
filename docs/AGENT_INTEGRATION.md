@@ -5,7 +5,7 @@ Read `/integration.json` first when machine-readable mode selection, commands, e
 When a user gives you this repository and asks to let an existing tool talk to Codex:
 
 1. Identify whether the host needs the complete chat, a custom UI, or an existing-server attachment.
-2. From the host project's root, prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode MODE --port auto --json`, where `MODE` is `iframe`, `react`, `element`, or `custom`. It runs diagnostics, makes the invoking directory the default workspace, reuses a compatible bridge or selects a deterministic workspace-specific loopback port, and returns the resolved port/workspace, exact install command, runtime URLs, code, cleanup rule, lifecycle commands, and verification endpoints; no clone or build is required. Preserve `bridge.port` for later status/stop commands. Wire `lifecycle.ensure.installed` or `lifecycle.ensure.zeroInstall` before the host's dev/server process; it uses the exact resolved port instead of selecting again and is safe to repeat. Generated browser code inherits the bridge workspace and intentionally contains no absolute project path; read `bridge.cwd` when trusted automation needs to verify the resolved directory. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, and use `--cwd` only to override the bridge's invoking directory. The same `--allow-origin` or `--reuse-origin-superset` options accepted by `start` remain available.
+2. From the host project's root, prefer the prebuilt package's one-command receipt: `npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode MODE --port auto --allow-origin HOST_ORIGIN --json`, where `MODE` is `iframe`, `react`, `element`, or `custom` and `HOST_ORIGIN` is the exact browser origin, including its dev port. Setup rejects an omitted browser-origin policy before diagnostics; `--allow-loopback-origins` is the explicit broad compatibility alternative. It runs diagnostics, makes the invoking directory the default workspace, reuses a compatible bridge or selects a deterministic workspace-specific loopback port, and returns the resolved port/workspace, exact install command, runtime URLs, code, cleanup rule, lifecycle commands, and verification endpoints; no clone or build is required. Preserve `bridge.port` for later status/stop commands. Wire `lifecycle.ensure.installed` or `lifecycle.ensure.zeroInstall` before the host's dev/server process; it uses the exact resolved port instead of selecting again and is safe to repeat. Generated browser code inherits the bridge workspace and intentionally contains no absolute project path; read `bridge.cwd` when trusted automation needs to verify the resolved directory. Add `--delivery hosted` for a no-npm/no-bundler `element` or `custom` host, and use `--cwd` only to override the bridge's invoking directory. The same origin options accepted by `start` remain available.
    Keep the documented version query intact because it prevents npm from reusing an older cached release. Install the receipt's versioned URL only when the chosen recipe imports package exports.
    Treat the GitHub release archive as canonical. Published assets are rebuilt, checked, audited, npm-dry-run validated, and provenance-attested by `.github/workflows/release.yml`; do not substitute an unverified local pack when integrating another project.
    For `delivery: "hosted"`, do not install or copy generated modules. Use the receipt's HTTP imports, apply its `csp` sources when the host has a CSP, and serve the host from an origin allowed by the bridge.
@@ -31,7 +31,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
    Use a dedicated pathname-only socket route. Attached stop is idempotent and final, releases all Ultralight listeners, and must not close or corrupt the host's other HTTP or WebSocket routes.
    Keep the default bounded socket-close timeout unless the host has a documented shutdown requirement; pending owned requests are rejected before Codex exits and non-cooperative clients are then terminated.
 7. Keep the bridge bound to loopback.
-8. If a headless browser client is not served from loopback, allow only its exact browser origin with `--allow-origin` or `allowedOrigins`; never use a wildcard.
+8. Allow every browser host—including localhost dev servers—by exact origin with `--allow-origin` or `allowedOrigins`; never use a wildcard. The bridge's own origin is automatic. Use `--allow-loopback-origins` only when the host explicitly accepts every local web origin.
 9. Never copy Codex credentials, cookies, access tokens, or config secrets into the browser.
 10. Preserve approval and user-input requests instead of silently accepting them.
     Never broadcast an unowned request or forward a response without recorded ownership.
@@ -46,7 +46,7 @@ When a user gives you this repository and asks to let an existing tool talk to C
 Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-From this project's root, run the package `setup --mode ... --json` command and follow its receipt. Use the isolated chat embed unless the existing UI needs custom rendering.
+From this project's root, run the package `setup --mode ... --allow-origin <exact browser origin> --json` command and follow its receipt. Use the isolated chat embed unless the existing UI needs custom rendering.
 Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 ```
 
@@ -78,7 +78,7 @@ Keep the bridge localhost-only, preserve approvals, and verify one live turn.
 - MCP primitive forms return typed content; authorization links are explicit, credential-free HTTP(S) URLs.
 - Custom sessions retain their thread, scope streamed events, and interrupt Codex when stopped.
 - No secret is present in browser storage or bundles.
-- Non-loopback browser origins are explicit and exact; unlisted origins are rejected.
+- Browser origins are explicit and exact by default; an unlisted sibling localhost origin is rejected alongside remote origins.
 - A generated hosted recipe streams from an allowed HTTPS non-loopback origin while an unlisted sibling fails both module and WebSocket access.
 - A trusted generated `file://` recipe streams only when `null` is explicitly allowed and reports `opaqueOriginAllowed: true`.
 - Mobile or constrained-container layout does not overflow.

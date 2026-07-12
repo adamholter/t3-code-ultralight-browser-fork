@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.50.0
+
+- Require exact browser origins by default, including separate localhost, `127.0.0.1`, and loopback development ports, while keeping native clients without an Origin header supported.
+- Keep the standalone bridge's own UI origin automatic so direct chat continues to work without configuration.
+- Apply the same exact policy to hosted modules, WebSockets, iframe host commands, and CSP `frame-ancestors` instead of leaving sibling local pages or framing as exceptions.
+- Make setup require either at least one exact `--allow-origin` or the explicit `--allow-loopback-origins` compatibility flag before running diagnostics.
+- Preserve the chosen origin mode in bridge compatibility checks, status, generated recipes, and durable lifecycle ensure commands.
+- Add a deliberate broad-loopback compatibility flag without restoring wildcard remote origins or exposing the loopback-bound server publicly.
+- Verify that an explicitly allowed local host streams a real turn while a sibling localhost hostname is denied module loading, WebSocket access, and iframe framing; also verify the bridge's own UI remains ready.
+- Make the attached-server API exact-origin by default and require host applications to provide their browser origin or explicitly opt into broad loopback compatibility.
+
 ## 0.49.0
 
 - Return a structured lifecycle receipt from successful setup with installed-package and zero-install `{ command, args, cwd }` operations for ensure, status, and stop.

@@ -39,6 +39,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [dark, setDark] = useState(() => localStorage.getItem("codex-web:theme") !== "light");
   const [embedAllowedOrigins, setEmbedAllowedOrigins] = useState<string[] | null>(embedded ? null : []);
+  const [embedAllowLoopbackOrigins, setEmbedAllowLoopbackOrigins] = useState(false);
   const selectedThreadId = useRef<string | null>(null);
   const runningRef = useRef(false);
   const turnIdRef = useRef<string | null>(null);
@@ -186,11 +187,14 @@ export default function App() {
     void fetch("/api/status", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Could not load embed origin policy (${response.status})`);
-        const status = await response.json() as { allowedOrigins?: unknown };
+        const status = await response.json() as { allowedOrigins?: unknown; allowLoopbackOrigins?: unknown };
         if (!Array.isArray(status.allowedOrigins) || !status.allowedOrigins.every((origin) => typeof origin === "string")) {
           throw new Error("Bridge returned an invalid embed origin policy");
         }
-        if (!cancelled) setEmbedAllowedOrigins(status.allowedOrigins);
+        if (!cancelled) {
+          setEmbedAllowedOrigins(status.allowedOrigins);
+          setEmbedAllowLoopbackOrigins(status.allowLoopbackOrigins === true);
+        }
       })
       .catch((cause) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -316,8 +320,8 @@ export default function App() {
       send: (text, options) => embedCommandHandlers.current!.send(text, options),
       newThread: () => embedCommandHandlers.current!.newThread(),
       stop: () => embedCommandHandlers.current!.stop(),
-    }, embedAllowedOrigins);
-  }, [embedded, embedAllowedOrigins]);
+    }, embedAllowedOrigins, embedAllowLoopbackOrigins);
+  }, [embedded, embedAllowedOrigins, embedAllowLoopbackOrigins]);
 
   function answerRequest(result: unknown) {
     const request = pendingRequests[0];

@@ -140,9 +140,12 @@ try {
   assert.deepEqual(setupReport.bridge.allowedOrigins, [allowedOrigin]);
   assert.equal(setupReport.integration.requiresPackageInstall, false);
   assert.deepEqual(setupReport.integration.originPolicy, {
-    loopbackAutomatic: true,
+    bridgeSelfOriginAutomatic: true,
+    loopbackAutomatic: false,
+    broadLoopbackOptInFlag: "--allow-loopback-origins",
     additionalAllowedOrigins: [allowedOrigin],
     opaqueOriginAllowed: false,
+    browserHostRequiresExactFlag: "--allow-origin <exact browser origin>",
     nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
   });
   recipe = setupReport.integration;

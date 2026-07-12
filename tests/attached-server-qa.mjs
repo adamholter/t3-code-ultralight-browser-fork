@@ -201,6 +201,7 @@ server.on("upgrade", (request, socket, head) => {
 controller = attachCodexBridge(server, {
   path: "/internal/codex/ws",
   cwd: process.env.HOST_WORKSPACE,
+  allowedOrigins: [\`http://127.0.0.1:\${process.env.PORT}\`],
   autoStart: false,
   browserSocketCloseTimeoutMs: 80,
 });

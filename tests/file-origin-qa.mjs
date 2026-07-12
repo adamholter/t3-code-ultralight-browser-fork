@@ -33,9 +33,12 @@ try {
   assert.equal(setupReport.ok, true);
   assert.deepEqual(setupReport.bridge.allowedOrigins, ["null"]);
   assert.deepEqual(setupReport.integration.originPolicy, {
-    loopbackAutomatic: true,
+    bridgeSelfOriginAutomatic: true,
+    loopbackAutomatic: false,
+    broadLoopbackOptInFlag: "--allow-loopback-origins",
     additionalAllowedOrigins: ["null"],
     opaqueOriginAllowed: true,
+    browserHostRequiresExactFlag: "--allow-origin <exact browser origin>",
     nonLoopbackRequiresExactFlag: "--allow-origin <exact browser origin>",
   });
   bridgeStarted = true;
@@ -135,7 +138,7 @@ try {
   assert.equal(typeof result.embed.threadId, "string");
   assert.equal(typeof result.embed.turnId, "string");
   assert.equal(result.embed.completedThreadId, result.embed.threadId);
-  assert.equal(iframeResponse?.headers()["content-security-policy"]?.includes("frame-ancestors * file:"), true);
+  assert.equal(iframeResponse?.headers()["content-security-policy"]?.includes("frame-ancestors 'self' file:"), true);
   assert.deepEqual(consoleErrors, []);
   assert.deepEqual(pageErrors, []);
 

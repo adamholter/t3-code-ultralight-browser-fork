@@ -35,8 +35,9 @@ try {
   const indexHeaders = indexResponse?.headers() ?? {};
   const httpSurface = {
     indexNoStore: indexHeaders["cache-control"] === "no-store",
-    embedAllowed: !indexHeaders["x-frame-options"] && indexHeaders["content-security-policy"]?.includes("frame-ancestors *"),
-    opaqueFramingRequiresOptIn: !indexHeaders["content-security-policy"]?.includes("frame-ancestors * file:"),
+    embedAllowed: !indexHeaders["x-frame-options"] && indexHeaders["content-security-policy"]?.includes("frame-ancestors 'self' http://localhost:*"),
+    opaqueFramingRequiresOptIn: !indexHeaders["content-security-policy"]?.includes("file:"),
+    noGlobalFrameWildcard: !indexHeaders["content-security-policy"]?.includes("frame-ancestors *"),
     csp: indexHeaders["content-security-policy"]?.includes("script-src 'self'") && indexHeaders["content-security-policy"]?.includes("object-src 'none'"),
     noReferrer: indexHeaders["referrer-policy"] === "no-referrer",
     nosniff: indexHeaders["x-content-type-options"] === "nosniff",
@@ -47,6 +48,8 @@ try {
     statusHidesLocalPath: !("cwd" in statusBody) && !JSON.stringify(statusBody).includes(process.env.HOME ?? "__missing_home__"),
     workspaceFingerprintOnly: /^[a-f0-9]{64}$/.test(statusBody.workspaceFingerprint) && !("workspaceCwd" in statusBody),
     codexBinaryFingerprintOnly: /^[a-f0-9]{64}$/.test(statusBody.codexBinaryFingerprint) && !("codexBinary" in statusBody),
+    broadLoopbackCompatibilityOptIn: statusBody.allowLoopbackOrigins === true,
+    bridgeSelfOriginExact: statusBody.bridgeSelfOrigin === baseOrigin,
   };
   const { assetUrls: _assetUrls, ...publicMetrics } = metrics;
   const result = {
@@ -99,6 +102,9 @@ try {
     || !result.integrationContract.pathFreeSetupRecipes
     || !result.integrationContract.deterministicAutoPortSelection
     || !result.httpSurface.codexBinaryFingerprintOnly
+    || !result.httpSurface.broadLoopbackCompatibilityOptIn
+    || !result.httpSurface.bridgeSelfOriginExact
+    || !result.httpSurface.noGlobalFrameWildcard
     || result.integrationContract.automaticPort?.flag !== "--port auto"
     || result.integrationContract.automaticPort?.preferredPort !== 4174
     || result.integrationContract.automaticPort?.fallbackRange?.join(",") !== "42000,59999"

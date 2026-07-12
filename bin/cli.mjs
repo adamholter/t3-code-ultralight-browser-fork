@@ -15,9 +15,9 @@ const AUTO_PORT_MIN = 42_000;
 const AUTO_PORT_SPAN = 18_000;
 const AUTO_PORT_ATTEMPTS = 64;
 const commandOptions = {
-  setup: { values: ["--port", "--allow-origin", "--mode", "--delivery", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
-  start: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset", "--json"] },
-  serve: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--reuse-origin-superset"] },
+  setup: { values: ["--port", "--allow-origin", "--mode", "--delivery", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--allow-loopback-origins", "--reuse-origin-superset", "--json"] },
+  start: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--allow-loopback-origins", "--reuse-origin-superset", "--json"] },
+  serve: { values: ["--port", "--allow-origin", "--codex", "--cwd"], repeatable: ["--allow-origin"], booleans: ["--allow-loopback-origins", "--reuse-origin-superset"] },
   status: { values: ["--port"], repeatable: [], booleans: ["--json"] },
   stop: { values: ["--port"], repeatable: [], booleans: ["--json"] },
   doctor: { values: ["--codex", "--cwd"], repeatable: [], booleans: ["--json"] },
@@ -44,17 +44,19 @@ async function main() {
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
     const codexBinary = normalizeCodexBinary(valueAfter("--codex"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const allowLoopbackOrigins = process.argv.includes("--allow-loopback-origins");
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
     const existing = await readBridgeStatus(port);
     if (existing) {
-      assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+      assertCompatibleBridge(existing, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
       console.log(`Codex bridge v${existing.version} is already ${existing.status} at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}.`);
       return;
     }
     process.env.PORT = String(port);
     process.env.CODEX_WORKSPACE_CWD = workspaceCwd;
     process.env.CODEX_BINARY = codexBinary;
+    process.env.CODEX_ALLOW_LOOPBACK_ORIGINS = allowLoopbackOrigins ? "1" : "0";
     if (allowedOrigins.length) process.env.CODEX_ALLOWED_ORIGINS = JSON.stringify(allowedOrigins);
     process.env.NODE_ENV = "production";
     await import("../dist-lib/standalone.js");
@@ -68,6 +70,10 @@ async function main() {
     const mode = parseSetupMode(valueAfter("--mode"));
     const delivery = parseSetupDelivery(valueAfter("--delivery"), mode);
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const allowLoopbackOrigins = process.argv.includes("--allow-loopback-origins");
+    if (!allowedOrigins.length && !allowLoopbackOrigins) {
+      throw new Error("setup requires --allow-origin <exact browser origin>. Use --allow-loopback-origins only when trusting every local web origin is intentional.");
+    }
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
     const { runDoctor } = await import("../dist-lib/doctor.js");
     const doctor = await runDoctor({
@@ -81,7 +87,7 @@ async function main() {
       return;
     }
 
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
 
     const contract = JSON.parse(await readFile(new URL("../integration.json", import.meta.url), "utf8"));
     const { createIntegrationRecipe } = await import("../dist-lib/integration.js");
@@ -90,10 +96,11 @@ async function main() {
       delivery,
       port,
       allowedOrigins,
+      allowLoopbackOrigins,
     });
-    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
-    const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
-    const lifecycle = createLifecycleReport(contract.release.specifier, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    const started = await ensureBackgroundBridge(port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    const bridge = createStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    const lifecycle = createLifecycleReport(contract.release.specifier, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     printSetupReport({ ok: true, mode, delivery, doctor, bridge, lifecycle, integration });
     return;
   }
@@ -103,10 +110,11 @@ async function main() {
     const workspaceCwd = resolveWorkspaceCwd(valueAfter("--cwd"));
     const codexBinary = normalizeCodexBinary(valueAfter("--codex"));
     const allowedOrigins = unique(valuesAfter("--allow-origin").map(normalizeOrigin));
+    const allowLoopbackOrigins = process.argv.includes("--allow-loopback-origins");
     const reuseOriginSuperset = process.argv.includes("--reuse-origin-superset");
-    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
-    const started = await ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
-    printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    const port = requestedPort === "auto" ? await selectAutoPort(allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) : requestedPort;
+    const started = await ensureBackgroundBridge(port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    printStartReport(started.status, port, started.reused, started.logPath, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     return;
   }
 
@@ -115,7 +123,7 @@ async function main() {
     const status = await readBridgeStatus(port);
     const report = status
       ? { running: true, url: bridgeUrl(port), ...status }
-      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], workspaceFingerprint: null, codexBinaryFingerprint: null, protocol: null, capabilities: [], browserModules: [] };
+      : { running: false, url: bridgeUrl(port), version: null, status: "offline", pid: null, allowedOrigins: [], allowLoopbackOrigins: false, bridgeSelfOrigin: null, workspaceFingerprint: null, codexBinaryFingerprint: null, protocol: null, capabilities: [], browserModules: [] };
     if (process.argv.includes("--json")) {
       console.log(JSON.stringify(report, null, 2));
     } else if (status) {
@@ -186,10 +194,10 @@ async function main() {
     console.log(`Install https://github.com/adamholter/t3-code-ultralight-browser-fork.
 Allow this web app to talk to the user's local Codex.
 Use the stable prebuilt release asset linked in the README so installation does not compile the package.
-Run the package setup command from the host project's root with --mode iframe, react, element, or custom and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
+Run the package setup command from the host project's root with --mode iframe, react, element, or custom, the host's exact --allow-origin (including localhost port), and JSON output. For element or custom, use --delivery hosted when the tool has no npm/bundler. Follow the verified receipt. Use the complete chat unless the existing UI needs custom rendering; its Web Component, React ref, and raw iframe controller can accept host prompts without DOM access.
 Use --port auto when this project should coexist with another local Codex bridge; keep the selected port from the receipt for later status and stop commands.
 If Codex is not the default PATH command, pass the same --codex path to setup, start, or serve; bridge reuse is isolated by a path-private binary fingerprint.
-Keep the bridge loopback-only. If a custom browser UI or imperative embed host is not on loopback, allow only its exact origin.
+Keep the bridge loopback-only and allow every browser host, including localhost dev servers, by exact --allow-origin. The bridge UI itself remains automatic. Use --allow-loopback-origins only as an intentional compatibility escape hatch.
 Use the idempotent stop command before replacing a bridge for an upgrade or origin change.
 Preserve approvals and verify one live turn through the final UI.`);
     return;
@@ -203,9 +211,9 @@ function printHelp() {
 t3-code-ultralight
 
 Usage:
-  t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
-  t3-code-ultralight start [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
-  t3-code-ultralight serve [--port 4174|auto] [--allow-origin ORIGIN]... [--reuse-origin-superset] [--codex PATH] [--cwd PATH]
+  t3-code-ultralight setup [--mode iframe|react|element|custom] [--delivery package|hosted] [--port 4174|auto] [--allow-origin ORIGIN]... [--allow-loopback-origins] [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
+  t3-code-ultralight start [--port 4174|auto] [--allow-origin ORIGIN]... [--allow-loopback-origins] [--reuse-origin-superset] [--codex PATH] [--cwd PATH] [--json]
+  t3-code-ultralight serve [--port 4174|auto] [--allow-origin ORIGIN]... [--allow-loopback-origins] [--reuse-origin-superset] [--codex PATH] [--cwd PATH]
   t3-code-ultralight status [--port 4174] [--json]
   t3-code-ultralight stop [--port 4174] [--json]
   t3-code-ultralight doctor [--json] [--codex PATH] [--cwd PATH]
@@ -213,7 +221,7 @@ Usage:
   t3-code-ultralight agent-prompt
 
 Commands:
-  setup         Verify Codex, start the bridge, and print a complete host recipe.
+  setup         Verify Codex, start the bridge, and print a complete exact-origin host recipe.
   start         Start in the background, wait for ready, or reuse a compatible bridge.
   serve         Run the loopback bridge in the foreground.
   status        Inspect a running standalone bridge without starting Codex.
@@ -282,13 +290,13 @@ function parsePort(value, allowAuto = false) {
   return port;
 }
 
-async function selectAutoPort(allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+async function selectAutoPort(allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   let firstAvailablePort = null;
   for (const port of autoPortCandidates(workspaceCwd)) {
     const existing = await readBridgeStatus(port);
     if (existing) {
       try {
-        assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+        assertCompatibleBridge(existing, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
         return port;
       } catch {
         continue;
@@ -362,9 +370,12 @@ function normalizeOrigin(value) {
   return url.origin;
 }
 
-function assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset = false, workspaceCwd = resolveWorkspaceCwd(), codexBinary = normalizeCodexBinary()) {
+function assertCompatibleBridge(existing, port, allowedOrigins, allowLoopbackOrigins = false, reuseOriginSuperset = false, workspaceCwd = resolveWorkspaceCwd(), codexBinary = normalizeCodexBinary()) {
   if (existing.version !== packageVersion) {
     throw new Error(`Codex bridge v${existing.version} is already running at ${bridgeUrl(port)}${existing.pid ? ` (PID ${existing.pid})` : ""}; this CLI is v${packageVersion}. Run ${stopCommand(port)} before upgrading.`);
+  }
+  if (existing.allowLoopbackOrigins !== allowLoopbackOrigins) {
+    throw new Error(`The existing Codex bridge has a different loopback-origin policy. Run ${stopCommand(port)}, then restart with the intended ${allowLoopbackOrigins ? "--allow-loopback-origins setting" : "exact-origin default"}.`);
   }
   const missingOrigins = allowedOrigins.filter((origin) => !existing.allowedOrigins.includes(origin));
   if (missingOrigins.length) {
@@ -400,6 +411,8 @@ async function readBridgeStatus(port) {
       status: value.status,
       pid: Number.isSafeInteger(value.pid) && value.pid > 0 ? value.pid : null,
       allowedOrigins: value.allowedOrigins,
+      allowLoopbackOrigins: value.allowLoopbackOrigins === true,
+      bridgeSelfOrigin: typeof value.bridgeSelfOrigin === "string" ? value.bridgeSelfOrigin : null,
       protocol: value.protocol && Number.isSafeInteger(value.protocol.major) && Number.isSafeInteger(value.protocol.minor)
         ? { major: value.protocol.major, minor: value.protocol.minor }
         : null,
@@ -431,7 +444,7 @@ async function waitForBridgeStop(port, pid) {
   return false;
 }
 
-async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+async function waitForBridgeReady(port, child, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const deadline = Date.now() + 10_000;
   let spawnError = null;
   child.once("error", (error) => { spawnError = error; });
@@ -439,7 +452,7 @@ async function waitForBridgeReady(port, child, allowedOrigins, reuseOriginSupers
     if (spawnError) throw spawnError;
     const status = await readBridgeStatus(port);
     if (status) {
-      assertCompatibleBridge(status, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+      assertCompatibleBridge(status, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
       if (status.status === "ready") return status;
     }
     if (child.exitCode !== null) return null;
@@ -461,10 +474,10 @@ async function readLogTail(logPath) {
   }
 }
 
-async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+async function ensureBackgroundBridge(port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const existing = await readBridgeStatus(port);
   if (existing) {
-    assertCompatibleBridge(existing, port, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+    assertCompatibleBridge(existing, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
     return { status: existing, reused: true, logPath: null };
   }
 
@@ -482,6 +495,7 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
       workspaceCwd,
       "--codex",
       codexBinary,
+      ...(allowLoopbackOrigins ? ["--allow-loopback-origins"] : []),
       ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
       ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
     ], {
@@ -493,7 +507,7 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
     closeSync(log);
   }
   child.unref();
-  const status = await waitForBridgeReady(port, child, allowedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+  const status = await waitForBridgeReady(port, child, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
   if (!status) {
     const detail = await readLogTail(logPath);
     throw new Error(`Codex bridge did not become ready at ${bridgeUrl(port)}.${detail ? `\n${detail}` : ` Check ${logPath}.`}`);
@@ -501,14 +515,14 @@ async function ensureBackgroundBridge(port, allowedOrigins, reuseOriginSuperset,
   return { status, reused: status.pid !== child.pid, logPath: status.pid === child.pid ? logPath : null };
 }
 
-function printStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
-  const report = createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
+function printStartReport(status, port, reused, logPath, requestedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+  const report = createStartReport(status, port, reused, logPath, requestedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary);
   if (process.argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
   else if (reused) console.log(`Codex bridge v${status.version} is already ${status.status} at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.`);
   else console.log(`Started Codex bridge v${status.version} in the background at ${bridgeUrl(port)}${status.pid ? ` (PID ${status.pid})` : ""}.\nWorkspace: ${workspaceCwd}\nLogs: ${logPath}`);
 }
 
-function createStartReport(status, port, reused, logPath, requestedOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
+function createStartReport(status, port, reused, logPath, requestedOrigins, allowLoopbackOrigins, reuseOriginSuperset, workspaceCwd, codexBinary) {
   const extraAllowedOrigins = status.allowedOrigins.filter((origin) => !requestedOrigins.includes(origin));
   return {
     started: !reused,
@@ -523,6 +537,7 @@ function createStartReport(status, port, reused, logPath, requestedOrigins, reus
     cwd: workspaceCwd,
     codexBinary,
     allowedOrigins: status.allowedOrigins,
+    allowLoopbackOrigins,
     extraAllowedOrigins,
     originSupersetAccepted: reused && reuseOriginSuperset && extraAllowedOrigins.length > 0,
     logPath: reused ? null : logPath,
@@ -571,13 +586,14 @@ function codexBinaryFingerprint(binary) {
   return createHash("sha256").update(normalizeCodexBinary(binary)).digest("hex");
 }
 
-function createLifecycleReport(specifier, port, allowedOrigins, reuseOriginSuperset, cwd, codexBinary) {
+function createLifecycleReport(specifier, port, allowedOrigins, allowLoopbackOrigins, reuseOriginSuperset, cwd, codexBinary) {
   const ensureArgs = [
     "start",
     "--port",
     String(port),
     "--codex",
     codexBinary,
+    ...(allowLoopbackOrigins ? ["--allow-loopback-origins"] : []),
     ...allowedOrigins.flatMap((origin) => ["--allow-origin", origin]),
     ...(reuseOriginSuperset ? ["--reuse-origin-superset"] : []),
     "--json",

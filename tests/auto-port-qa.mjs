@@ -79,7 +79,7 @@ try {
 }
 
 function setup(cwd) {
-  const result = runCli(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--json"], cwd);
+  const result = runCli(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--allow-origin", "http://127.0.0.1:39001", "--json"], cwd);
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   return JSON.parse(result.stdout);
 }

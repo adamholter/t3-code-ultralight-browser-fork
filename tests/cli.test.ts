@@ -62,7 +62,7 @@ describe("CLI argument validation", () => {
 
   it("returns a machine-readable failed setup receipt without starting a bridge", async () => {
     const port = String(await reservePort());
-    const result = await runCli(["setup", "--mode", "custom", "--port", port, "--codex", "/missing/codex", "--json"]);
+    const result = await runCli(["setup", "--mode", "custom", "--port", port, "--allow-origin", "http://127.0.0.1:3000", "--codex", "/missing/codex", "--json"]);
     expect(result.code).not.toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
       ok: false,
@@ -76,6 +76,13 @@ describe("CLI argument validation", () => {
     const status = await runCli(["status", "--port", port, "--json"]);
     expect(status.code).not.toBe(0);
     expect(JSON.parse(status.stdout)).toMatchObject({ running: false });
+  });
+
+  it("requires an explicit browser-origin policy before setup diagnostics", async () => {
+    const result = await runCli(["setup", "--mode", "custom", "--json"]);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("setup requires --allow-origin <exact browser origin>");
+    expect(result.stderr).toContain("--allow-loopback-origins");
   });
 
   it("points agents at the stable prebuilt release", async () => {
@@ -158,6 +165,10 @@ describe("CLI argument validation", () => {
       expect(differentBinary.code).not.toBe(0);
       expect(differentBinary.stderr).toContain("different Codex binary");
       expect(differentBinary.stderr).toContain(`stop --port ${port}`);
+
+      const broaderLoopbackPolicy = await runCli(["start", "--port", port, "--allow-origin", "https://canvas.example.com", "--allow-loopback-origins", "--codex", "/test/codex", "--json"]);
+      expect(broaderLoopbackPolicy.code).not.toBe(0);
+      expect(broaderLoopbackPolicy.stderr).toContain("different loopback-origin policy");
 
       const otherWorkspace = await mkdtemp(resolve(tmpdir(), "t3-other-workspace-"));
       try {

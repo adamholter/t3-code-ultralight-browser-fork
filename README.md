@@ -25,7 +25,7 @@ The package boundary is exercised in clean React 18/19, Next.js 16 App Router, V
 From the existing project's root, an agent can verify Codex, start or safely reuse the bridge, and receive one complete machine-readable host recipe in a single command:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode iframe --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode iframe --port auto --allow-origin http://localhost:3000 --json
 ```
 
 Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, Web Component, or a canvas/voice/bespoke interface. Element and custom modes default to package imports; add `--delivery hosted` for a zero-install browser recipe that imports the bridge's live modules directly. The invoking directory becomes the bridge's default Codex workspace; add `--cwd /another/project/path` only to override it. If the intended CLI is not the default PATH command, add `--codex /path/to/codex`; setup uses that same resolved executable for diagnostics and the background app-server. `--port auto` safely reuses 4174 when compatible or selects a stable workspace-specific fallback when another project, service, or Codex binary owns it. The receipt returns the resolved numeric port plus installed-package and zero-install lifecycle commands for ensuring, inspecting, and stopping that exact bridge. Wire its idempotent `lifecycle.ensure` command before the host's own dev/server process so a reboot or prior stop cannot leave the browser pointed at a different port. Add `--allow-origin` when needed. The trusted JSON receipt reports the resolved workspace and selected binary separately, while browser status exposes only fingerprints and its copyable code embeds neither local path. It also contains diagnostics, verified bridge state, runtime-correct URLs, code language, exact CSP additions, disposal guidance, and verification endpoints. Failed diagnostics return nonzero without starting a bridge and return `lifecycle: null`.
@@ -33,7 +33,7 @@ Use `--mode react`, `--mode element`, or `--mode custom` for a React wrapper, We
 For example, a static canvas or voice tool with no npm or bundler can use:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' setup --mode custom --delivery hosted --port auto --json
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' setup --mode custom --delivery hosted --port auto --allow-origin http://localhost:3000 --json
 ```
 
 ## One-command chat
@@ -41,7 +41,7 @@ npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/release
 Run the stable prebuilt release directly—no clone, install, build, or API key:
 
 ```bash
-npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0' start
+npx --yes 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0' start
 ```
 
 The command returns only after Codex is ready, then leaves the bridge running in the background. Embed `http://127.0.0.1:4174/?embed=1` or open `http://127.0.0.1:4174`. It is safe to repeat from the same project and reuses only a bridge with the same version, exact origin set, workspace fingerprint, and Codex-binary fingerprint.
@@ -49,7 +49,7 @@ The command returns only after Codex is ready, then leaves the bridge running in
 ## Install in a project
 
 ```bash
-npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.49.0'
+npm install 'https://github.com/adamholter/t3-code-ultralight-browser-fork/releases/latest/download/t3-code-ultralight-browser-fork.tgz?v=0.50.0'
 npx t3-code-ultralight doctor
 npx t3-code-ultralight start
 ```
@@ -95,9 +95,9 @@ Plain HTML needs no bundler or package import. The running bridge serves a stabl
 <codex-chat bridge-url="http://127.0.0.1:4174"></codex-chat>
 ```
 
-For a no-bundler canvas, voice, or other custom UI, `setup --mode custom --delivery hosted --json` returns one exact `createCodexAssistant` import served by the running bridge. It combines a stateful session with scoped, fail-closed browser request handling and one cleanup call. Localhost pages are allowed by default; non-loopback pages still require their exact `--allow-origin` value. All module routes use that same origin policy and expose no credentials.
+For a no-bundler canvas, voice, or other custom UI, `setup --mode custom --delivery hosted --json` returns one exact `createCodexAssistant` import served by the running bridge. It combines a stateful session with scoped, fail-closed browser request handling and one cleanup call. Pass the host's exact browser origin with `--allow-origin`, including for a localhost dev server. The bridge's own UI origin remains automatic; unrelated sibling localhost pages are denied. All module routes use that same policy and expose no credentials.
 
-Custom browser UIs served from a non-loopback origin must opt that exact origin into the local bridge:
+Every browser host outside the bridge's own origin must opt its exact origin into the local bridge. This governs headless modules, WebSockets, imperative iframe commands, and permission to frame the complete chat:
 
 ```bash
 npx t3-code-ultralight start --allow-origin https://canvas.example.com
@@ -105,7 +105,7 @@ npx t3-code-ultralight start --allow-origin https://canvas.example.com
 
 Repeat `--allow-origin` for additional hosts. The bridge still binds only to `127.0.0.1`; wildcards are intentionally unsupported.
 
-Every setup recipe includes an `originPolicy` object. It records that loopback browser origins work automatically, lists the exact additional origins configured for this bridge, and names the required `--allow-origin <exact browser origin>` flag for any other host. The HTTPS non-loopback path is tested with real browser CORS and WebSocket Origin headers; an unlisted sibling is rejected on both transports.
+Every setup recipe includes an `originPolicy` object. It records that only the bridge's own origin is automatic, lists the exact browser hosts configured for this bridge, and names the required `--allow-origin <exact browser origin>` flag. `--allow-loopback-origins` restores the older all-localhost behavior only as an explicit compatibility escape hatch. Tests exercise real CORS and WebSocket Origin headers and reject both an unlisted HTTPS sibling and an unlisted sibling localhost origin.
 
 A trusted standalone HTML file can use the same zero-install recipe with `--allow-origin null`. Browsers represent `file://` and sandboxed documents with the opaque Origin value `null`; the receipt sets `originPolicy.opaqueOriginAllowed: true` only when that access was explicitly requested. The complete chat's `frame-ancestors` policy also adds `file:` only under this explicit grant. Do not grant `null` to untrusted local files or sandboxed content.
 
@@ -183,7 +183,7 @@ const codex = createCodexEmbedController(document.querySelector("#local-codex"))
 await codex.send("Explain the current selection", { cwd: projectPath });
 ```
 
-The child accepts commands only from its exact parent window and an origin allowed by the bridge. Loopback hosts work automatically; a non-loopback or trusted `file://` parent must use the same explicit `--allow-origin` policy as the headless client. Spoofed origins are ignored without acknowledgement.
+The child accepts commands only from its exact parent window and an origin allowed by the bridge. Every parent host—including localhost—uses the same explicit `--allow-origin` policy as the headless client; trusted `file://` parents use `--allow-origin null`. Spoofed origins are ignored without acknowledgement.
 
 ## Custom canvas or voice UI
 
@@ -296,7 +296,7 @@ The public controller exposes a minimal structural WebSocket-server handle rathe
 - Unowned server requests and duplicate cross-client responses rejected instead of broadcast
 - Strict browser envelopes, 16 MiB payload bounds, and 32 in-flight RPCs per client by default
 - Versioned browser handshake with early protocol and required-capability validation
-- Exact-origin WebSocket policy with secure loopback defaults and no wildcard mode
+- Exact-origin WebSocket policy by default, automatic bridge self-origin, and no wildcard mode
 - No-store HTML/metadata, immutable hashed assets, stale-asset 404s, and an embed-compatible CSP
 - Enforced 110 KB decoded JavaScript-plus-CSS ceiling for the complete browser app
 - Dependency-free Web Component with Shadow DOM and SSR-safe registration

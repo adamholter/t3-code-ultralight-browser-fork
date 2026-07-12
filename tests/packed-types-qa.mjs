@@ -45,7 +45,7 @@ import {
 import type { Server } from "node:http";
 
 declare const httpServer: Server;
-const attachedOptions: AttachCodexBridgeOptions = { autoStart: false, browserSocketCloseTimeoutMs: 750 };
+const attachedOptions: AttachCodexBridgeOptions = { autoStart: false, browserSocketCloseTimeoutMs: 750, allowedOrigins: ["http://127.0.0.1:3000"], allowLoopbackOrigins: false };
 const attachedController = attachCodexBridge(httpServer, attachedOptions);
 const defaultSocketCloseTimeout: 1000 = DEFAULT_BROWSER_SOCKET_CLOSE_TIMEOUT_MS;
 void [attachedController, defaultSocketCloseTimeout];
@@ -97,8 +97,9 @@ const hostedAssistant: string = hostedRecipe.hostedModules.assistant;
 const workspaceDefault: "bridge" = hostedRecipe.workspace.default;
 const workspaceOverrideEmbedded: boolean = hostedRecipe.workspace.overrideEmbedded;
 const originFlag: "--allow-origin <exact browser origin>" = hostedRecipe.originPolicy.nonLoopbackRequiresExactFlag;
+const browserOriginFlag: "--allow-origin <exact browser origin>" = hostedRecipe.originPolicy.browserHostRequiresExactFlag;
 const opaqueOriginAllowed: boolean = hostedRecipe.originPolicy.opaqueOriginAllowed;
-void [hostedInstall, hostedClient, hostedAssistant, workspaceDefault, workspaceOverrideEmbedded, originFlag, opaqueOriginAllowed];
+void [hostedInstall, hostedClient, hostedAssistant, workspaceDefault, workspaceOverrideEmbedded, originFlag, browserOriginFlag, opaqueOriginAllowed];
 
 // @ts-expect-error Hosted recipes intentionally have no package install command.
 void hostedRecipe.installCommand;

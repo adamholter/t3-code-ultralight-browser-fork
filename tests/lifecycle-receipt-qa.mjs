@@ -12,7 +12,7 @@ const workspace = await realpath(await mkdtemp(resolve(tmpdir(), "t3-lifecycle-"
 let lifecycle;
 
 try {
-  const setup = run(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--json"], workspace);
+  const setup = run(["setup", "--mode", "custom", "--delivery", "hosted", "--port", "auto", "--allow-origin", "http://127.0.0.1:39003", "--json"], workspace);
   assert.equal(setup.status, 0, setup.stderr || setup.stdout);
   const receipt = JSON.parse(setup.stdout);
   lifecycle = receipt.lifecycle;
@@ -22,6 +22,9 @@ try {
   assert.equal(lifecycle.resolvedPortStable, true);
   assert.deepEqual(lifecycle.ensure.installed.args.slice(0, 3), ["start", "--port", String(receipt.bridge.port)]);
   assert.equal(lifecycle.ensure.installed.args.includes("--codex"), true);
+  assert.equal(lifecycle.ensure.installed.args.includes("--allow-origin"), true);
+  assert.equal(lifecycle.ensure.installed.args.includes("http://127.0.0.1:39003"), true);
+  assert.equal(lifecycle.ensure.installed.args.includes("--allow-loopback-origins"), false);
   assert.equal(lifecycle.ensure.zeroInstall.command, "npx");
   assert.equal(lifecycle.ensure.zeroInstall.args.includes(receipt.integration.bridgeUrl), false);
 
