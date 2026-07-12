@@ -1,0 +1,176 @@
+import { FolderOpen, RefreshCw, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApprovalBar } from "./components/ApprovalBar";
+import { Composer } from "./components/Composer";
+import { MobileMenuButton, Sidebar } from "./components/Sidebar";
+import { Timeline } from "./components/Timeline";
+import { codex } from "./lib/codex-client";
+import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
+import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
+
+export default function App() {
+  const [status, setStatus] = useState<ConnectionStatus>("starting");
+  const [threads, setThreads] = useState<CodexThread[]>([]);
+  const [models, setModels] = useState<CodexModel[]>([]);
+  const [selected, setSelected] = useState<CodexThread | null>(null);
+  const [items, setItems] = useState<ThreadItem[]>([]);
+  const [draft, setDraft] = useState("");
+  const [running, setRunning] = useState(false);
+  const [turnId, setTurnId] = useState<string | null>(null);
+  const [model, setModel] = useState(localStorage.getItem("codex-web:model") ?? "");
+  const [effort, setEffort] = useState(localStorage.getItem("codex-web:effort") ?? "low");
+  const [cwd, setCwd] = useState(localStorage.getItem("codex-web:cwd") ?? "/Users/adam");
+  const [search, setSearch] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<PendingServerRequest[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [dark, setDark] = useState(() => localStorage.getItem("codex-web:theme") !== "light");
+
+  const loadSidebar = useCallback(async () => {
+    try {
+      const [threadPage, modelPage] = await Promise.all([
+        codex.request<{ data: CodexThread[] }>("thread/list", { limit: 100, sortKey: "recency_at", sortDirection: "desc" }),
+        codex.request<{ data: CodexModel[] }>("model/list", { limit: 100 }),
+      ]);
+      setThreads(threadPage.data);
+      setModels(modelPage.data.filter((entry) => !entry.hidden));
+      setModel((current) => current || modelPage.data.find((entry) => entry.isDefault)?.model || modelPage.data[0]?.model || "");
+      setStatus("ready");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    localStorage.setItem("codex-web:theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  useEffect(() => {
+    codex.connect();
+    const cleanup = [
+      codex.on("connection", (next) => { setStatus(next); if (next === "ready") void loadSidebar(); }),
+      codex.on("status", (message) => setStatus(message.status)),
+      codex.on("serverRequest", (request) => setPendingRequests((current) => [...current, request])),
+      codex.on("item/started", ({ item }) => setItems((current) => reconcileStreamedItem(current, item))),
+      codex.on("item/completed", ({ item }) => setItems((current) => reconcileStreamedItem(current, item))),
+      codex.on("item/agentMessage/delta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "text", delta))),
+      codex.on("item/reasoning/summaryTextDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "summary", delta))),
+      codex.on("item/reasoning/textDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "summary", delta))),
+      codex.on("item/commandExecution/outputDelta", ({ itemId, delta }) => setItems((current) => appendItemDelta(current, itemId, "aggregatedOutput", delta))),
+      codex.on("turn/started", ({ turn }) => { setTurnId(turn.id); setRunning(true); }),
+      codex.on("turn/completed", ({ turn }) => { setTurnId(null); setRunning(false); if (turn?.error?.message) setError(turn.error.message); void loadSidebar(); }),
+      codex.on("error", ({ error: turnError }) => setError(turnError?.message ?? "Codex reported an error")),
+      codex.on("thread/name/updated", () => void loadSidebar()),
+    ];
+    return () => { cleanup.forEach((off) => off()); codex.close(); };
+  }, [loadSidebar]);
+
+  async function selectThread(thread: CodexThread) {
+    setError(null);
+    setSelected(thread);
+    setItems([]);
+    setSidebarOpen(false);
+    try {
+      const response = await codex.request<{ thread: CodexThread; model: string; reasoningEffort: string | null; cwd: string }>("thread/resume", { threadId: thread.id });
+      setSelected(response.thread);
+      setItems(flattenItems(response.thread.turns));
+      setModel(response.model);
+      if (response.reasoningEffort) setEffort(response.reasoningEffort);
+      setCwd(response.cwd);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  function newThread() {
+    setSelected(null);
+    setItems([]);
+    setDraft("");
+    setRunning(false);
+    setTurnId(null);
+    setSidebarOpen(false);
+    setError(null);
+  }
+
+  async function send() {
+    const text = draft.trim();
+    if (!text || running || status !== "ready") return;
+    setDraft("");
+    setError(null);
+    try {
+      let thread = selected;
+      if (!thread) {
+        const response = await codex.request<{ thread: CodexThread }>("thread/start", { cwd, ...(model ? { model } : {}) });
+        thread = response.thread;
+        setSelected(thread);
+      }
+      setItems((current) => [...current, { type: "userMessage", id: `local-${crypto.randomUUID()}`, content: [{ type: "text", text, text_elements: [] }] }]);
+      setRunning(true);
+      const response = await codex.request<{ turn: { id: string } }>("turn/start", {
+        threadId: thread.id,
+        input: [{ type: "text", text, text_elements: [] }],
+        cwd,
+        ...(model ? { model } : {}),
+        ...(effort ? { effort } : {}),
+      });
+      setTurnId(response.turn.id);
+    } catch (cause) {
+      setRunning(false);
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  async function stop() {
+    if (!selected || !turnId) return;
+    await codex.request("turn/interrupt", { threadId: selected.id, turnId });
+  }
+
+  function answerApproval(decision: "accept" | "decline") {
+    const request = pendingRequests[0];
+    if (!request) return;
+    if (request.method === "item/tool/requestUserInput") {
+      codex.respond(request.id, { answers: {} });
+    } else {
+      codex.respond(request.id, { decision });
+    }
+    setPendingRequests((current) => current.slice(1));
+  }
+
+  const title = selected?.name || selected?.preview || "New thread";
+  const subtitle = selected?.cwd || cwd;
+  const activeModel = useMemo(() => models.find((entry) => entry.model === model), [models, model]);
+  function updateModel(value: string) { setModel(value); localStorage.setItem("codex-web:model", value); const entry = models.find((item) => item.model === value); if (entry) setEffort(entry.defaultReasoningEffort); }
+  function updateEffort(value: string) { setEffort(value); localStorage.setItem("codex-web:effort", value); }
+  function updateCwd(value: string) { setCwd(value); localStorage.setItem("codex-web:cwd", value); }
+
+  return (
+    <main className="app-shell">
+      <Sidebar threads={threads} selectedId={selected?.id ?? null} open={sidebarOpen} status={status} search={search} dark={dark} onSearch={setSearch} onSelect={selectThread} onNew={newThread} onClose={() => setSidebarOpen(false)} onToggleTheme={() => setDark((value) => !value)} />
+      <section className="workspace">
+        <header className="topbar">
+          <MobileMenuButton onClick={() => setSidebarOpen(true)} />
+          <div className="thread-heading"><strong>{title}</strong><span><FolderOpen size={12} />{subtitle}</span></div>
+          <div className="model-readout">{activeModel?.displayName ?? "Codex"} · {effort}</div>
+        </header>
+        {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError(null)}>Dismiss</button></div>}
+        <div className="conversation">
+          {items.length ? <Timeline items={items} running={running} /> : <EmptyState status={status} onRefresh={loadSidebar} />}
+        </div>
+        {pendingRequests[0] && <ApprovalBar request={pendingRequests[0]} onDecision={answerApproval} />}
+        <Composer value={draft} running={running} disabled={status !== "ready"} models={models} model={model} effort={effort} cwd={cwd} onChange={setDraft} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} />
+      </section>
+    </main>
+  );
+}
+
+function EmptyState({ status, onRefresh }: { status: ConnectionStatus; onRefresh: () => void }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-mark"><Sparkles size={24} /></div>
+      <h1>Talk to your local Codex</h1>
+      <p>Start with a task. Codex uses your local account, configuration, skills, and workspace.</p>
+      {status !== "ready" && <button onClick={onRefresh}><RefreshCw size={15} />Reconnect</button>}
+    </div>
+  );
+}
