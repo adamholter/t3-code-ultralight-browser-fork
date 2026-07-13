@@ -15,9 +15,15 @@ import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
 import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
 
-// The packaged headless client defaults to the standard port 4174. The
-// standalone app must instead follow whichever port serves this page.
-const codex = createCodexClient({ bridgeUrl: () => window.location.origin });
+const startupParams = new URLSearchParams(window.location.search);
+const configuredWebSocketPath = readSameOriginPath(startupParams, "codex-ws-path");
+const configuredStatusPath = readSameOriginPath(startupParams, "codex-status-path") ?? "/api/status";
+
+// The complete chat normally follows the origin serving the page. A host may
+// opt into a same-origin path when its bridge is token-scoped or reverse-proxied.
+const codex = configuredWebSocketPath
+  ? createCodexClient({ url: () => webSocketUrl(configuredWebSocketPath) })
+  : createCodexClient({ bridgeUrl: () => window.location.origin });
 
 export default function App() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -184,7 +190,7 @@ export default function App() {
   useEffect(() => {
     if (!embedded) return;
     let cancelled = false;
-    void fetch("/api/status", { cache: "no-store" })
+    void fetch(configuredStatusPath, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Could not load embed origin policy (${response.status})`);
         const status = await response.json() as { allowedOrigins?: unknown; allowLoopbackOrigins?: unknown };
@@ -370,6 +376,21 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function readSameOriginPath(params: URLSearchParams, name: string) {
+  const value = params.get(name);
+  if (!value) return null;
+  if (!value.startsWith("/") || value.startsWith("//")) throw new Error(`${name} must be a same-origin pathname`);
+  const parsed = new URL(value, window.location.origin);
+  if (parsed.origin !== window.location.origin || parsed.hash) throw new Error(`${name} must be a same-origin pathname without a fragment`);
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+function webSocketUrl(path: string) {
+  const url = new URL(path, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
 }
 
 function EmptyState({ status, onRefresh }: { status: ConnectionStatus; onRefresh: () => void }) {

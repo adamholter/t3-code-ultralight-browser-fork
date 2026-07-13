@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.56.0
+
+- Let the complete React chat target same-origin, token-scoped WebSocket and status paths without replacing its T3-derived transcript, tools, approvals, Markdown, or composer.
+- Validate path overrides in both the host wrapper and embedded page so a configured path cannot redirect Codex traffic to another origin.
+
 ## 0.55.0
 
 - Make `agent-prompt` a self-contained handoff derived from the packaged integration contract, including the exact versioned release command, host-mode decision guide, attached-server route, durable lifecycle wiring, security boundary, and final live-turn verification.

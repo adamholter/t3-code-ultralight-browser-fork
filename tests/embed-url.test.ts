@@ -10,4 +10,15 @@ describe("buildEmbedUrl", () => {
   ])("builds an SSR-safe embed URL from %s", (input, output) => {
     expect(buildEmbedUrl(input)).toBe(output);
   });
+
+  it("passes same-origin bridge paths to the isolated chat", () => {
+    expect(buildEmbedUrl("https://sidecar.example/chat?token=secret", {
+      websocketPath: "/codex/secret/ws",
+      statusPath: "/api/codex-status?token=secret",
+    })).toBe("https://sidecar.example/chat?token=secret&embed=1&codex-ws-path=%2Fcodex%2Fsecret%2Fws&codex-status-path=%2Fapi%2Fcodex-status%3Ftoken%3Dsecret");
+  });
+
+  it("rejects cross-origin path overrides", () => {
+    expect(() => buildEmbedUrl("https://sidecar.example", { websocketPath: "//evil.example/ws" })).toThrow(/same-origin/);
+  });
 });

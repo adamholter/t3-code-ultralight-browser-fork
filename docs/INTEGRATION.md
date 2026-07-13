@@ -100,6 +100,18 @@ import { CodexChatEmbed } from "t3-code-ultralight-browser-fork/react";
 <CodexChatEmbed bridgeUrl="http://127.0.0.1:4174" />
 ```
 
+When an existing server mounts the complete chat and Codex bridge behind token-scoped paths, keep the same UI and point only its transport routes at those same-origin paths:
+
+```tsx
+<CodexChatEmbed
+  bridgeUrl="https://local-connector.example/chat?token=PAIRING_TOKEN"
+  websocketPath="/codex/PAIRING_TOKEN/ws"
+  statusPath="/api/codex-status?token=PAIRING_TOKEN"
+/>
+```
+
+Both overrides must be absolute same-origin pathnames. This is the intended route for sidecars and reverse proxies that need the actual complete T3 chat rather than a headless text renderer.
+
 Start the bridge with `npx t3-code-ultralight start`. It waits until the Codex app-server is ready, then exits while the loopback bridge continues in the background. Use `--json` for a stable receipt containing the URL, version, PID, allowed origins, and log path. Use `serve` when the host intentionally manages a foreground child process.
 
 React hosts receive the same verified events as typed callbacks:

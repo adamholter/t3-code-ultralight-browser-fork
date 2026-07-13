@@ -13,6 +13,10 @@ import { buildEmbedUrl } from "../embed-url";
 export interface CodexChatEmbedProps extends Omit<IframeHTMLAttributes<HTMLIFrameElement>, "src"> {
   /** URL of the running ultralight bridge UI. */
   bridgeUrl?: string;
+  /** Optional same-origin WebSocket path for a path-mounted or token-scoped bridge. */
+  websocketPath?: string;
+  /** Optional same-origin status path for the embedded host-origin policy. */
+  statusPath?: string;
   onCodexEvent?: (event: CodexEmbedEvent) => void;
   onCodexReady?: (event: Extract<CodexEmbedEvent, { event: "ready" }>) => void;
   onConnectionChange?: (event: Extract<CodexEmbedEvent, { event: "connection" }>) => void;
@@ -44,6 +48,8 @@ const defaultStyle: CSSProperties = {
  */
 export function CodexChatEmbed({
   bridgeUrl = "http://127.0.0.1:4174",
+  websocketPath,
+  statusPath,
   style,
   title = "Local Codex chat",
   onCodexEvent,
@@ -57,7 +63,7 @@ export function CodexChatEmbed({
 }: CodexChatEmbedProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const controllerRef = useRef<CodexEmbedController | null>(null);
-  const src = buildEmbedUrl(bridgeUrl);
+  const src = buildEmbedUrl(bridgeUrl, { websocketPath, statusPath });
 
   useEffect(() => {
     const iframe = iframeRef.current;
