@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendItemDelta, flattenItems, reconcileStreamedItem, upsertItem, userInputText } from "../src/lib/thread-items";
+import { appendItemDelta, flattenItems, reconcileStreamedItem, upsertItem, userInputImages, userInputText } from "../src/lib/thread-items";
 
 describe("thread item helpers", () => {
   it("flattens persisted turns", () => {
@@ -14,6 +14,12 @@ describe("thread item helpers", () => {
 
   it("extracts text input", () => {
     expect(userInputText([{ type: "text", text: "one" }, { type: "text", text: "two" }])).toBe("one\ntwo");
+  });
+
+  it("extracts browser image inputs", () => {
+    expect(userInputImages([{ type: "image", url: "data:image/png;base64,abc", name: "sketch.png" }])).toEqual([
+      { url: "data:image/png;base64,abc", name: "sketch.png" },
+    ]);
   });
 
   it("reconciles a server user message with its optimistic copy", () => {

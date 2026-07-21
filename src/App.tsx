@@ -1,6 +1,6 @@
 import { FolderOpen, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Composer } from "./components/Composer";
+import { Composer, type ComposerImageAttachment } from "./components/Composer";
 import { PendingRequestPanel } from "./components/PendingRequestPanel";
 import { MobileMenuButton, Sidebar } from "./components/Sidebar";
 import { Timeline } from "./components/Timeline";
@@ -10,10 +10,10 @@ import {
   type CodexEmbedCommandHandlers,
   type CodexEmbedSendOptions,
 } from "./embed-events";
-import { createCodexClient } from "./lib/codex-client";
+import { createCodexClient, type CodexInput } from "./lib/codex-client";
 import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server-requests";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
-import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem } from "./types";
+import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem, UserInput } from "./types";
 
 const startupParams = new URLSearchParams(window.location.search);
 const configuredWebSocketPath = readSameOriginPath(startupParams, "codex-ws-path");
@@ -35,6 +35,7 @@ export default function App() {
   const [selected, setSelected] = useState<CodexThread | null>(null);
   const [items, setItems] = useState<ThreadItem[]>([]);
   const [draft, setDraft] = useState("");
+  const [composerImages, setComposerImages] = useState<ComposerImageAttachment[]>([]);
   const [running, setRunning] = useState(false);
   const [model, setModel] = useState(localStorage.getItem("codex-web:model") ?? "");
   const [effort, setEffort] = useState(localStorage.getItem("codex-web:effort") ?? "low");
@@ -234,6 +235,7 @@ export default function App() {
     setSelected(null);
     setItems([]);
     setDraft("");
+    setComposerImages([]);
     runningRef.current = false;
     turnIdRef.current = null;
     setRunning(false);
@@ -241,9 +243,9 @@ export default function App() {
     setError(null);
   }
 
-  async function sendPrompt(input: string, options: CodexEmbedSendOptions = {}) {
+  async function sendPrompt(input: string, options: CodexEmbedSendOptions = {}, images: ComposerImageAttachment[] = []) {
     const text = input.trim();
-    if (!text) throw new Error("Codex prompt cannot be empty");
+    if (!text && !images.length) throw new Error("Codex prompt cannot be empty");
     if (runningRef.current) throw new Error("Codex is already running a turn");
     if (status !== "ready") throw new Error("Codex is not ready");
     const turnCwd = options.cwd?.trim() || cwd.trim();
@@ -262,11 +264,19 @@ export default function App() {
         selectedThreadId.current = thread.id;
         setSelected(thread);
       }
-      setItems((current) => [...current, { type: "userMessage", id: `local-${crypto.randomUUID()}`, content: [{ type: "text", text, text_elements: [] }] }]);
+      const localContent: UserInput[] = [
+        ...(text ? [{ type: "text" as const, text, text_elements: [] }] : []),
+        ...images.map((image) => ({ type: "image" as const, url: image.dataUrl, name: image.name })),
+      ];
+      const turnInput: CodexInput[] = [
+        ...(text ? [{ type: "text" as const, text, text_elements: [] }] : []),
+        ...images.map((image) => ({ type: "image" as const, url: image.dataUrl })),
+      ];
+      setItems((current) => [...current, { type: "userMessage", id: `local-${crypto.randomUUID()}`, content: localContent }]);
       setRunning(true);
       const response = await codex.request<{ turn: { id: string } }>("turn/start", {
         threadId: thread.id,
-        input: [{ type: "text", text, text_elements: [] }],
+        input: turnInput,
         ...(turnCwd ? { cwd: turnCwd } : {}),
         ...(model ? { model } : {}),
         ...(effort ? { effort } : {}),
@@ -285,9 +295,14 @@ export default function App() {
 
   function send() {
     const text = draft.trim();
-    if (!text || running || runningRef.current || status !== "ready") return;
+    const images = composerImages;
+    if ((!text && !images.length) || running || runningRef.current || status !== "ready") return;
     setDraft("");
-    void sendPrompt(text).catch(() => undefined);
+    setComposerImages([]);
+    void sendPrompt(text, {}, images).catch(() => {
+      setDraft(text);
+      setComposerImages(images);
+    });
   }
 
   async function stop() {
@@ -372,7 +387,7 @@ export default function App() {
           {items.length ? <Timeline items={items} running={running} /> : <EmptyState status={status} onRefresh={loadSidebar} />}
         </div>
         {pendingRequests[0] && <PendingRequestPanel key={pendingRequests[0].id} request={pendingRequests[0]} onRespond={answerRequest} onReject={rejectRequest} autoFocus={!embedded} />}
-        <Composer autoFocus={!embedded} value={draft} running={running} disabled={status !== "ready"} models={models} model={model} effort={effort} cwd={cwd} onChange={setDraft} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} />
+        <Composer autoFocus={!embedded} value={draft} images={composerImages} running={running} disabled={status !== "ready"} models={models} model={model} effort={effort} cwd={cwd} onChange={setDraft} onImagesChange={setComposerImages} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} />
       </section>
     </main>
   );

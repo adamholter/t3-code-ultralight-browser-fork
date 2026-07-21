@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.57.0
+
+- Restore T3-style image attachments in the reusable chat: upload button, paste, drag and drop, previews, removal, image-only turns, sent-image grids, and fullscreen inspection.
+- Restore message-level copy controls while retaining code-block copy, structured tool activity, approvals, Markdown, thread history, model and effort controls, and responsive layout.
+- Keep the fork light by excluding provider-specific, git, terminal, and other application backend features instead of cutting portable chat interactions.
+
 ## 0.56.0
 
 - Let the complete React chat target same-origin, token-scoped WebSocket and status paths without replacing its T3-derived transcript, tools, approvals, Markdown, or composer.

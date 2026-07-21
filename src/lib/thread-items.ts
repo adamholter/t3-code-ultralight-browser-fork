@@ -8,6 +8,16 @@ export function userInputText(content: UserInput[]) {
   return content.filter((part) => part.type === "text").map((part) => "text" in part ? part.text : "").join("\n");
 }
 
+export function userInputImages(content: UserInput[]) {
+  return content.flatMap((part) => part.type === "image" && "url" in part && typeof part.url === "string"
+    ? [{ url: part.url, name: "name" in part && typeof part.name === "string" ? part.name : "Attached image" }]
+    : []);
+}
+
+function userInputSignature(content: UserInput[]) {
+  return JSON.stringify({ text: userInputText(content), images: userInputImages(content).map((image) => image.url) });
+}
+
 export function upsertItem(items: ThreadItem[], item: ThreadItem) {
   const index = items.findIndex((current) => current.id === item.id);
   if (index < 0) return [...items, item];
@@ -18,11 +28,11 @@ export function upsertItem(items: ThreadItem[], item: ThreadItem) {
 
 export function reconcileStreamedItem(items: ThreadItem[], item: ThreadItem) {
   if (item.type === "userMessage") {
-    const text = userInputText(Array.isArray(item.content) ? item.content : []);
+    const signature = userInputSignature(Array.isArray(item.content) ? item.content : []);
     const localIndex = items.findIndex((current) =>
       current.type === "userMessage" &&
       String(current.id).startsWith("local-") &&
-      userInputText(Array.isArray(current.content) ? current.content : []) === text,
+      userInputSignature(Array.isArray(current.content) ? current.content : []) === signature,
     );
     if (localIndex >= 0) {
       const next = [...items];

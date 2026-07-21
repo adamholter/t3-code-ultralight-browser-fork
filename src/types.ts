@@ -45,6 +45,7 @@ export type ThreadItem = KnownThreadItem | { type: string; id?: string; [key: st
 
 export type UserInput =
   | { type: "text"; text: string; text_elements?: unknown[] }
+  | { type: "image"; url: string; name?: string; detail?: "auto" | "low" | "high" | "original" }
   | { type: "localImage"; path: string }
   | { type: string; [key: string]: unknown };
 
