@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.58.0
+
+- Restore the portable T3 front-end baseline: per-thread drafts, file/folder mentions, skills, slash commands, Build/Plan, supervised/auto-edit/full-access modes, token context, and image zoom before send.
+- Restore transcript ergonomics without merging messages: separate assistant turns, anchored streaming scroll, jump-to-latest, condensed tool/reasoning work, file-change lists, plan actions, checkpoint rollback, and thread rename/archive/delete.
+- Upgrade response controls with titled code blocks, wrap/fullscreen/copy actions, table CSV copy, richer plan controls, and responsive desktop/mobile layouts.
+- Initialize fresh standalone chats with the bridge workspace through a same-origin UI config endpoint while keeping public status path-private.
+- Browser-verify a real local Codex command turn, multiple assistant messages, mention/skill selection, attachment preview, thread switching, draft restoration, and desktop/mobile overflow.
+
 ## 0.57.0
 
 - Restore T3-style image attachments in the reusable chat: upload button, paste, drag and drop, previews, removal, image-only turns, sent-image grids, and fullscreen inspection.

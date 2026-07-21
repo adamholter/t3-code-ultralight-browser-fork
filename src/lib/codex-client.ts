@@ -101,6 +101,9 @@ export interface CodexClientEventMap {
   "item/reasoning/textDelta": CodexDeltaEventPayload;
   "item/commandExecution/outputDelta": CodexDeltaEventPayload;
   "thread/name/updated": { threadId?: string; [key: string]: unknown };
+  "thread/tokenUsage/updated": { threadId: string; turnId: string; tokenUsage: import("../types.js").TokenUsage };
+  "thread/archived": { threadId: string };
+  "thread/deleted": { threadId: string };
   error: { threadId?: string; error?: { message?: string }; [key: string]: unknown };
   bridgeError: { type: "bridgeError"; error: string };
   protocolError: Error;

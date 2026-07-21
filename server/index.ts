@@ -61,6 +61,9 @@ const server = createServer(async (request, response) => {
       },
     });
   }
+  if (url.pathname === "/api/ui-config") {
+    return json(response, { defaultCwd: workspaceCwd });
+  }
   if (url.pathname === "/api/integration" || url.pathname === "/integration.json") {
     return serveIntegrationContract(response, port);
   }

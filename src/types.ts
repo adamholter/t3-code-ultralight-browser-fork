@@ -30,6 +30,36 @@ export interface CodexTurn {
   items: ThreadItem[];
 }
 
+export type PermissionMode = "supervised" | "auto-edit" | "full-access";
+
+export interface ComposerContextItem {
+  id: string;
+  type: "mention" | "skill";
+  name: string;
+  path: string;
+}
+
+export interface CodexSkill {
+  name: string;
+  path: string;
+  description: string;
+  enabled: boolean;
+  shortDescription?: string | null;
+}
+
+export interface CodexFileMatch {
+  file_name: string;
+  path: string;
+  root: string;
+  match_type: "file" | "directory";
+}
+
+export interface TokenUsage {
+  last?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+  total?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+  modelContextWindow?: number | null;
+}
+
 export type KnownThreadItem =
   | { type: "userMessage"; id: string; content: Array<UserInput> }
   | { type: "agentMessage"; id: string; text: string; phase?: string | null }
@@ -47,6 +77,8 @@ export type UserInput =
   | { type: "text"; text: string; text_elements?: unknown[] }
   | { type: "image"; url: string; name?: string; detail?: "auto" | "low" | "high" | "original" }
   | { type: "localImage"; path: string }
+  | { type: "skill"; name: string; path: string }
+  | { type: "mention"; name: string; path: string }
   | { type: string; [key: string]: unknown };
 
 export interface PendingServerRequest {

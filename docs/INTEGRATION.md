@@ -142,7 +142,7 @@ await codex.current?.stop();
 
 The complete event set is `connection`, `ready`, `thread`, `turn`, `command`, and `error`. Command events contain only the command name, success state, request ID, and optional thread/turn IDs. Events intentionally exclude prompt text, response text, credentials, and tool payloads.
 
-The complete chat renders Markdown into React nodes without injecting response HTML. It supports the response structures Codex commonly emits—including fenced/inline code, lists and tasks, tables, quotes, links, images, and emphasis—while leaving HTML literal and rejecting unsafe URL protocols. The built-in renderer has no external Markdown runtime dependency; `npm run qa:markdown` verifies representative desktop/mobile output and the 110 KB application budget.
+The complete chat renders Markdown into React nodes without injecting response HTML. It supports the response structures Codex commonly emits—including fenced/inline code, lists and tasks, tables, quotes, links, images, and emphasis—while leaving HTML literal and rejecting unsafe URL protocols. The built-in renderer has no external Markdown runtime dependency; `npm run qa:markdown` verifies representative desktop/mobile output and the 180 KB application budget.
 
 Raw iframe hosts can use the same exact-window and exact-origin filter:
 

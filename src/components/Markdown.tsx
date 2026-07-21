@@ -1,4 +1,4 @@
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Maximize2, WrapText, X } from "lucide-react";
 import { Fragment, createElement, useState, type ReactNode } from "react";
 
 export function Markdown({ children }: { children: string }) {
@@ -14,7 +14,7 @@ function renderBlocks(lines: string[], keyPrefix: string): ReactNode[] {
       continue;
     }
 
-    const fence = lines[index].match(/^\s{0,3}(`{3,}|~{3,})\s*([^\s`]*)?.*$/);
+    const fence = lines[index].match(/^\s{0,3}(`{3,}|~{3,})\s*([^\s`]*)?\s*(.*)$/);
     if (fence) {
       const marker = fence[1][0];
       const minimum = fence[1].length;
@@ -25,7 +25,7 @@ function renderBlocks(lines: string[], keyPrefix: string): ReactNode[] {
         index += 1;
       }
       if (index < lines.length) index += 1;
-      nodes.push(<CodeBlock key={`${keyPrefix}-${nodes.length}`} text={code.join("\n")} language={fence[2]} />);
+      nodes.push(<CodeBlock key={`${keyPrefix}-${nodes.length}`} text={code.join("\n")} language={fence[2]} title={fence[3]?.match(/(?:title=)?["']([^"']+)["']/)?.[1]} />);
       continue;
     }
 
@@ -83,6 +83,7 @@ function renderBlocks(lines: string[], keyPrefix: string): ReactNode[] {
       }
       nodes.push(
         <div className="markdown-table-wrap" key={`${keyPrefix}-${nodes.length}`}>
+          <TableCopy headers={headers} rows={rows} />
           <table>
             <thead><tr>{headers.map((cell, cellIndex) => <th key={cellIndex} style={{ textAlign: alignments[cellIndex] }}>{parseInline(cell.trim(), `${keyPrefix}-th-${cellIndex}`)}</th>)}</tr></thead>
             <tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{headers.map((_, cellIndex) => <td key={cellIndex} style={{ textAlign: alignments[cellIndex] }}>{parseInline((row[cellIndex] ?? "").trim(), `${keyPrefix}-td-${rowIndex}-${cellIndex}`)}</td>)}</tr>)}</tbody>
@@ -253,8 +254,10 @@ function parseInline(source: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-function CodeBlock({ text, language }: { text: string; language?: string }) {
+function CodeBlock({ text, language, title }: { text: string; language?: string; title?: string }) {
   const [copied, setCopied] = useState(false);
+  const [wrap, setWrap] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   async function copy() {
     try {
       await navigator.clipboard.writeText(text);
@@ -262,14 +265,20 @@ function CodeBlock({ text, language }: { text: string; language?: string }) {
       window.setTimeout(() => setCopied(false), 1400);
     } catch { /* Clipboard permission is host-controlled. */ }
   }
-  return (
-    <div className="code-block">
-      <button className="code-copy" onClick={copy} aria-label="Copy code">
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-      </button>
-      <pre><code className={language ? `language-${language}` : undefined}>{text}</code></pre>
-    </div>
-  );
+  const content = <div className={`code-block ${expanded ? "code-expanded" : ""}`}>
+    <div className="code-toolbar"><span>{title || language || "Code"}</span><button className={wrap ? "active" : ""} onClick={() => setWrap((value) => !value)} aria-label="Toggle line wrapping"><WrapText size={14} /></button><button onClick={() => setExpanded((value) => !value)} aria-label={expanded ? "Close code view" : "Expand code"}>{expanded ? <X size={14} /> : <Maximize2 size={14} />}</button><button onClick={copy} aria-label="Copy code">{copied ? <Check size={14} /> : <Copy size={14} />}</button></div>
+    <pre className={wrap ? "code-wrap" : ""}><code className={language ? `language-${language}` : undefined}>{text}</code></pre>
+  </div>;
+  return content;
+}
+
+function TableCopy({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
+    await navigator.clipboard.writeText(csv); setCopied(true); window.setTimeout(() => setCopied(false), 1400);
+  }
+  return <button className="table-copy" onClick={() => void copy()} aria-label="Copy table as CSV">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copied" : "Copy CSV"}</span></button>;
 }
 
 function startsBlock(lines: string[], index: number) {

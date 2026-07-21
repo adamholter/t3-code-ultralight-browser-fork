@@ -11,9 +11,10 @@ import {
   type CodexEmbedSendOptions,
 } from "./embed-events";
 import { createCodexClient, type CodexInput } from "./lib/codex-client";
+import { deleteDraft, loadDraft, saveDraft, type ComposerDraft } from "./lib/draft-store";
 import { buildCurrentTimeResponse, getServerRequestThreadId } from "./lib/server-requests";
 import { appendItemDelta, flattenItems, reconcileStreamedItem } from "./lib/thread-items";
-import type { CodexModel, CodexThread, ConnectionStatus, PendingServerRequest, ThreadItem, UserInput } from "./types";
+import type { CodexFileMatch, CodexModel, CodexSkill, CodexThread, ComposerContextItem, ConnectionStatus, PendingServerRequest, PermissionMode, ThreadItem, TokenUsage, UserInput } from "./types";
 
 const startupParams = new URLSearchParams(window.location.search);
 const configuredWebSocketPath = readSameOriginPath(startupParams, "codex-ws-path");
@@ -28,7 +29,8 @@ const codex = configuredWebSocketPath
 export default function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const embedded = searchParams.get("embed") === "1";
-  const collaborationMode = searchParams.get("mode") === "plan" ? "plan" : null;
+  const [collaborationMode, setCollaborationMode] = useState<"build" | "plan">(searchParams.get("mode") === "plan" ? "plan" : "build");
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>((localStorage.getItem("codex-web:permissions") as PermissionMode) || "auto-edit");
   const [status, setStatus] = useState<ConnectionStatus>("starting");
   const [threads, setThreads] = useState<CodexThread[]>([]);
   const [models, setModels] = useState<CodexModel[]>([]);
@@ -36,6 +38,9 @@ export default function App() {
   const [items, setItems] = useState<ThreadItem[]>([]);
   const [draft, setDraft] = useState("");
   const [composerImages, setComposerImages] = useState<ComposerImageAttachment[]>([]);
+  const [composerContext, setComposerContext] = useState<ComposerContextItem[]>([]);
+  const [skills, setSkills] = useState<CodexSkill[]>([]);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [running, setRunning] = useState(false);
   const [model, setModel] = useState(localStorage.getItem("codex-web:model") ?? "");
   const [effort, setEffort] = useState(localStorage.getItem("codex-web:effort") ?? "low");
@@ -52,6 +57,16 @@ export default function App() {
   const turnIdRef = useRef<string | null>(null);
   const interruptedTurnIds = useRef(new Set<string>());
   const embedCommandHandlers = useRef<CodexEmbedCommandHandlers | null>(null);
+  const draftKeyRef = useRef("new");
+  const draftStateRef = useRef<ComposerDraft>({ text: "", images: [], context: [], collaborationMode, permissionMode });
+
+  useEffect(() => {
+    draftStateRef.current = { text: draft, images: composerImages, context: composerContext, collaborationMode, permissionMode };
+    const key = draftKeyRef.current;
+    const snapshot = draftStateRef.current;
+    const timer = window.setTimeout(() => void saveDraft(key, snapshot).catch(() => {}), 250);
+    return () => window.clearTimeout(timer);
+  }, [draft, composerImages, composerContext, collaborationMode, permissionMode]);
 
   useEffect(() => {
     selectedThreadId.current = selected?.id ?? null;
@@ -83,6 +98,17 @@ export default function App() {
   useEffect(() => {
     if (embedded) postCodexEmbedEvent({ event: "connection", status });
   }, [embedded, status]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const workspacePath = configuredStatusPath === "/api/status" ? "/api/ui-config" : configuredStatusPath;
+    void fetch(workspacePath, { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const bridge = await response.json() as { defaultCwd?: unknown };
+      if (!cancelled && typeof bridge.defaultCwd === "string" && bridge.defaultCwd && !cwd.trim()) setCwd(bridge.defaultCwd);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     void codex.connect().catch((cause) => {
@@ -180,6 +206,11 @@ export default function App() {
         }
       }),
       codex.on("thread/name/updated", () => void loadSidebar()),
+      codex.on("thread/tokenUsage/updated", (payload) => {
+        if (payload.threadId === selectedThreadId.current) setTokenUsage(payload.tokenUsage);
+      }),
+      codex.on("thread/archived", () => void loadSidebar()),
+      codex.on("thread/deleted", () => void loadSidebar()),
     ];
     return () => { cleanup.forEach((off) => off()); codex.close(); };
   }, [embedded, loadSidebar]);
@@ -210,12 +241,17 @@ export default function App() {
   }, [embedded]);
 
   async function selectThread(thread: CodexThread) {
+    void saveDraft(draftKeyRef.current, draftStateRef.current).catch(() => {});
     dismissPendingRequests("User switched Codex threads");
     setError(null);
     selectedThreadId.current = thread.id;
     setSelected(thread);
     setItems([]);
     setSidebarOpen(false);
+    draftKeyRef.current = thread.id;
+    setDraft(""); setComposerImages([]); setComposerContext([]);
+    void restoreDraft(thread.id);
+    setTokenUsage(null);
     try {
       const response = await codex.request<{ thread: CodexThread; model: string; reasoningEffort: string | null; cwd: string }>("thread/resume", { threadId: thread.id });
       selectedThreadId.current = response.thread.id;
@@ -230,12 +266,15 @@ export default function App() {
   }
 
   function newThread() {
+    void saveDraft(draftKeyRef.current, draftStateRef.current).catch(() => {});
     dismissPendingRequests("User started a new Codex thread");
     selectedThreadId.current = null;
     setSelected(null);
     setItems([]);
-    setDraft("");
-    setComposerImages([]);
+    draftKeyRef.current = "new";
+    setDraft(""); setComposerImages([]); setComposerContext([]);
+    void restoreDraft("new");
+    setTokenUsage(null);
     runningRef.current = false;
     turnIdRef.current = null;
     setRunning(false);
@@ -243,9 +282,9 @@ export default function App() {
     setError(null);
   }
 
-  async function sendPrompt(input: string, options: CodexEmbedSendOptions = {}, images: ComposerImageAttachment[] = []) {
+  async function sendPrompt(input: string, options: CodexEmbedSendOptions = {}, images: ComposerImageAttachment[] = [], context: ComposerContextItem[] = []) {
     const text = input.trim();
-    if (!text && !images.length) throw new Error("Codex prompt cannot be empty");
+    if (!text && !images.length && !context.length) throw new Error("Codex prompt cannot be empty");
     if (runningRef.current) throw new Error("Codex is already running a turn");
     if (status !== "ready") throw new Error("Codex is not ready");
     const turnCwd = options.cwd?.trim() || cwd.trim();
@@ -259,28 +298,35 @@ export default function App() {
     try {
       let thread = options.newThread ? null : selected;
       if (!thread) {
-        const response = await codex.request<{ thread: CodexThread }>("thread/start", { ...(turnCwd ? { cwd: turnCwd } : {}), ...(model ? { model } : {}) });
+        const permissions = permissionSettings(permissionMode);
+        const response = await codex.request<{ thread: CodexThread }>("thread/start", { ...(turnCwd ? { cwd: turnCwd } : {}), ...(model ? { model } : {}), approvalPolicy: permissions.approvalPolicy, sandbox: permissions.threadSandbox });
         thread = response.thread;
+        draftKeyRef.current = thread.id;
         selectedThreadId.current = thread.id;
         setSelected(thread);
       }
       const localContent: UserInput[] = [
         ...(text ? [{ type: "text" as const, text, text_elements: [] }] : []),
         ...images.map((image) => ({ type: "image" as const, url: image.dataUrl, name: image.name })),
+        ...context.map((entry) => ({ type: entry.type, name: entry.name, path: entry.path } as UserInput)),
       ];
       const turnInput: CodexInput[] = [
         ...(text ? [{ type: "text" as const, text, text_elements: [] }] : []),
         ...images.map((image) => ({ type: "image" as const, url: image.dataUrl })),
+        ...context.map((entry) => ({ type: entry.type, name: entry.name, path: entry.path } as CodexInput)),
       ];
       setItems((current) => [...current, { type: "userMessage", id: `local-${crypto.randomUUID()}`, content: localContent }]);
       setRunning(true);
+      const permissions = permissionSettings(permissionMode);
       const response = await codex.request<{ turn: { id: string } }>("turn/start", {
         threadId: thread.id,
         input: turnInput,
         ...(turnCwd ? { cwd: turnCwd } : {}),
         ...(model ? { model } : {}),
         ...(effort ? { effort } : {}),
-        ...(collaborationMode && model ? { collaborationMode: { mode: collaborationMode, settings: { model, reasoning_effort: effort || null, developer_instructions: null } } } : {}),
+        approvalPolicy: permissions.approvalPolicy,
+        sandboxPolicy: permissions.sandboxPolicy,
+        ...(model ? { collaborationMode: { mode: collaborationMode, settings: { model, reasoning_effort: effort || null, developer_instructions: null } } } : {}),
       });
       turnIdRef.current = response.turn.id;
       return { threadId: thread.id, turnId: response.turn.id };
@@ -296,12 +342,16 @@ export default function App() {
   function send() {
     const text = draft.trim();
     const images = composerImages;
-    if ((!text && !images.length) || running || runningRef.current || status !== "ready") return;
+    const context = composerContext;
+    if ((!text && !images.length && !context.length) || running || runningRef.current || status !== "ready") return;
     setDraft("");
     setComposerImages([]);
-    void sendPrompt(text, {}, images).catch(() => {
+    setComposerContext([]);
+    void deleteDraft(draftKeyRef.current).catch(() => {});
+    void sendPrompt(text, {}, images, context).catch(() => {
       setDraft(text);
       setComposerImages(images);
+      setComposerContext(context);
     });
   }
 
@@ -330,7 +380,7 @@ export default function App() {
     send: sendPrompt,
     newThread: () => {
       if (runningRef.current) throw new Error("Stop the active Codex turn before starting a new thread");
-      newThread();
+      void newThread();
     },
     stop,
   };
@@ -373,9 +423,69 @@ export default function App() {
     value.trim() ? localStorage.setItem("codex-web:cwd", value) : localStorage.removeItem("codex-web:cwd");
   }
 
+  function updatePermissionMode(value: PermissionMode) {
+    setPermissionMode(value);
+    localStorage.setItem("codex-web:permissions", value);
+  }
+
+  async function restoreDraft(key: string) {
+    const stored = await loadDraft(key).catch(() => null);
+    if (draftKeyRef.current !== key) return;
+    setDraft(stored?.text ?? "");
+    setComposerImages(stored?.images ?? []);
+    setComposerContext(stored?.context ?? []);
+    if (stored?.collaborationMode) setCollaborationMode(stored.collaborationMode);
+    if (stored?.permissionMode) setPermissionMode(stored.permissionMode);
+  }
+
+  const searchFiles = useCallback(async (query: string) => {
+    const root = cwd.trim();
+    if (!root) return [];
+    try {
+      const response = await codex.request<{ files: CodexFileMatch[] }>("fuzzyFileSearch", { query, roots: [root] });
+      return response.files;
+    } catch { return []; }
+  }, [cwd]);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    const roots = cwd.trim() ? [cwd.trim()] : undefined;
+    void codex.request<{ data: Array<{ skills: CodexSkill[] }> }>("skills/list", { ...(roots ? { cwds: roots } : {}) })
+      .then((response) => setSkills(response.data.flatMap((entry) => entry.skills)))
+      .catch(() => setSkills([]));
+  }, [status, cwd]);
+
+  async function renameThread(thread: CodexThread) {
+    const name = window.prompt("Thread name", thread.name || thread.preview || "");
+    if (!name?.trim()) return;
+    await codex.request("thread/name/set", { threadId: thread.id, name: name.trim() });
+    await loadSidebar();
+  }
+
+  async function archiveThread(thread: CodexThread) {
+    await codex.request("thread/archive", { threadId: thread.id });
+    if (selectedThreadId.current === thread.id) await newThread();
+    await loadSidebar();
+  }
+
+  async function deleteThread(thread: CodexThread) {
+    if (!window.confirm(`Delete “${thread.name || thread.preview || "Untitled thread"}”?`)) return;
+    await codex.request("thread/delete", { threadId: thread.id });
+    await deleteDraft(thread.id).catch(() => {});
+    if (selectedThreadId.current === thread.id) await newThread();
+    await loadSidebar();
+  }
+
+  async function rollback(numTurns: number) {
+    if (!selected || numTurns < 1 || !window.confirm("Revert this thread to here? This changes conversation history, not files already changed on disk.")) return;
+    const response = await codex.request<{ thread: CodexThread }>("thread/rollback", { threadId: selected.id, numTurns });
+    setSelected(response.thread);
+    setItems(flattenItems(response.thread.turns));
+  }
+
   return (
     <main className={`app-shell ${embedded ? "embedded" : ""}`}>
-      {!embedded && <Sidebar threads={threads} selectedId={selected?.id ?? null} open={sidebarOpen} status={status} search={search} dark={dark} onSearch={setSearch} onSelect={selectThread} onNew={newThread} onClose={() => setSidebarOpen(false)} onToggleTheme={() => setDark((value) => !value)} />}
+      {!embedded && <Sidebar threads={threads} selectedId={selected?.id ?? null} open={sidebarOpen} status={status} search={search} dark={dark} onSearch={setSearch} onSelect={selectThread} onNew={() => void newThread()} onRename={renameThread} onArchive={archiveThread} onDelete={deleteThread} onClose={() => setSidebarOpen(false)} onToggleTheme={() => setDark((value) => !value)} />}
       <section className="workspace">
         <header className="topbar">
           {!embedded && <MobileMenuButton onClick={() => setSidebarOpen(true)} />}
@@ -384,13 +494,19 @@ export default function App() {
         </header>
         {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError(null)}>Dismiss</button></div>}
         <div className="conversation">
-          {items.length ? <Timeline items={items} running={running} /> : <EmptyState status={status} onRefresh={loadSidebar} />}
+          {items.length ? <Timeline items={items} running={running} onRollback={(count) => void rollback(count)} onImplementPlan={(text, fresh) => { if (fresh) void sendPrompt(`Implement this plan:\n\n${text}`, { newThread: true }); else { setDraft(`Implement this plan:\n\n${text}`); setCollaborationMode("build"); } }} /> : <EmptyState status={status} onRefresh={loadSidebar} />}
         </div>
         {pendingRequests[0] && <PendingRequestPanel key={pendingRequests[0].id} request={pendingRequests[0]} onRespond={answerRequest} onReject={rejectRequest} autoFocus={!embedded} />}
-        <Composer autoFocus={!embedded} value={draft} images={composerImages} running={running} disabled={status !== "ready"} models={models} model={model} effort={effort} cwd={cwd} onChange={setDraft} onImagesChange={setComposerImages} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} />
+        <Composer autoFocus={!embedded} value={draft} images={composerImages} context={composerContext} running={running} disabled={status !== "ready"} models={models} skills={skills} model={model} effort={effort} cwd={cwd} collaborationMode={collaborationMode} permissionMode={permissionMode} tokenUsage={tokenUsage} onChange={setDraft} onImagesChange={setComposerImages} onContextChange={setComposerContext} onSubmit={send} onStop={stop} onModel={updateModel} onEffort={updateEffort} onCwd={updateCwd} onCollaborationMode={setCollaborationMode} onPermissionMode={updatePermissionMode} onSearchFiles={searchFiles} />
       </section>
     </main>
   );
+}
+
+function permissionSettings(mode: PermissionMode) {
+  if (mode === "full-access") return { approvalPolicy: "never", threadSandbox: "danger-full-access", sandboxPolicy: { type: "dangerFullAccess" } };
+  if (mode === "supervised") return { approvalPolicy: "on-request", threadSandbox: "read-only", sandboxPolicy: { type: "readOnly", networkAccess: false } };
+  return { approvalPolicy: "on-request", threadSandbox: "workspace-write", sandboxPolicy: { type: "workspaceWrite", networkAccess: true } };
 }
 
 function readSameOriginPath(params: URLSearchParams, name: string) {

@@ -13,9 +13,23 @@ export function ToolItem({ item }: { item: ThreadItem }) {
         <span className="tool-state">{meta.failed ? <CircleX size={14} /> : meta.done ? <CircleCheck size={14} /> : <span className="spinner" />}</span>
         <ChevronRight className={open ? "rotate" : ""} size={15} />
       </button>
-      {open && <pre className="tool-detail">{meta.detail}</pre>}
+      {open && (item.type === "fileChange" ? <FileChanges item={item} /> : <pre className="tool-detail">{meta.detail}</pre>)}
     </section>
   );
+}
+
+function FileChanges({ item }: { item: ThreadItem }) {
+  const changes = Array.isArray((item as any).changes) ? (item as any).changes : [];
+  return <div className="file-change-list">{changes.map((change: any, index: number) => <details key={`${change.path}-${index}`}>
+    <summary><span className={`file-change-kind ${change.kind ?? "update"}`}>{kindLabel(change.kind)}</span><code>{change.path ?? "file"}</code></summary>
+    {(change.diff || change.patch) && <pre>{String(change.diff || change.patch)}</pre>}
+  </details>)}</div>;
+}
+
+function kindLabel(kind?: string) {
+  if (kind === "add" || kind === "create") return "A";
+  if (kind === "delete") return "D";
+  return "M";
 }
 
 function describe(item: ThreadItem) {
@@ -31,8 +45,7 @@ function describe(item: ThreadItem) {
   }
   if (item.type === "fileChange") {
     const changes = Array.isArray(item.changes) ? item.changes : [];
-    const files = changes.map((change: { path?: string }) => change.path ?? "file").join("\n") || "File change";
-    return { icon: <FilePenLine size={15} />, label: `Changed ${changes.length} file${changes.length === 1 ? "" : "s"}`, detail: files, failed: item.status === "failed", done: item.status !== "inProgress" };
+    return { icon: <FilePenLine size={15} />, label: `Changed ${changes.length} file${changes.length === 1 ? "" : "s"}`, detail: "", failed: item.status === "failed", done: item.status !== "inProgress" };
   }
   if (item.type === "webSearch") {
     return { icon: <Search size={15} />, label: "Searched the web", detail: JSON.stringify(item, null, 2), failed: false, done: true };

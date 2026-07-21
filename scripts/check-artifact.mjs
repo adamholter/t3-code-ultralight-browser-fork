@@ -7,7 +7,9 @@ const fontFiles = distFiles.filter((file) => [".woff", ".woff2", ".ttf", ".otf"]
 const sourceMaps = libraryFiles.filter((file) => file.endsWith(".map"));
 const appJavaScript = distFiles.filter((file) => file.endsWith(".js"));
 const appStyles = distFiles.filter((file) => file.endsWith(".css"));
-const MAX_APP_BYTES = 110_000;
+// The browser UI intentionally keeps T3's essential chat ergonomics. This is
+// a guardrail against accidental dependency bloat, not a reason to remove UI.
+const MAX_APP_BYTES = 180_000;
 const hostedModules = [
   resolve("dist-lib/element-auto.js"),
   resolve("dist-lib/embed-events.js"),

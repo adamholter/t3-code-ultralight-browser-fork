@@ -1,7 +1,13 @@
 import type { CodexTurn, ThreadItem, UserInput } from "../types";
 
 export function flattenItems(turns: CodexTurn[]): ThreadItem[] {
-  return turns.flatMap((turn) => turn.items);
+  return turns.flatMap((turn, turnIndex) => turn.items.map((item) => ({
+    ...item,
+    _turnId: turn.id,
+    _turnIndex: turnIndex,
+    _turnsAfter: turns.length - turnIndex - 1,
+    _turnStatus: turn.status,
+  })));
 }
 
 export function userInputText(content: UserInput[]) {
@@ -11,6 +17,12 @@ export function userInputText(content: UserInput[]) {
 export function userInputImages(content: UserInput[]) {
   return content.flatMap((part) => part.type === "image" && "url" in part && typeof part.url === "string"
     ? [{ url: part.url, name: "name" in part && typeof part.name === "string" ? part.name : "Attached image" }]
+    : []);
+}
+
+export function userInputContext(content: UserInput[]) {
+  return content.flatMap((part) => (part.type === "mention" || part.type === "skill") && "name" in part && "path" in part
+    ? [{ type: part.type, name: String(part.name), path: String(part.path) }]
     : []);
 }
 

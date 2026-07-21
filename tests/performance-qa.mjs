@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:4174";
 const baseOrigin = new URL(baseUrl).origin;
-const maxAssetBytes = Number(process.env.QA_MAX_ASSET_BYTES ?? 110_000);
+const maxAssetBytes = Number(process.env.QA_MAX_ASSET_BYTES ?? 180_000);
 const maxReadyMs = Number(process.env.QA_MAX_READY_MS ?? 5_000);
 
 const browser = await chromium.launch({ headless: true });
